@@ -29,9 +29,14 @@ trap {
     exit 1
 }
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security, System.Drawing
+# barra de tareas: GESTEM con su propio icono (si no, Windows lo agrupa como PowerShell y enseña el icono de PowerShell)
+try {
+    Add-Type -Namespace GestemNative -Name Shell -MemberDefinition '[DllImport("shell32.dll")] public static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);'
+    [void][GestemNative.Shell]::SetCurrentProcessExplicitAppUserModelID('Yano.GESTEM.Manager')
+} catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.2'
+$script:AppVersion = '1.5.3'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -4343,17 +4348,20 @@ function Repair-Shortcuts {
         if (-not (Test-Path -LiteralPath $ch)) { return }
         $me = Join-Path $script:AppDir 'GESTEM.ps1'
         $want = '--headless "' + $ps + '" -NoProfile -ExecutionPolicy Bypass -STA -File "' + $me + '" -Oculto'
+        $ico = Join-Path $script:AppDir 'gestem.ico'
+        $wantIco = $(if (Test-Path -LiteralPath $ico) { "$ico,0" } else { '' })
         $sh = New-Object -ComObject WScript.Shell
         foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
             $f = Join-Path $d 'GESTEM MANAGER.lnk'
             if (-not (Test-Path -LiteralPath $f)) { continue }
             $l = $sh.CreateShortcut($f)
-            if ($l.TargetPath -like '*conhost.exe' -and $l.Arguments -eq $want) { continue }
+            if ($l.TargetPath -like '*conhost.exe' -and $l.Arguments -eq $want -and (-not $wantIco -or $l.IconLocation -ieq $wantIco)) { continue }
             if ($l.TargetPath -notlike '*powershell.exe' -and $l.TargetPath -notlike '*conhost.exe') { continue }
             $l.TargetPath = $ch
             $l.Arguments = $want
             $l.WorkingDirectory = $script:AppDir
             $l.WindowStyle = 7
+            if ($wantIco) { $l.IconLocation = $wantIco }    # icono de GESTEM, no el de PowerShell ni el de la consola
             $l.Save()
             Write-Log "acceso directo corregido: $f"
         }
