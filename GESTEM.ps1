@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.9'
+$script:AppVersion = '1.6.10'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -2346,6 +2346,12 @@ function Open-ExcelWindow([int]$row = 0) {
 # =====================================================================
 #  ACTUALIZACIÓN AUTOMÁTICA (desde GitHub)
 # =====================================================================
+function Test-FormHasWork {
+    # ¿hay algo de verdad a medias en la ficha? (un cliente abierto para editar con cambios, o un nombre escrito)
+    if (-not $script:FormDirty) { return $false }
+    if ($script:EditRow) { return $true }
+    try { return [bool]"$($script:Ctl['name'].Text)".Trim() } catch { return $false }
+}
 function Start-UpdateCheckAsync {
     # mira si hay versión nueva sin congelar la ventana. Si no hay nada a medias, se actualiza sola como siempre.
     # (HttpClient: la respuesta llega en segundo plano aunque la ventana esté ocupada cargando)
@@ -2370,8 +2376,8 @@ function Start-UpdateCheckAsync {
             if ("$($t.Status)" -ne 'RanToCompletion') { Write-Log "actualización: no se pudo mirar ($($t.Exception.InnerException.Message))"; return }
             $remote = "$($t.Result)".Trim()
             if (-not ($remote -match '^\d+(\.\d+){1,3}$') -or [version]$remote -le [version]$script:AppVersion) { return }
-            if (-not $script:FormDirty -and -not $script:EditRow) { Check-Update }
-            else { Show-Toast ((L 'updReady') -f $remote) (L 'updNow') { Check-Update -Manual } 20 }
+            if (-not (Test-FormHasWork)) { Check-Update }
+            else { Write-Log "actualización $remote lista: espera (ficha a medias)"; Show-Toast ((L 'updReady') -f $remote) (L 'updNow') { Check-Update -Manual } 30 }
         })
         $script:UpdTimer.Start()
     } catch {
@@ -6710,7 +6716,7 @@ Apply-Language
 # copia al cerrar
 $script:Win.Add_Closing({
     if ($script:Restarting) { return }
-    if ($script:FormDirty -and ($script:EditRow -or "$($script:Ctl['name'].Text)".Trim())) {
+    if (Test-FormHasWork) {
         $nl = [Environment]::NewLine + [Environment]::NewLine
         $ans = [Windows.MessageBox]::Show($script:Win, ((L 'unsavedAsk') -f $nl), $script:AppName, 'YesNo', 'Warning')
         if ("$ans" -ne 'Yes') { $_.Cancel = $true; $script:UI.NavNew.IsChecked = $true; return }
