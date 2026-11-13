@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.4'
+$script:AppVersion = '1.6.5'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -442,6 +442,8 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'Deshacer'
   cmUndone = 'Cambio deshecho'
+  updReady = 'Hay una versión nueva de GESTEM ({0}).'
+  updNow = 'Actualizar ahora'
   cmUndoFail = 'No se pudo deshacer: el cliente ya no está en la lista.'
   userHello = 'Hola, {0}'
   userSwitch = '¿No eres tú?'
@@ -541,6 +543,8 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'Undo'
   cmUndone = 'Change undone'
+  updReady = 'A new version of GESTEM is available ({0}).'
+  updNow = 'Update now'
   cmUndoFail = 'Could not undo: the client is no longer in the list.'
   userHello = 'Hi, {0}'
   userSwitch = 'Not you?'
@@ -640,6 +644,8 @@ $script:TextMore = @{
   cmDone = '✓ {0} : {1}'
   cmUndo = 'Annuler'
   cmUndone = 'Modification annulée'
+  updReady = 'Une nouvelle version de GESTEM est disponible ({0}).'
+  updNow = 'Mettre à jour'
   cmUndoFail = 'Impossible d''annuler : le client n''est plus dans la liste.'
   userHello = 'Bonjour, {0}'
   userSwitch = 'Ce n''est pas vous ?'
@@ -739,6 +745,8 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'تراجع'
   cmUndone = 'تم التراجع عن التغيير'
+  updReady = 'يتوفر إصدار جديد من GESTEM ({0}).'
+  updNow = 'حدّث الآن'
   cmUndoFail = 'تعذّر التراجع: العميل لم يعد في القائمة.'
   userHello = 'مرحبًا، {0}'
   userSwitch = 'لست أنت؟'
@@ -2252,6 +2260,30 @@ function Open-ExcelWindow([int]$row = 0) {
 # =====================================================================
 #  ACTUALIZACIÓN AUTOMÁTICA (desde GitHub)
 # =====================================================================
+function Start-UpdateCheckAsync {
+    # mira si hay versión nueva sin congelar la ventana; al abrir (sin nada a medias) se actualiza sola como antes
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $wc = New-Object Net.WebClient
+        $wc.Headers['Cache-Control'] = 'no-cache'
+        $script:UpdTask = $wc.DownloadStringTaskAsync("$($script:UpdateBase)/version.txt?t=$([DateTime]::UtcNow.Ticks)")
+        $script:UpdStart = Get-Date
+        $script:UpdTimer = New-Object Windows.Threading.DispatcherTimer
+        $script:UpdTimer.Interval = [TimeSpan]::FromMilliseconds(300)
+        $script:UpdTimer.Add_Tick({
+            $t = $script:UpdTask
+            if (-not $t.IsCompleted) { if (((Get-Date) - $script:UpdStart).TotalSeconds -gt 20) { $script:UpdTimer.Stop() }; return }
+            $script:UpdTimer.Stop()
+            if ("$($t.Status)" -ne 'RanToCompletion') { Write-Log "actualización: no se pudo mirar ($($t.Exception.InnerException.Message))"; return }
+            $remote = "$($t.Result)".Trim()
+            if (-not ($remote -match '^\d+(\.\d+){1,3}$') -or [version]$remote -le [version]$script:AppVersion) { return }
+            $early = (((Get-Date) - $script:UpdStart).TotalSeconds -lt 30)
+            if ($early -and -not $script:FormDirty -and -not $script:EditRow) { Check-Update }
+            else { Show-Toast ((L 'updReady') -f $remote) (L 'updNow') { Check-Update -Manual } 20 }
+        })
+        $script:UpdTimer.Start()
+    } catch { Write-Log "actualización: $($_.Exception.Message)" }
+}
 function Check-Update([switch]$Manual) {
     $me = $MyInvocation.ScriptName
     if (-not $me) { $me = Join-Path $script:AppDir 'GESTEM.ps1' }
@@ -3046,8 +3078,8 @@ $xaml = @'
         <TextBlock x:Name="StatusText" DockPanel.Dock="Right" Foreground="#667085" FontSize="12" VerticalAlignment="Center" Margin="16,0,0,0"/>
         <StackPanel Orientation="Horizontal">
           <TextBlock x:Name="TramiteLabel" Foreground="#667085" VerticalAlignment="Center" Margin="0,0,12,0"/>
-          <ComboBox x:Name="TramiteBox" Width="300" Height="40" FontSize="14" FontWeight="SemiBold"/>
-          <ComboBox x:Name="StatsScope" Width="300" Height="40" FontSize="14" FontWeight="SemiBold" Visibility="Collapsed"/>
+          <ComboBox x:Name="TramiteBox" Width="300" Height="40" FontSize="14" FontWeight="SemiBold" MaxDropDownHeight="640"/>
+          <ComboBox x:Name="StatsScope" Width="300" Height="40" FontSize="14" FontWeight="SemiBold" Visibility="Collapsed" MaxDropDownHeight="640"/>
         </StackPanel>
       </DockPanel>
     </Border>
@@ -6419,9 +6451,13 @@ $ui.SaveBtn.Add_Click({
 $ui.ClearBtn.Add_Click({ $wasEdit = [bool]$script:EditRow; Reset-Form; if ($wasEdit) { $script:UI.NavClients.IsChecked = $true } })
 
 # clientes
+$script:SearchTimer = New-Object Windows.Threading.DispatcherTimer
+$script:SearchTimer.Interval = [TimeSpan]::FromMilliseconds(180)
+$script:SearchTimer.Add_Tick({ $script:SearchTimer.Stop(); Refresh-ClientGrid })
 $ui.SearchBox.Add_TextChanged({
     $script:UI.SearchHint.Visibility = $(if ($script:UI.SearchBox.Text) { 'Collapsed' } else { 'Visible' })
-    Refresh-ClientGrid
+    # la lista se filtra cuando se deja de escribir un momento (escribir no se traba)
+    $script:SearchTimer.Stop(); $script:SearchTimer.Start()
 })
 $ui.FilterBox.Add_SelectionChanged({ Refresh-ClientGrid })
 $ui.OnlyDebt.Add_Click({ Refresh-ClientGrid })
@@ -6591,8 +6627,7 @@ $script:Win.Add_Closing({
 })
 
 $script:Win.Add_ContentRendered({
-    Check-Update
-    if ($script:Restarting) { return }
+    Start-UpdateCheckAsync
     Check-Remote
     $flag = Join-Path $script:DataDir 'actualizado.txt'
     if (Test-Path $flag) { $v = (Get-Content -Raw $flag).Trim(); Remove-Item $flag -Force; $script:UpdatedMsg = ((L 'updated') -f $v) }
