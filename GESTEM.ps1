@@ -1,7 +1,7 @@
 ﻿#  GESTEM MANAGER  -  Gestión de clientes para gestoría
-#  Creado por Yassine Belali  ·  2026
+#  Creado por Yano  ·  2026
 #
-#  © 2026 Yassine Belali. Todos los derechos reservados.
+#  © 2026 Yano. Todos los derechos reservados.
 #  Programa con licencia de uso para la empresa titular (Gestoría El Mahi).
 #  Prohibida su copia, modificación, distribución o reventa sin permiso escrito del autor.
 #  Escribe directamente en el Excel de la gestoría usando Microsoft Excel.
@@ -18,7 +18,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security, System.Drawing
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.4'
+$script:AppVersion = '1.4.1'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -202,7 +202,7 @@ $script:Text = @{
   errFull='No quedan filas libres en el Excel.'; errNoExcel='GESTEM MANAGER necesita Microsoft Excel instalado en este ordenador.'
   errGeneric='No se pudo completar la operación:'; selectFirst='Selecciona un cliente de la lista.'
   aboutText='Programa de gestión de clientes para gestorías: canjes de permiso de conducir y otros trámites. Guarda todo directamente en tu Excel.'
-  aboutBy='Creado por Yassine Belali'; aboutVer='Versión {0}'
+  aboutBy='Creado por Yano'; aboutVer='Versión {0}'
   partialOnly='(solo si el pago es Parcial)'; none='(ninguno)'
   updating='Actualizando GESTEM a la versión {0}…'; updated='GESTEM actualizado a la versión {0}.'; upToDate='Ya tienes la última versión ({0}).'; updateFail='No se pudo buscar la actualización (¿hay internet?).'; btnUpdate='Buscar actualizaciones'
   sessTitle='¿Quién está usando GESTEM?'; sessHint='Elige tu nombre. GESTEM lo recuerda y lo pone como responsable en los clientes que guardes.'; sessNew='Otro nombre…'; sessGo='Entrar'; userTip='Usuario: {0}'; onlyMine='Solo mis clientes'; colResp='Responsable'; setColleagues='Compañeras/os (separados por comas)'; setCompany='Nombre de la empresa'; setLogo='Logo de la empresa'; btnLogo='Elegir imagen…'; btnLogoClear='Quitar'; chooseLogo='Elige el logo de la empresa'
@@ -242,7 +242,7 @@ $script:Text = @{
   errFull='There are no free rows left in the Excel file.'; errNoExcel='GESTEM MANAGER needs Microsoft Excel installed on this computer.'
   errGeneric="The operation couldn't be completed:"; selectFirst='Select a client in the list.'
   aboutText='Client management for administrative offices: driving licence exchanges and other procedures. Everything is saved straight into your Excel file.'
-  aboutBy='Created by Yassine Belali'; aboutVer='Version {0}'
+  aboutBy='Created by Yano'; aboutVer='Version {0}'
   partialOnly='(only if payment is Partial)'; none='(none)'
   updating='Updating GESTEM to version {0}…'; updated='GESTEM updated to version {0}.'; upToDate='You already have the latest version ({0}).'; updateFail="Couldn't check for updates (is there internet?)."; btnUpdate='Check for updates'
   sessTitle='Who is using GESTEM?'; sessHint='Choose your name. GESTEM remembers it and records you as the person in charge of the clients you save.'; sessNew='Another name…'; sessGo='Start'; userTip='User: {0}'; onlyMine='My clients only'; colResp='Handled by'; setColleagues='Colleagues (separated by commas)'; setCompany='Company name'; setLogo='Company logo'; btnLogo='Choose image…'; btnLogoClear='Remove'; chooseLogo='Choose the company logo'
@@ -282,7 +282,7 @@ $script:Text = @{
   errFull="Il n'y a plus de lignes libres dans l'Excel."; errNoExcel='GESTEM MANAGER a besoin de Microsoft Excel installé sur cet ordinateur.'
   errGeneric="L'opération n'a pas pu aboutir :"; selectFirst='Sélectionnez un client dans la liste.'
   aboutText="Gestion des clients pour gestorías : échanges de permis de conduire et autres démarches. Tout est enregistré directement dans votre Excel."
-  aboutBy='Créé par Yassine Belali'; aboutVer='Version {0}'
+  aboutBy='Créé par Yano'; aboutVer='Version {0}'
   partialOnly='(seulement si le paiement est Partiel)'; none='(aucun)'
   updating='Mise à jour de GESTEM vers la version {0}…'; updated='GESTEM mis à jour vers la version {0}.'; upToDate='Vous avez déjà la dernière version ({0}).'; updateFail="Impossible de chercher la mise à jour (internet ?)."; btnUpdate='Rechercher des mises à jour'
   sessTitle='Qui utilise GESTEM ?'; sessHint="Choisissez votre nom. GESTEM s'en souvient et vous indique comme responsable des clients que vous enregistrez."; sessNew='Autre nom…'; sessGo='Entrer'; userTip='Utilisateur : {0}'; onlyMine='Mes clients seulement'; colResp='Responsable'; setColleagues='Collègues (séparés par des virgules)'; setCompany="Nom de l'entreprise"; setLogo="Logo de l'entreprise"; btnLogo='Choisir une image…'; btnLogoClear='Retirer'; chooseLogo="Choisissez le logo de l'entreprise"
@@ -322,7 +322,7 @@ $script:Text = @{
   errFull='لا توجد صفوف فارغة في ملف Excel.'; errNoExcel='يحتاج GESTEM MANAGER إلى برنامج Microsoft Excel مثبتًا على هذا الحاسوب.'
   errGeneric='تعذّر إتمام العملية:'; selectFirst='اختر عميلًا من القائمة.'
   aboutText='برنامج لإدارة عملاء مكاتب الخدمات الإدارية: استبدال رخص القيادة وإجراءات أخرى. يُحفظ كل شيء مباشرة في ملف Excel.'
-  aboutBy='من إعداد ياسين بلعلي'; aboutVer='الإصدار {0}'
+  aboutBy='من إعداد Yano'; aboutVer='الإصدار {0}'
   partialOnly='(فقط عند الدفع الجزئي)'; none='(لا شيء)'
   updating='جارٍ تحديث GESTEM إلى الإصدار {0}…'; updated='تم تحديث GESTEM إلى الإصدار {0}.'; upToDate='لديك أحدث إصدار ({0}).'; updateFail='تعذّر البحث عن تحديث (هل يوجد اتصال بالإنترنت؟).'; btnUpdate='البحث عن تحديثات'
   sessTitle='من يستخدم GESTEM؟'; sessHint='اختر اسمك. سيتذكره GESTEM ويسجّلك كمسؤول عن العملاء الذين تحفظهم.'; sessNew='اسم آخر…'; sessGo='دخول'; userTip='المستخدم: {0}'; onlyMine='عملائي فقط'; colResp='المسؤول'; setColleagues='الزملاء (مفصولون بفواصل)'; setCompany='اسم الشركة'; setLogo='شعار الشركة'; btnLogo='اختيار صورة…'; btnLogoClear='إزالة'; chooseLogo='اختر شعار الشركة'
@@ -2097,7 +2097,7 @@ $xaml = @'
           </StackPanel>
           <TextBlock x:Name="AboutText" TextWrapping="Wrap" Margin="0,24,0,0" FontSize="14" LineHeight="22" Foreground="#344054"/>
           <TextBlock x:Name="AboutBy" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#C4161C" Margin="0,20,0,0"/>
-          <TextBlock Text="© 2026 Yassine Belali · Todos los derechos reservados" Foreground="#6E6466" FontWeight="SemiBold" Margin="0,4,0,0"/>
+          <TextBlock Text="© 2026 Yano · Todos los derechos reservados" Foreground="#6E6466" FontWeight="SemiBold" Margin="0,4,0,0"/>
           <TextBlock Text="Programa con licencia de uso para la empresa titular. Prohibida su copia, modificación, distribución o reventa sin permiso escrito del autor." Foreground="#98A2B3" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
           <TextBlock x:Name="EasterEgg" Text="Por Safae de Yan ♥" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="20" Foreground="#C2185B" Margin="0,22,0,0" Visibility="Collapsed"/>
         </StackPanel>
@@ -2217,13 +2217,38 @@ $xaml = @'
           <Grid Margin="0,0,0,22">
             <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE723;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="5. Documentos y recibos" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="En «Clientes», elige un cliente y pulsa «Documentos» (o clic derecho sobre él). Arrastra los escaneos (NIE, permiso, formularios, fotos…) o pulsa «Añadir archivos»." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Los documentos se guardan en la carpeta «GESTEM documentos», junto al Excel, una carpeta por expediente. El clip de la lista indica cuántos tiene cada cliente." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="«Recibo PDF» crea un recibo de pago con el logo de la empresa, lo guarda en los documentos del cliente y lo abre para imprimirlo o enviarlo." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="El recibo justifica lo pagado; no es una factura." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xEDE1;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="6. Exportar la lista" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="En «Clientes», pulsa «Exportar»: «Lista en PDF» (informe para imprimir, con totales) o «Lista en CSV» (se abre en Excel con todas las columnas)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Se exporta lo que ves: si has buscado o filtrado, solo salen esos clientes." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
               <TextBlock Text="&#xE9D2;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <StackPanel Grid.Column="1">
-              <TextBlock Text="5. Resumen económico" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Menú «Resumen». Arriba ves lo facturado, lo cobrado, lo pendiente de cobro y el beneficio neto de todos los trámites juntos." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Debajo, la tabla muestra cada trámite con sus expedientes, su dinero, su margen y su peso en la facturación, y el TOTAL al final." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Filtra por compañera (por ejemplo, solo SAFAE) y por periodo: este mes, el mes anterior o este año (según la fecha de solicitud)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <TextBlock Text="7. Resumen económico" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Menú «Resumen». Arriba ves lo facturado, lo cobrado, lo pendiente de cobro y el beneficio neto." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Arriba puedes elegir «Todos los trámites» o uno solo; las cifras y la gráfica cambian con él." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="La gráfica muestra la evolución por día, semana o mes: verde cuando sube, rojo cuando baja." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Filtra por compañera y por periodo: este mes, el mes anterior o este año (según la fecha de solicitud)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
             </StackPanel>
           </Grid>
           <Grid Margin="0,0,0,22">
@@ -2232,11 +2257,10 @@ $xaml = @'
               <TextBlock Text="&#xE8A5;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <StackPanel Grid.Column="1">
-              <TextBlock Text="6. El Excel" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="GESTEM escribe en vuestro Excel de clientes. Funciona con el Excel abierto o cerrado." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Si estás escribiendo dentro de una celda de Excel, pulsa Enter en Excel antes de guardar en GESTEM." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Cada trámite tiene su pestaña con sus totales arriba. Los precios y las listas se cambian en la pestaña AJUSTES del Excel." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <TextBlock Text="8. El Excel y las copias" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="GESTEM escribe en vuestro Excel de clientes. Funciona con el Excel abierto o cerrado. Si estás escribiendo dentro de una celda, pulsa Enter en Excel antes de guardar en GESTEM." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
               <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Antes de cada guardado se hace una copia de seguridad del Excel (Ajustes → «Abrir carpeta de copias»)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Copia externa: al abrir y al cerrar GESTEM se guarda una copia completa (Excel, ajustes y documentos) en la nube de la empresa (OneDrive o Google Drive) o en la carpeta elegida en Ajustes." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
             </StackPanel>
           </Grid>
           <Grid Margin="0,0,0,22">
@@ -2245,12 +2269,22 @@ $xaml = @'
               <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <StackPanel Grid.Column="1">
-              <TextBlock Text="7. Ajustes" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Archivo Excel: «Cambiar…» para elegir otro archivo de clientes." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Idioma: español, inglés, francés o árabe. Nacionalidad por defecto para los clientes nuevos." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Empresa: nombre y logo que salen en el menú y en la pantalla de inicio." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Compañeras/os: los nombres que salen al iniciar sesión, separados por comas." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <TextBlock Text="9. Ajustes" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Archivo de clientes: «Cambiar…» para elegir otro Excel." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Copia externa: «Usar la nube de la empresa» la configura sola; también puedes elegir un USB o una carpeta." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Empresa: nombre y logo. Equipo: los nombres de las compañeras. Preferencias: idioma (español, inglés, francés o árabe) y nacionalidad por defecto." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
               <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Pulsa «Guardar ajustes» para aplicar los cambios." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE72E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="10. Privacidad y registro" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Por seguridad, GESTEM anota quién añade o cambia cada cliente, quién crea recibos y cuándo se abre y se cierra el programa." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Una copia de ese registro, sin nombres de clientes, se guarda junto a la copia externa. Los datos de los clientes nunca salen de vuestro PC ni de la nube de la empresa." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
             </StackPanel>
           </Grid>
           <Grid Margin="0,0,0,22">
@@ -2259,9 +2293,10 @@ $xaml = @'
               <TextBlock Text="&#xE946;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <StackPanel Grid.Column="1">
-              <TextBlock Text="8. Actualizaciones y ayuda" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <TextBlock Text="11. Actualizaciones y ayuda" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
               <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="GESTEM se actualiza solo al abrirse cuando hay una versión nueva. También puedes pulsar «Buscar actualizaciones»." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Si algo no funciona, cierra GESTEM y vuelve a abrirlo. Si sigue igual, avisa a Yassine Belali." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Si algo no funciona, cierra GESTEM y vuelve a abrirlo. Si sigue igual, avisa a Yano." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="GESTEM MANAGER © 2026 Yano. Todos los derechos reservados. Uso bajo licencia (ver LICENCIA.txt)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
             </StackPanel>
           </Grid>
           </StackPanel>
@@ -2373,7 +2408,7 @@ $xaml = @'
         </Border>
         <TextBlock Text="GESTEM está en pausa" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="22" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,18,0,8"/>
         <TextBlock x:Name="PausedText" Foreground="#4B4345" FontSize="14" TextWrapping="Wrap" LineHeight="21"/>
-        <TextBlock Text="Contacta con Yassine Belali." Foreground="#8A7F81" Margin="0,14,0,0"/>
+        <TextBlock Text="Contacta con Yano." Foreground="#8A7F81" Margin="0,14,0,0"/>
       </StackPanel>
     </Border>
   </Grid>
@@ -2431,7 +2466,7 @@ $xaml = @'
                 <TextBlock Text="&#xE72E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" Foreground="#E0262E" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <TextBlock Text="Modo administrador" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="22" FontWeight="SemiBold" Foreground="White"/>
               </StackPanel>
-              <TextBlock Text="Solo visible para Yassine Belali · © 2026 todos los derechos reservados" Foreground="#A69C9E" Margin="0,4,0,0"/>
+              <TextBlock Text="Solo visible para Yano · © 2026 todos los derechos reservados" Foreground="#A69C9E" Margin="0,4,0,0"/>
             </StackPanel>
           </DockPanel>
         </Border>
@@ -2849,7 +2884,7 @@ function Edit-Selected {
 }
 
 # =====================================================================
-#  DOCUMENTOS, RECIBOS PDF Y EXPORTAR  · © Yassine Belali
+#  DOCUMENTOS, RECIBOS PDF Y EXPORTAR  · © Yano
 # =====================================================================
 $script:PdfPrinter = 'Microsoft Print to PDF'
 $script:DocsMap = @{}
@@ -3918,7 +3953,7 @@ function Update-Stats {
 }
 
 # =====================================================================
-#  ADMINISTRADOR (oculto) · CONTROL REMOTO · © Yassine Belali
+#  ADMINISTRADOR (oculto) · CONTROL REMOTO · © Yano
 # =====================================================================
 $script:AdminPath = Join-Path $script:DataDir 'admin.dat'
 $script:Admin = @{ Salt = ''; Hash = ''; Locks = @{}; IgnorePause = $false; OwnerPC = $false }
@@ -3938,14 +3973,14 @@ $script:AdmLogFilter = 'all'
 $script:LockKeys = @('File', 'Ext', 'Comp', 'Team', 'Pref', 'Help', 'All')
 $script:AdmTr = @{
  'GESTEM está en pausa' = @{ en = 'GESTEM is paused'; fr = 'GESTEM est en pause'; ar = 'GESTEM متوقف مؤقتًا' }
- 'Contacta con Yassine Belali.' = @{ en = 'Contact Yassine Belali.'; fr = 'Contactez Yassine Belali.'; ar = 'تواصل مع ياسين بلعلي.' }
+ 'Contacta con Yano.' = @{ en = 'Contact Yano.'; fr = 'Contactez Yano.'; ar = 'تواصل مع Yano.' }
  'Administrador' = @{ en = 'Administrator'; fr = 'Administrateur'; ar = 'المسؤول' }
  'Cancelar' = @{ en = 'Cancel'; fr = 'Annuler'; ar = 'إلغاء' }
  'Entrar' = @{ en = 'Sign in'; fr = 'Entrer'; ar = 'دخول' }
  'Salir del modo admin' = @{ en = 'Leave admin mode'; fr = 'Quitter le mode admin'; ar = 'الخروج من وضع المسؤول' }
  'Cerrar' = @{ en = 'Close'; fr = 'Fermer'; ar = 'إغلاق' }
  'Modo administrador' = @{ en = 'Admin mode'; fr = 'Mode administrateur'; ar = 'وضع المسؤول' }
- 'Solo visible para Yassine Belali · © 2026 todos los derechos reservados' = @{ en = 'Only visible to Yassine Belali · © 2026 all rights reserved'; fr = 'Visible uniquement par Yassine Belali · © 2026 tous droits réservés'; ar = 'مرئي فقط لياسين بلعلي · © 2026 جميع الحقوق محفوظة' }
+ 'Solo visible para Yano · © 2026 todos los derechos reservados' = @{ en = 'Only visible to Yano · © 2026 all rights reserved'; fr = 'Visible uniquement par Yano · © 2026 tous droits réservés'; ar = 'مرئي فقط لـ Yano · © 2026 جميع الحقوق محفوظة' }
  'Bloqueos' = @{ en = 'Locks'; fr = 'Verrous'; ar = 'القيود' }
  'Actividad' = @{ en = 'Activity'; fr = 'Activité'; ar = 'النشاط' }
  'Herramientas' = @{ en = 'Tools'; fr = 'Outils'; ar = 'الأدوات' }
@@ -4005,6 +4040,60 @@ $script:AdmTr = @{
  'admin: bloqueos guardados' = @{ en = 'admin: locks saved'; fr = 'admin : verrous enregistrés'; ar = 'المسؤول: تم حفظ القيود' }
  'pausa remota activa' = @{ en = 'remote pause active'; fr = 'pause à distance active'; ar = 'الإيقاف عن بُعد مفعّل' }
 }
+# manual en otros idiomas (las claves son el texto en español)
+$script:HelpTr = @{
+ '1. Empezar' = @{ en = '1. Getting started'; fr = '1. Démarrer'; ar = '1. البداية' }
+ 'Al abrir GESTEM, elige tu nombre en «¿Quién está usando GESTEM?». Si no estás en la lista, escríbelo en «Otro nombre…» y pulsa «Entrar».' = @{ en = 'When GESTEM opens, pick your name in «Who is using GESTEM?». If you are not on the list, type it in «Another name…» and press «Start».'; fr = 'À l''ouverture, choisissez votre nom dans « Qui utilise GESTEM ? ». Si vous n''êtes pas dans la liste, tapez-le dans « Autre nom… » et cliquez sur « Entrer ».'; ar = 'عند فتح GESTEM اختر اسمك في «من يستخدم GESTEM؟». إذا لم يكن اسمك في القائمة فاكتبه في «اسم آخر…» واضغط «دخول».' }
+ 'Tu nombre sale abajo a la izquierda. Haz clic en él para cambiar de compañera sin cerrar el programa.' = @{ en = 'Your name appears at the bottom left. Click it to switch colleague without closing the program.'; fr = 'Votre nom apparaît en bas à gauche. Cliquez dessus pour changer de collègue sans fermer le programme.'; ar = 'يظهر اسمك أسفل اليسار. اضغط عليه لتغيير الزميل دون إغلاق البرنامج.' }
+ 'Arriba, en «Trámite», elige con qué trabajas: Canje DGT, Homologación, Extranjería, Autónomo… Cada trámite tiene su pestaña en el Excel.' = @{ en = 'At the top, in «Procedure», choose what you work on: DGT licence exchange, Homologation, Immigration, Self-employed… Each procedure has its own tab in the Excel file.'; fr = 'En haut, dans « Démarche », choisissez sur quoi vous travaillez : échange de permis DGT, homologation, étrangers, autoentrepreneur… Chaque démarche a son onglet dans l''Excel.'; ar = 'في الأعلى، في «الإجراء»، اختر ما تعمل عليه: استبدال رخصة DGT، المعادلة، الأجانب، العمل الحر… لكل إجراء ورقته في ملف Excel.' }
+ '2. Añadir un cliente nuevo' = @{ en = '2. Adding a new client'; fr = '2. Ajouter un nouveau client'; ar = '2. إضافة عميل جديد' }
+ 'Menú «Nuevo cliente». Rellena los datos de arriba abajo: nombre, documento, teléfono, datos del trámite, estado y pago.' = @{ en = 'Menu «New client». Fill in the details from top to bottom: name, ID document, phone, procedure details, status and payment.'; fr = 'Menu « Nouveau client ». Remplissez de haut en bas : nom, pièce d''identité, téléphone, démarche, état et paiement.'; ar = 'قائمة «عميل جديد». املأ البيانات من الأعلى إلى الأسفل: الاسم، الوثيقة، الهاتف، بيانات الإجراء، الحالة والدفع.' }
+ 'La nacionalidad (MARROQUI), la fecha de hoy y el responsable (tu nombre) se ponen solos. Puedes cambiarlos.' = @{ en = 'Nationality (MARROQUI), today''s date and the person in charge (your name) are filled in automatically. You can change them.'; fr = 'La nationalité (MARROQUI), la date du jour et le responsable (votre nom) se remplissent seuls. Vous pouvez les changer.'; ar = 'الجنسية (MARROQUI) وتاريخ اليوم والمسؤول (اسمك) تُملأ تلقائيًا. يمكنك تغييرها.' }
+ 'Si el NIE o pasaporte ya existe, sale un aviso en rojo para no repetir clientes.' = @{ en = 'If the NIE or passport already exists, a red warning appears so clients are not entered twice.'; fr = 'Si le NIE ou le passeport existe déjà, un avertissement rouge s''affiche pour éviter les doublons.'; ar = 'إذا كان NIE أو جواز السفر موجودًا مسبقًا يظهر تنبيه أحمر لتجنّب تكرار العميل.' }
+ 'Pulsa «Guardar cliente» (o Ctrl + S). El cliente se escribe en el Excel al momento, con su número de expediente.' = @{ en = 'Press «Save client» (or Ctrl + S). The client is written to the Excel file straight away, with its case number.'; fr = 'Cliquez sur « Enregistrer le client » (ou Ctrl + S). Le client est écrit dans l''Excel immédiatement, avec son numéro de dossier.'; ar = 'اضغط «حفظ العميل» (أو Ctrl + S). يُكتب العميل في Excel فورًا مع رقم ملفه.' }
+ '3. Pagos' = @{ en = '3. Payments'; fr = '3. Paiements'; ar = '3. المدفوعات' }
+ 'Precio total: lo que paga el cliente. En el canje DGT se pone solo según el tipo de permiso.' = @{ en = 'Total price: what the client pays. For the DGT exchange it is set automatically from the licence type.'; fr = 'Prix total : ce que paie le client. Pour l''échange DGT, il se remplit selon le type de permis.'; ar = 'السعر الإجمالي: ما يدفعه العميل. في استبدال DGT يُحدَّد تلقائيًا حسب نوع الرخصة.' }
+ 'Estado de pago: «Pagado» (lo ha pagado todo), «Parcial» (escribe cuánto ha pagado en «Ha pagado») o «Pendiente» (no ha pagado nada).' = @{ en = 'Payment status: «Pagado» (paid in full), «Parcial» (type how much was paid in «Amount paid») or «Pendiente» (nothing paid yet).'; fr = 'État du paiement : « Pagado » (tout payé), « Parcial » (indiquez le montant dans « Montant payé ») ou « Pendiente » (rien payé).'; ar = 'حالة الدفع: «Pagado» (دفع كل شيء)، «Parcial» (اكتب المبلغ في «المبلغ المدفوع») أو «Pendiente» (لم يدفع شيئًا).' }
+ 'Gastos: lo que pagáis vosotras (tasa, traducción…). El beneficio NETO = precio − gastos se calcula solo en el Excel.' = @{ en = 'Costs: what the office pays (fees, translation…). NET profit = price − costs is calculated automatically in the Excel file.'; fr = 'Frais : ce que paie le bureau (taxe, traduction…). Le bénéfice NET = prix − frais se calcule seul dans l''Excel.'; ar = 'المصاريف: ما يدفعه المكتب (رسوم، ترجمة…). الربح الصافي = السعر − المصاريف يُحسب تلقائيًا في Excel.' }
+ 'Lo que falta por cobrar se calcula solo y sale en rojo.' = @{ en = 'The amount still to collect is calculated automatically and shown in red.'; fr = 'Le reste à encaisser se calcule seul et s''affiche en rouge.'; ar = 'المبلغ المتبقي يُحسب تلقائيًا ويظهر بالأحمر.' }
+ '4. Buscar y cambiar clientes' = @{ en = '4. Finding and editing clients'; fr = '4. Chercher et modifier des clients'; ar = '4. البحث عن العملاء وتعديلهم' }
+ 'Menú «Clientes». Busca por nombre, NIE, número de expediente o localizador.' = @{ en = 'Menu «Clients». Search by name, NIE, case number or reference code.'; fr = 'Menu « Clients ». Cherchez par nom, NIE, numéro de dossier ou code de référence.'; ar = 'قائمة «العملاء». ابحث بالاسم أو NIE أو رقم الملف أو الرمز المرجعي.' }
+ 'Filtra por estado, marca «Solo con pago pendiente» para ver quién debe dinero, o «Solo mis clientes» para ver solo los tuyos.' = @{ en = 'Filter by status, tick «Outstanding payment only» to see who owes money, or «My clients only» to see just yours.'; fr = 'Filtrez par état, cochez « Paiement en attente seulement » pour voir qui doit de l''argent, ou « Mes clients seulement ».'; ar = 'صفِّ حسب الحالة، أو فعّل «الدفع المعلّق فقط» لترى من عليه مال، أو «عملائي فقط».' }
+ 'Doble clic en un cliente (o «Editar cliente») para cambiar su estado, su pago o sus datos. Pulsa «Guardar cliente» al terminar.' = @{ en = 'Double-click a client (or «Edit client») to change their status, payment or details. Press «Save client» when done.'; fr = 'Double-cliquez sur un client (ou « Modifier ») pour changer son état, son paiement ou ses données. Cliquez sur « Enregistrer » à la fin.'; ar = 'انقر مرتين على العميل (أو «تعديل العميل») لتغيير حالته أو دفعه أو بياناته. اضغط «حفظ العميل» عند الانتهاء.' }
+ '«Abrir Excel» abre el archivo; «Actualizar» vuelve a leerlo si alguien lo ha cambiado a mano.' = @{ en = '«Open Excel» opens the file; «Refresh» reads it again if someone changed it by hand.'; fr = '« Ouvrir Excel » ouvre le fichier ; « Actualiser » le relit si quelqu''un l''a modifié à la main.'; ar = '«فتح Excel» يفتح الملف؛ «تحديث» يعيد قراءته إذا عدّله أحد يدويًا.' }
+ '5. Documentos y recibos' = @{ en = '5. Documents and receipts'; fr = '5. Documents et reçus'; ar = '5. المستندات والإيصالات' }
+ 'En «Clientes», elige un cliente y pulsa «Documentos» (o clic derecho sobre él). Arrastra los escaneos (NIE, permiso, formularios, fotos…) o pulsa «Añadir archivos».' = @{ en = 'In «Clients», select a client and press «Documents» (or right-click it). Drag in the scans (NIE, licence, forms, photos…) or press «Add files».'; fr = 'Dans « Clients », choisissez un client et cliquez sur « Documents » (ou clic droit). Glissez les scans (NIE, permis, formulaires, photos…) ou cliquez sur « Ajouter des fichiers ».'; ar = 'في «العملاء» اختر عميلًا واضغط «المستندات» (أو انقر بالزر الأيمن). اسحب الملفات الممسوحة (NIE، الرخصة، الاستمارات، الصور…) أو اضغط «إضافة ملفات».' }
+ 'Los documentos se guardan en la carpeta «GESTEM documentos», junto al Excel, una carpeta por expediente. El clip de la lista indica cuántos tiene cada cliente.' = @{ en = 'Documents are kept in the «GESTEM documentos» folder next to the Excel file, one folder per case. The paperclip in the list shows how many each client has.'; fr = 'Les documents sont rangés dans le dossier « GESTEM documentos », à côté de l''Excel, un dossier par dossier client. Le trombone de la liste indique combien chaque client en a.'; ar = 'تُحفظ المستندات في مجلد «GESTEM documentos» بجانب ملف Excel، مجلد لكل ملف. يدل مشبك الورق في القائمة على عددها لكل عميل.' }
+ '«Recibo PDF» crea un recibo de pago con el logo de la empresa, lo guarda en los documentos del cliente y lo abre para imprimirlo o enviarlo.' = @{ en = '«PDF receipt» creates a payment receipt with the company logo, saves it in the client''s documents and opens it to print or send.'; fr = '« Reçu PDF » crée un reçu de paiement avec le logo de l''entreprise, l''enregistre dans les documents du client et l''ouvre pour l''imprimer ou l''envoyer.'; ar = '«إيصال PDF» ينشئ إيصال دفع بشعار الشركة، ويحفظه في مستندات العميل ويفتحه للطباعة أو الإرسال.' }
+ 'El recibo justifica lo pagado; no es una factura.' = @{ en = 'The receipt confirms what was paid; it is not an invoice.'; fr = 'Le reçu justifie ce qui a été payé ; ce n''est pas une facture.'; ar = 'الإيصال يثبت ما تم دفعه؛ وهو ليس فاتورة.' }
+ '6. Exportar la lista' = @{ en = '6. Exporting the list'; fr = '6. Exporter la liste'; ar = '6. تصدير القائمة' }
+ 'En «Clientes», pulsa «Exportar»: «Lista en PDF» (informe para imprimir, con totales) o «Lista en CSV» (se abre en Excel con todas las columnas).' = @{ en = 'In «Clients», press «Export»: «List as PDF» (printable report with totals) or «List as CSV» (opens in Excel with every column).'; fr = 'Dans « Clients », cliquez sur « Exporter » : « Liste en PDF » (rapport imprimable avec totaux) ou « Liste en CSV » (s''ouvre dans Excel avec toutes les colonnes).'; ar = 'في «العملاء» اضغط «تصدير»: «القائمة بصيغة PDF» (تقرير للطباعة مع المجاميع) أو «القائمة بصيغة CSV» (يُفتح في Excel بكل الأعمدة).' }
+ 'Se exporta lo que ves: si has buscado o filtrado, solo salen esos clientes.' = @{ en = 'What you see is what gets exported: if you searched or filtered, only those clients are included.'; fr = 'On exporte ce que vous voyez : si vous avez cherché ou filtré, seuls ces clients sont inclus.'; ar = 'يُصدَّر ما تراه: إذا بحثت أو صفّيت فلن يظهر إلا هؤلاء العملاء.' }
+ '7. Resumen económico' = @{ en = '7. Financial summary'; fr = '7. Résumé financier'; ar = '7. الملخص المالي' }
+ 'Menú «Resumen». Arriba ves lo facturado, lo cobrado, lo pendiente de cobro y el beneficio neto.' = @{ en = 'Menu «Summary». At the top you see what was billed, collected, still outstanding and the net profit.'; fr = 'Menu « Résumé ». En haut : le facturé, l''encaissé, le reste à encaisser et le bénéfice net.'; ar = 'قائمة «الملخص». في الأعلى ترى المفوتر والمحصّل والمتبقي وصافي الربح.' }
+ 'Arriba puedes elegir «Todos los trámites» o uno solo; las cifras y la gráfica cambian con él.' = @{ en = 'At the top you can choose «All procedures» or a single one; the figures and the chart follow your choice.'; fr = 'En haut, choisissez « Toutes les démarches » ou une seule ; les chiffres et le graphique suivent votre choix.'; ar = 'في الأعلى يمكنك اختيار «كل الإجراءات» أو إجراء واحد؛ تتغير الأرقام والرسم حسب اختيارك.' }
+ 'La gráfica muestra la evolución por día, semana o mes: verde cuando sube, rojo cuando baja.' = @{ en = 'The chart shows the trend by day, week or month: green when it goes up, red when it goes down.'; fr = 'Le graphique montre l''évolution par jour, semaine ou mois : vert quand ça monte, rouge quand ça baisse.'; ar = 'يعرض الرسم التطور حسب اليوم أو الأسبوع أو الشهر: أخضر عند الصعود وأحمر عند الهبوط.' }
+ 'Filtra por compañera y por periodo: este mes, el mes anterior o este año (según la fecha de solicitud).' = @{ en = 'Filter by colleague and by period: this month, last month or this year (by application date).'; fr = 'Filtrez par collègue et par période : ce mois-ci, le mois dernier ou cette année (selon la date de demande).'; ar = 'صفِّ حسب الزميل والفترة: هذا الشهر أو الشهر الماضي أو هذه السنة (حسب تاريخ الطلب).' }
+ '8. El Excel y las copias' = @{ en = '8. The Excel file and backups'; fr = '8. L''Excel et les copies'; ar = '8. ملف Excel والنسخ الاحتياطية' }
+ 'GESTEM escribe en vuestro Excel de clientes. Funciona con el Excel abierto o cerrado. Si estás escribiendo dentro de una celda, pulsa Enter en Excel antes de guardar en GESTEM.' = @{ en = 'GESTEM writes to your client Excel file. It works with Excel open or closed. If you are typing in a cell, press Enter in Excel before saving in GESTEM.'; fr = 'GESTEM écrit dans votre Excel clients, ouvert ou fermé. Si vous tapez dans une cellule, appuyez sur Entrée dans Excel avant d''enregistrer dans GESTEM.'; ar = 'يكتب GESTEM في ملف Excel الخاص بالعملاء، مفتوحًا كان أو مغلقًا. إذا كنت تكتب داخل خلية فاضغط Enter في Excel قبل الحفظ في GESTEM.' }
+ 'Antes de cada guardado se hace una copia de seguridad del Excel (Ajustes → «Abrir carpeta de copias»).' = @{ en = 'A backup of the Excel file is made before every save (Settings → «Open backups folder»).'; fr = 'Une copie de l''Excel est faite avant chaque enregistrement (Paramètres → « Ouvrir le dossier des copies »).'; ar = 'تُنشأ نسخة احتياطية من Excel قبل كل حفظ (الإعدادات ← «فتح مجلد النسخ»).' }
+ 'Copia externa: al abrir y al cerrar GESTEM se guarda una copia completa (Excel, ajustes y documentos) en la nube de la empresa (OneDrive o Google Drive) o en la carpeta elegida en Ajustes.' = @{ en = 'External backup: when GESTEM opens and closes, a full copy (Excel, settings and documents) is saved to the company cloud (OneDrive or Google Drive) or to the folder chosen in Settings.'; fr = 'Copie externe : à l''ouverture et à la fermeture, une copie complète (Excel, paramètres et documents) est enregistrée dans le cloud de l''entreprise (OneDrive ou Google Drive) ou dans le dossier choisi.'; ar = 'النسخة الخارجية: عند فتح GESTEM وإغلاقه تُحفظ نسخة كاملة (Excel والإعدادات والمستندات) في سحابة الشركة (OneDrive أو Google Drive) أو في المجلد المختار.' }
+ '9. Ajustes' = @{ en = '9. Settings'; fr = '9. Paramètres'; ar = '9. الإعدادات' }
+ 'Archivo de clientes: «Cambiar…» para elegir otro Excel.' = @{ en = 'Client file: «Change…» to choose another Excel file.'; fr = 'Fichier des clients : « Changer… » pour choisir un autre Excel.'; ar = 'ملف العملاء: «تغيير…» لاختيار ملف Excel آخر.' }
+ 'Copia externa: «Usar la nube de la empresa» la configura sola; también puedes elegir un USB o una carpeta.' = @{ en = 'External backup: «Use the company cloud» sets it up by itself; you can also choose a USB drive or a folder.'; fr = 'Copie externe : « Utiliser le cloud de l''entreprise » la configure seule ; vous pouvez aussi choisir une clé USB ou un dossier.'; ar = 'النسخة الخارجية: «استخدام سحابة الشركة» يضبطها تلقائيًا؛ ويمكنك أيضًا اختيار USB أو مجلد.' }
+ 'Empresa: nombre y logo. Equipo: los nombres de las compañeras. Preferencias: idioma (español, inglés, francés o árabe) y nacionalidad por defecto.' = @{ en = 'Company: name and logo. Team: colleagues'' names. Preferences: language (Spanish, English, French or Arabic) and default nationality.'; fr = 'Entreprise : nom et logo. Équipe : noms des collègues. Préférences : langue (espagnol, anglais, français ou arabe) et nationalité par défaut.'; ar = 'الشركة: الاسم والشعار. الفريق: أسماء الزملاء. التفضيلات: اللغة (الإسبانية أو الإنجليزية أو الفرنسية أو العربية) والجنسية الافتراضية.' }
+ 'Pulsa «Guardar ajustes» para aplicar los cambios.' = @{ en = 'Press «Save settings» to apply the changes.'; fr = 'Cliquez sur « Enregistrer les paramètres » pour appliquer les changements.'; ar = 'اضغط «حفظ الإعدادات» لتطبيق التغييرات.' }
+ '10. Privacidad y registro' = @{ en = '10. Privacy and activity log'; fr = '10. Confidentialité et journal'; ar = '10. الخصوصية وسجل النشاط' }
+ 'Por seguridad, GESTEM anota quién añade o cambia cada cliente, quién crea recibos y cuándo se abre y se cierra el programa.' = @{ en = 'For security, GESTEM records who adds or changes each client, who creates receipts, and when the program is opened and closed.'; fr = 'Par sécurité, GESTEM note qui ajoute ou modifie chaque client, qui crée des reçus et quand le programme est ouvert et fermé.'; ar = 'لأسباب أمنية يسجّل GESTEM من يضيف أو يعدّل كل عميل، ومن ينشئ الإيصالات، ومتى يُفتح البرنامج ويُغلق.' }
+ 'Una copia de ese registro, sin nombres de clientes, se guarda junto a la copia externa. Los datos de los clientes nunca salen de vuestro PC ni de la nube de la empresa.' = @{ en = 'A copy of that log, without client names, is kept next to the external backup. Client data never leaves your PC or the company cloud.'; fr = 'Une copie de ce journal, sans noms de clients, est gardée avec la copie externe. Les données des clients ne quittent jamais votre PC ni le cloud de l''entreprise.'; ar = 'تُحفظ نسخة من هذا السجل، دون أسماء العملاء، بجانب النسخة الخارجية. بيانات العملاء لا تغادر حاسوبكم ولا سحابة الشركة أبدًا.' }
+ '11. Actualizaciones y ayuda' = @{ en = '11. Updates and help'; fr = '11. Mises à jour et aide'; ar = '11. التحديثات والمساعدة' }
+ 'GESTEM se actualiza solo al abrirse cuando hay una versión nueva. También puedes pulsar «Buscar actualizaciones».' = @{ en = 'GESTEM updates itself when it opens if there is a new version. You can also press «Check for updates».'; fr = 'GESTEM se met à jour tout seul à l''ouverture s''il y a une nouvelle version. Vous pouvez aussi cliquer sur « Rechercher des mises à jour ».'; ar = 'يتحدّث GESTEM تلقائيًا عند الفتح إذا توفّر إصدار جديد. ويمكنك أيضًا الضغط على «البحث عن تحديثات».' }
+ 'Si algo no funciona, cierra GESTEM y vuelve a abrirlo. Si sigue igual, avisa a Yano.' = @{ en = 'If something does not work, close GESTEM and open it again. If it still fails, contact Yano.'; fr = 'Si quelque chose ne marche pas, fermez GESTEM et rouvrez-le. Si le problème continue, prévenez Yano.'; ar = 'إذا لم يعمل شيء فأغلق GESTEM وافتحه من جديد. وإذا استمرت المشكلة فتواصل مع Yano.' }
+ 'GESTEM MANAGER © 2026 Yano. Todos los derechos reservados. Uso bajo licencia (ver LICENCIA.txt).' = @{ en = 'GESTEM MANAGER © 2026 Yano. All rights reserved. Used under licence (see LICENCIA.txt).'; fr = 'GESTEM MANAGER © 2026 Yano. Tous droits réservés. Utilisé sous licence (voir LICENCIA.txt).'; ar = 'GESTEM MANAGER © 2026 Yano. جميع الحقوق محفوظة. يُستخدم بموجب ترخيص (انظر LICENCIA.txt).' }
+ 'Manual de uso' = @{ en = 'User manual'; fr = 'Mode d''emploi'; ar = 'دليل الاستخدام' }
+ 'GESTEM Manager · todo lo que necesitas para trabajar con el programa' = @{ en = 'GESTEM Manager · everything you need to work with the program'; fr = 'GESTEM Manager · tout ce qu''il faut pour travailler avec le programme'; ar = 'GESTEM Manager · كل ما تحتاجه للعمل بالبرنامج' }
+}
+foreach ($k in $script:HelpTr.Keys) { $script:AdmTr[$k] = $script:HelpTr[$k] }
 # texto del área de administrador en el idioma elegido (las claves son el texto en español)
 function AdmT([string]$es) {
     $lang = "$($script:Cfg.Language)"
@@ -4028,7 +4117,7 @@ function Set-AdmTree($node) {
     foreach ($c in [Windows.LogicalTreeHelper]::GetChildren($node)) { Set-AdmTree $c }
 }
 function Apply-AdminLanguage {
-    foreach ($p in 'PanelPaused', 'PanelAdminLogin', 'PanelAdmin') { Set-AdmTree $script:UI[$p] }
+    foreach ($p in 'PanelPaused', 'PanelAdminLogin', 'PanelAdmin', 'PanelHelp') { Set-AdmTree $script:UI[$p] }
 }
 # registro de actividad: traduce solo el principio conocido de cada línea
 function Convert-LogText([string]$txt) {
