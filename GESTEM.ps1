@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.8'
+$script:AppVersion = '1.6.9'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -2040,7 +2040,7 @@ function Refresh-FromExcel {
                 if ($res -eq 'ok') { $done.Add($t.Id) }
                 if ($res -eq 'excel') { $t }
             })
-            Write-Log ("actualizar: {0} pestañas leídas del archivo; listas al día sin Excel: {1}; con Excel: {2}" -f $dv.Count, (($done.ToArray()) -join ', '), ((@($viaExcel | ForEach-Object { $_.Id })) -join ', '))
+            Write-Log ("actualizar: {0} pestañas leídas del archivo · listas sin Excel: {1} · con Excel: {2}" -f $dv.Count, (($done.ToArray()) -join ', '), ((@($viaExcel | ForEach-Object { $_.Id })) -join ', '))
         } catch { Write-Log "listas sin Excel: $($_.Exception.Message)" }
         if ($viaExcel.Count -and (Test-ExcelInstalled)) {
             $h = Invoke-Excel { Open-Book }
