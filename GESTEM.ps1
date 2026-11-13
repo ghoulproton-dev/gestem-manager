@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.16'
+$script:AppVersion = '1.6'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -371,7 +371,7 @@ $script:TextMore = @{
   dataNote = 'GESTEM guarda los clientes en su propia carpeta «GESTEM datos», junto al Excel, y actualiza el Excel en cada guardado.'
   calToday = 'Hoy'
   btnDocs = 'Documentos'
-  btnReceipt = 'Recibo PDF'
+  btnReceipt = 'Factura PDF'
   btnExport = 'Exportar'
   expPdf = 'Lista en PDF'
   expCsv = 'Lista en CSV (para Excel)'
@@ -418,6 +418,18 @@ $script:TextMore = @{
   rcNote = 'Este documento justifica el pago recibido por el trámite indicado. No es una factura.'
   rcFooter = 'Generado con GESTEM MANAGER'
   rcDone = '✓ Recibo {0} guardado en los documentos del cliente'
+  invSec = 'Datos para las facturas'
+  invHint = 'Salen como emisor en «Factura PDF». Se guardan en este PC.'
+  invName = 'Nombre del emisor'
+  invAct = 'Actividad (debajo del nombre)'
+  invNif = 'NIF / NIE'
+  invDom = 'Domicilio fiscal'
+  invPob = 'Población (CP, ciudad, provincia)'
+  invIban = 'IBAN para transferencias'
+  invNext = 'Próximo nº de factura'
+  invNoIssuer = 'Faltan los datos del emisor de las facturas (nombre y NIF/NIE). Rellénalos en Ajustes → Empresa → Datos para las facturas.'
+  invNoPrice = 'Este cliente no tiene precio: no se puede hacer la factura.'
+  invDone = '✓ Factura {0} guardada en los documentos del cliente'
   exTitle = 'Clientes  ·  {0}'
   exFilters = 'Filtros'
   exNoFilter = 'Todos los clientes'
@@ -442,7 +454,7 @@ $script:TextMore = @{
   dataNote = 'GESTEM keeps clients in its own «GESTEM datos» folder next to the Excel file, and updates the Excel on every save.'
   calToday = 'Today'
   btnDocs = 'Documents'
-  btnReceipt = 'PDF receipt'
+  btnReceipt = 'PDF invoice'
   btnExport = 'Export'
   expPdf = 'List as PDF'
   expCsv = 'List as CSV (for Excel)'
@@ -489,6 +501,18 @@ $script:TextMore = @{
   rcNote = 'This document confirms the payment received for the procedure shown. It is not an invoice.'
   rcFooter = 'Created with GESTEM MANAGER'
   rcDone = '✓ Receipt {0} saved in the client''s documents'
+  invSec = 'Invoice details'
+  invHint = 'Shown as issuer on «PDF invoice». Saved on this PC.'
+  invName = 'Issuer name'
+  invAct = 'Activity (under the name)'
+  invNif = 'NIF / NIE'
+  invDom = 'Tax address'
+  invPob = 'Town (postcode, city, province)'
+  invIban = 'IBAN for transfers'
+  invNext = 'Next invoice no.'
+  invNoIssuer = 'The invoice issuer details are missing (name and NIF/NIE). Fill them in Settings → Company → Invoice details.'
+  invNoPrice = 'This client has no price: the invoice cannot be made.'
+  invDone = '✓ Invoice {0} saved in the client''s documents'
   exTitle = 'Clients  ·  {0}'
   exFilters = 'Filters'
   exNoFilter = 'All clients'
@@ -513,7 +537,7 @@ $script:TextMore = @{
   dataNote = 'GESTEM garde les clients dans son propre dossier « GESTEM datos », à côté de l''Excel, et met l''Excel à jour à chaque enregistrement.'
   calToday = 'Aujourd''hui'
   btnDocs = 'Documents'
-  btnReceipt = 'Reçu PDF'
+  btnReceipt = 'Facture PDF'
   btnExport = 'Exporter'
   expPdf = 'Liste en PDF'
   expCsv = 'Liste en CSV (pour Excel)'
@@ -560,6 +584,18 @@ $script:TextMore = @{
   rcNote = 'Ce document justifie le paiement reçu pour la démarche indiquée. Ce n''est pas une facture.'
   rcFooter = 'Créé avec GESTEM MANAGER'
   rcDone = '✓ Reçu {0} enregistré dans les documents du client'
+  invSec = 'Données pour les factures'
+  invHint = 'Apparaissent comme émetteur sur « Facture PDF ». Enregistrées sur ce PC.'
+  invName = 'Nom de l''émetteur'
+  invAct = 'Activité (sous le nom)'
+  invNif = 'NIF / NIE'
+  invDom = 'Adresse fiscale'
+  invPob = 'Ville (CP, ville, province)'
+  invIban = 'IBAN pour les virements'
+  invNext = 'Prochain nº de facture'
+  invNoIssuer = 'Il manque les données de l''émetteur des factures (nom et NIF/NIE). Remplissez-les dans Paramètres → Entreprise → Données pour les factures.'
+  invNoPrice = 'Ce client n''a pas de prix : impossible de faire la facture.'
+  invDone = '✓ Facture {0} enregistrée dans les documents du client'
   exTitle = 'Clients  ·  {0}'
   exFilters = 'Filtres'
   exNoFilter = 'Tous les clients'
@@ -584,7 +620,7 @@ $script:TextMore = @{
   dataNote = 'يحفظ GESTEM العملاء في مجلده الخاص «GESTEM datos» بجانب ملف Excel، ويحدّث Excel عند كل حفظ.'
   calToday = 'اليوم'
   btnDocs = 'المستندات'
-  btnReceipt = 'إيصال PDF'
+  btnReceipt = 'فاتورة PDF'
   btnExport = 'تصدير'
   expPdf = 'القائمة بصيغة PDF'
   expCsv = 'القائمة بصيغة CSV (لـ Excel)'
@@ -631,6 +667,18 @@ $script:TextMore = @{
   rcNote = 'تثبت هذه الوثيقة الدفعة المستلمة عن الإجراء المذكور. وهي ليست فاتورة.'
   rcFooter = 'أُنشئ بواسطة GESTEM MANAGER'
   rcDone = '✓ تم حفظ الإيصال {0} في مستندات العميل'
+  invSec = 'بيانات الفواتير'
+  invHint = 'تظهر كمُصدِر في «فاتورة PDF». تُحفظ على هذا الحاسوب.'
+  invName = 'اسم المُصدِر'
+  invAct = 'النشاط (تحت الاسم)'
+  invNif = 'NIF / NIE'
+  invDom = 'العنوان الضريبي'
+  invPob = 'المدينة (الرمز البريدي، المدينة، الإقليم)'
+  invIban = 'IBAN للتحويلات'
+  invNext = 'رقم الفاتورة التالي'
+  invNoIssuer = 'بيانات مُصدِر الفواتير ناقصة (الاسم و NIF/NIE). أكملها في الإعدادات ← الشركة ← بيانات الفواتير.'
+  invNoPrice = 'هذا العميل بلا سعر: لا يمكن إنشاء الفاتورة.'
+  invDone = '✓ تم حفظ الفاتورة {0} في مستندات العميل'
   exTitle = 'العملاء  ·  {0}'
   exFilters = 'المرشحات'
   exNoFilter = 'كل العملاء'
@@ -652,7 +700,8 @@ function Get-FieldLabel($field) { $l = $field.Label[$script:Cfg.Language]; if (-
 #  AJUSTES DEL PROGRAMA (config.json)
 # =====================================================================
 function Load-Config {
-    $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = '' }
+    $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = ''
+             InvName = ''; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = ''; InvAddress = ''; InvTown = ''; InvIban = '' }
     if (Test-Path $script:CfgPath) {
         try {
             $j = Get-Content -Raw -Path $script:CfgPath -Encoding UTF8 | ConvertFrom-Json
@@ -3344,6 +3393,19 @@ $xaml = @'
                     <Button x:Name="LogoBtn" Style="{StaticResource Btn}" Margin="14,0,0,0" VerticalAlignment="Center"/>
                     <Button x:Name="LogoClearBtn" Style="{StaticResource Btn}" Margin="8,0,0,0" Padding="12,0" VerticalAlignment="Center"/>
                   </StackPanel>
+                  <TextBlock x:Name="InvSecL" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="1,22,0,2"/>
+                  <TextBlock x:Name="InvHintL" Foreground="#7A7072" FontSize="12" TextWrapping="Wrap" Margin="1,0,0,4"/>
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                    <StackPanel><TextBlock x:Name="InvNameL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvNameBox"/></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock x:Name="InvActL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvActBox"/></StackPanel>
+                    <StackPanel Grid.Row="1"><TextBlock x:Name="InvNifL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvNifBox"/></StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock x:Name="InvIbanL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvIbanBox"/></StackPanel>
+                    <StackPanel Grid.Row="2"><TextBlock x:Name="InvDomL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvDomBox"/></StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock x:Name="InvPobL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvPobBox"/></StackPanel>
+                    <StackPanel Grid.Row="3"><TextBlock x:Name="InvNextL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvNextBox"/></StackPanel>
+                  </Grid>
                 </StackPanel>
               </Grid>
             </Border>
@@ -4612,6 +4674,182 @@ function New-ClientReceipt($r) {
     } finally { $script:Win.Cursor = $null }
 }
 
+# ---------- factura (modelo: factura de la gestora) ----------
+# numeración común a todos los PC: «facturas.json» en la carpeta de datos de GESTEM
+function Get-InvoiceBook {
+    $b = @{ Next = 5; Issued = @{} }
+    $d = Get-StoreDir
+    if (-not $d) { return $b }
+    $p = Join-Path $d 'facturas.json'
+    if (Test-Path -LiteralPath $p) {
+        try {
+            $j = [IO.File]::ReadAllText($p, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            if ($j.next) { $b.Next = [int]$j.next }
+            if ($j.issued) { foreach ($pr in $j.issued.PSObject.Properties) { $b.Issued[$pr.Name] = "$($pr.Value)" } }
+        } catch { Write-Log "facturas.json ilegible: $($_.Exception.Message)" }
+    }
+    return $b
+}
+function Save-InvoiceBook($b) {
+    $d = Get-StoreDir
+    if (-not $d) { throw (L 'errNoFile') }
+    if (-not (Test-Path -LiteralPath $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+    $o = [ordered]@{ app = 'GESTEM MANAGER'; next = [int]$b.Next; issued = $b.Issued }
+    [IO.File]::WriteAllText((Join-Path $d 'facturas.json'), ($o | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding($true)))
+}
+function Set-InvoiceNext([int]$n) {
+    $lk = Enter-StoreLock
+    try { $b = Get-InvoiceBook; if ([int]$b.Next -ne $n) { $b.Next = $n; Save-InvoiceBook $b; Write-Log ("próximo nº de factura: {0:000}" -f $n) } } finally { Exit-StoreLock $lk }
+}
+function Get-InvoiceNumber([string]$key) {
+    # el mismo cliente conserva su número y su fecha si se vuelve a sacar la factura
+    $lk = Enter-StoreLock
+    try {
+        $b = Get-InvoiceBook
+        if ($b.Issued.ContainsKey($key)) {
+            $parts = "$($b.Issued[$key])".Split('|')
+            $dt = Get-Date; if ($parts.Count -gt 1) { try { $dt = [DateTime]::ParseExact($parts[1], 'yyyy-MM-dd', $null) } catch { } }
+            return @{ No = $parts[0]; Date = $dt.Date; New = $false }
+        }
+        $no = ([int]$b.Next).ToString('000')
+        $b.Issued[$key] = "$no|$((Get-Date).ToString('yyyy-MM-dd'))"
+        $b.Next = [int]$b.Next + 1
+        Save-InvoiceBook $b
+        return @{ No = $no; Date = (Get-Date).Date; New = $true }
+    } finally { Exit-StoreLock $lk }
+}
+function PdfTextW($g, $text, [double]$size, [string]$weight = 'Regular') {
+    $font = New-PdfFont $size $weight
+    $w = [double]$g.MeasureString("$text", $font).Width
+    $font.Dispose()
+    return $w
+}
+function PdfLV($g, [string]$label, [string]$value, [double]$x, [double]$y, [double]$w, [double]$size, [string]$lc = '#0F172A', [string]$vc = '#334155') {
+    # «Etiqueta: valor» con la etiqueta en negrita
+    PdfText $g $label $x $y $w $size 'Semibold' $lc
+    $lw = (PdfTextW $g $label $size 'Semibold') + 0.6
+    PdfText $g $value ($x + $lw) $y ([math]::Max(5, $w - $lw)) $size 'Regular' $vc
+}
+function Get-InvoiceConcept($t, $r) {
+    if ($t.Id -eq 'canje') {
+        $desc = 'Asesoramiento, preparación de documentación y solicitud telemática/presencial ante la DGT.'
+        if ("$($r.Tipo)".Trim()) { $desc += " Permiso: $("$($r.Tipo)".Trim())." }
+        return @{ Title = 'Gestión y tramitación de canje de permiso de conducir'; Desc = $desc }
+    }
+    $title = $t.Title['es']
+    $extra = ''
+    if ("$($r.Tipo)".Trim()) { $extra = " ($("$($r.Tipo)".Trim()))" }
+    return @{ Title = ("Gestión y tramitación: {0}{1}" -f $title, $extra); Desc = 'Asesoramiento, preparación de documentación y presentación del trámite.' }
+}
+function Draw-Invoice($g, $page) {
+    $d = $script:PdfData
+    $LE = 18; $RE = 192; $W = $RE - $LE
+    $navy = '#0F172A'; $blue = '#2563EB'; $grey = '#475569'; $muted = '#64748B'
+    # cabecera
+    PdfText $g 'FACTURA' $LE 13 95 26 'Semibold' $navy
+    PdfLV $g 'Nº de Factura:' $d.No $LE 29 90 9.5 $navy $grey
+    PdfLV $g 'Fecha de Emisión:' $d.Date $LE 34.5 90 9.5 $navy $grey
+    PdfText $g $d.Issuer 95 15 ($RE - 95) 15 'Semibold' $navy 'Far'
+    if ("$($d.Activity)".Trim()) { PdfText $g $d.Activity 95 23.5 ($RE - 95) 9 'Regular' $muted 'Far' }
+    if ($d.Paid) {
+        PdfRect $g ($RE - 30) 31 30 7 '#E7F4EC' 2
+        PdfText $g 'PAGADA' ($RE - 30) 32.3 30 8 'Semibold' '#1F7A45' 'Center'
+    }
+    # emisor y cliente
+    $y0 = 46; $bw = ($W - 4) / 2
+    foreach ($box in @(@{ X = $LE; Head = 'EMISOR / PRESTADOR DEL SERVICIO'; Name = $d.Issuer; Lines = $d.IssuerLines },
+                       @{ X = $LE + $bw + 4; Head = 'CLIENTE / RECEPTOR'; Name = $d.Client; Lines = $d.ClientLines })) {
+        PdfRect $g $box.X $y0 $bw 36 '#F8FAFC' 2.5
+        PdfText $g $box.Head ($box.X + 6) ($y0 + 5) ($bw - 12) 7.5 'Semibold' $blue
+        PdfText $g $box.Name ($box.X + 6) ($y0 + 10.5) ($bw - 12) 11 'Semibold' $navy
+        $ly = $y0 + 18
+        foreach ($ln in $box.Lines) { PdfLV $g $ln[0] $ln[1] ($box.X + 6) $ly ($bw - 12) 8.5 $navy $grey; $ly += 5.5 }
+    }
+    # concepto
+    $ty = 90
+    PdfRect $g $LE $ty $W 11 $navy
+    PdfText $g 'CONCEPTO / DESCRIPCIÓN' ($LE + 4) ($ty + 3.4) 90 7.5 'Semibold' '#FFFFFF'
+    PdfText $g 'CANTIDAD' ($LE + 100) ($ty + 3.4) 22 7.5 'Semibold' '#FFFFFF' 'Center'
+    PdfText $g 'PRECIO UNID.' ($LE + 122) ($ty + 3.4) 26 7.5 'Semibold' '#FFFFFF' 'Far'
+    PdfText $g 'IMPORTE' ($LE + 148) ($ty + 3.4) ($W - 152) 7.5 'Semibold' '#FFFFFF' 'Far'
+    $ry = $ty + 15
+    PdfText $g $d.ConceptTitle ($LE + 4) $ry 94 9.5 'Semibold' '#1E293B'
+    PdfWrap $g $d.ConceptDesc ($LE + 4) ($ry + 5) 94 11 8 $muted
+    PdfText $g '1' ($LE + 100) ($ry + 2.5) 22 9.5 'Regular' '#334155' 'Center'
+    PdfText $g (Format-Money $d.Base) ($LE + 122) ($ry + 2.5) 26 9.5 'Regular' '#334155' 'Far'
+    PdfText $g (Format-Money $d.Base) ($LE + 148) ($ry + 2.5) ($W - 152) 9.5 'Regular' '#334155' 'Far'
+    PdfLine $g $LE ($ry + 18) $RE ($ry + 18) '#E2E8F0' 0.3
+    # totales
+    $sx = $LE + 96; $vy = $ry + 23
+    PdfText $g 'Base Imponible:' $sx $vy 50 9.5 'Regular' $grey
+    PdfText $g (Format-Money $d.Base) ($RE - 44) $vy 40 9.5 'Regular' $grey 'Far'
+    PdfText $g 'IVA (21%):' $sx ($vy + 7) 50 9.5 'Regular' $grey
+    PdfText $g (Format-Money $d.Iva) ($RE - 44) ($vy + 7) 40 9.5 'Regular' $grey 'Far'
+    PdfLine $g ($sx - 2) ($vy + 14) $RE ($vy + 14) $navy 0.6
+    PdfText $g 'TOTAL FACTURA:' $sx ($vy + 17) 60 12 'Semibold' $navy
+    PdfText $g (Format-Money $d.Total) ($RE - 54) ($vy + 16.5) 50 13 'Semibold' $navy 'Far'
+    # forma de pago
+    $py = $vy + 32
+    $pl = @($d.PayLines)
+    $ph = 6 + 5.5 * $pl.Count
+    PdfRect $g $LE $py $W $ph '#EFF6FF' 2
+    PdfRect $g $LE $py 1.2 $ph $blue
+    $ly = $py + 3.5
+    foreach ($ln in $pl) { PdfLV $g $ln[0] $ln[1] ($LE + 7) $ly ($W - 12) 8.5 '#1E3A8A' '#1D4ED8'; $ly += 5.5 }
+    # pie
+    PdfLine $g $LE 280 $RE 280 '#E2E8F0' 0.3
+    PdfText $g ("Factura Nº {0} — {1}" -f $d.No, $d.Issuer) $LE 282.5 120 7.5 'Regular' $muted
+    PdfText $g 'Página 1 de 1' 140 282.5 ($RE - 140) 7.5 'Regular' $muted 'Far'
+    return $false
+}
+function New-ClientInvoice($r) {
+    if (-not $r) { return }
+    $cfg = $script:Cfg
+    if (-not "$($cfg.InvName)".Trim() -or -not "$($cfg.InvNif)".Trim()) { Show-Info (L 'invNoIssuer'); return }
+    $total = [double]$r.PriceV
+    if ($total -le 0) { Show-Info (L 'invNoPrice'); return }
+    if (-not (Test-PdfPrinter)) { Show-Error (L 'noPdfPrinter'); return }
+    $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    try {
+        $t = $script:T
+        $id = "$($r.Id)".Trim(); if (-not $id) { $id = "F$($r.Row)" }
+        $inv = Get-InvoiceNumber ("{0}|{1}" -f $t.Id, $id)
+        $sp = Split-Iva $total
+        $pend = [double]$r.Pending
+        $forma = "$($r.Data['forma'])".Trim()
+        $cash = ($forma -match '(?i)efectivo|cash|esp[eè]ces')
+        $pay = New-Object System.Collections.Generic.List[object]
+        $pay.Add(@('Forma de pago:', $(if ($forma) { $forma } else { 'Transferencia bancaria / Bizum' })))
+        if ("$($cfg.InvIban)".Trim() -and -not $cash) { $pay.Add(@('Número de Cuenta / IBAN:', "$($cfg.InvIban)".Trim())) }
+        $pay.Add(@('Concepto del pago:', ("Factura {0} - {1}" -f $inv.No, "$($r.Name)")))
+        $issuerLines = @(,@('NIF/NIE:', "$($cfg.InvNif)"))
+        if ("$($cfg.InvAddress)".Trim()) { $issuerLines += ,@('Domicilio Fiscal:', "$($cfg.InvAddress)") }
+        if ("$($cfg.InvTown)".Trim()) { $issuerLines += ,@('Población:', "$($cfg.InvTown)") }
+        $clientLines = @(,@('NIF/NIE:', $(if ("$($r.Doc)".Trim()) { "$($r.Doc)" } else { '—' })))
+        $nat = "$($r.Data['nat'])".Trim(); if ($nat) { $clientLines += ,@('Nacionalidad:', $nat) }
+        $tel = "$($r.Data['tel'])".Trim(); if ($tel) { $clientLines += ,@('Teléfono:', $tel) }
+        $c = Get-InvoiceConcept $t $r
+        $script:PdfData = @{
+            No = $inv.No; Date = $inv.Date.ToString('dd/MM/yyyy')
+            Issuer = "$($cfg.InvName)"; Activity = "$($cfg.InvActivity)"; IssuerLines = $issuerLines
+            Client = "$($r.Name)"; ClientLines = $clientLines
+            ConceptTitle = $c.Title; ConceptDesc = $c.Desc
+            Base = $sp.Base; Iva = $sp.Iva; Total = $total; Paid = ($pend -le 0)
+            PayLines = $pay.ToArray()
+        }
+        $dir = Get-ClientDocsDir $r -Create
+        $file = Join-Path $dir ("Factura {0} - {1}.pdf" -f $inv.No, (Get-SafeName "$($r.Name)"))
+        Invoke-PdfPrint $file $false ${function:Draw-Invoice}
+        Write-Log ("creó la factura {0} ({1})" -f $inv.No, $id)
+        Update-DocsMap; Refresh-ClientGrid
+        if (Test-Path -LiteralPath $file) { Start-Process -FilePath $file }
+        Set-Status ((L 'invDone') -f $inv.No)
+    } catch {
+        Write-Log "factura: $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    } finally { $script:Win.Cursor = $null }
+}
+
 # ---------- exportar la lista ----------
 function Get-ExportFile([string]$ext, [string]$filter) {
     $title = $script:T.Title[$script:Cfg.Language]; if (-not $title) { $title = $script:T.Title['es'] }
@@ -4766,6 +5004,8 @@ function Apply-Language {
     $cols = $ui.ClientsGrid.Columns
     $heads = @('colId', 'colName', 'colDoc', 'colTipo', 'colStatus', 'colPay', 'colPend', 'colDays', 'colResp')
     $ui.OnlyMine.Content = L 'onlyMine'; $ui.SetCollL.Text = L 'setColleagues'
+    $ui.InvSecL.Text = L 'invSec'; $ui.InvHintL.Text = L 'invHint'; $ui.InvNameL.Text = L 'invName'; $ui.InvActL.Text = L 'invAct'; $ui.InvNifL.Text = L 'invNif'
+    $ui.InvIbanL.Text = L 'invIban'; $ui.InvDomL.Text = L 'invDom'; $ui.InvPobL.Text = L 'invPob'; $ui.InvNextL.Text = L 'invNext'
     $ui.SetCompanyL.Text = L 'setCompany'; $ui.SetLogoL.Text = L 'setLogo'; $ui.LogoBtn.Content = L 'btnLogo'; $ui.LogoClearBtn.Content = L 'btnLogoClear'
     $ui.UserBtn.Content = $(if ($script:User) { (L 'userTip') -f $script:User } else { L 'sessGo' })
     for ($i = 0; $i -lt $heads.Count; $i++) { $cols[$i].Header = L $heads[$i] }
@@ -4823,6 +5063,9 @@ function Load-SettingsPanel {
     $ui.NatBox.Text = $script:Cfg.DefaultNationality
     $ui.ColleaguesBox.Text = (@($script:Cfg.Colleagues) -join ', ')
     $ui.CompanyBox.Text = "$($script:Cfg.CompanyName)"
+    $ui.InvNameBox.Text = "$($script:Cfg.InvName)"; $ui.InvActBox.Text = "$($script:Cfg.InvActivity)"; $ui.InvNifBox.Text = "$($script:Cfg.InvNif)"
+    $ui.InvIbanBox.Text = "$($script:Cfg.InvIban)"; $ui.InvDomBox.Text = "$($script:Cfg.InvAddress)"; $ui.InvPobBox.Text = "$($script:Cfg.InvTown)"
+    $ui.InvNextBox.Text = $(try { (Get-InvoiceBook).Next.ToString('000') } catch { '' })
     $script:PendingLogo = "$($script:Cfg.CompanyLogo)"
     $ui.LogoPreview.Fill = (Get-LogoBrush $script:PendingLogo)
     $ui.ExtDirBox.Text = "$($script:Cfg.ExtBackupDir)"
@@ -4950,6 +5193,9 @@ function Save-Settings {
     if ($ui.LangBox.SelectedIndex -ge 0) { $script:Cfg.Language = @($script:Langs.Keys)[$ui.LangBox.SelectedIndex] }
     $nat = "$($ui.NatBox.Text)".Trim().ToUpper(); if ($nat) { $script:Cfg.DefaultNationality = $nat }
     $script:Cfg.CompanyName = "$($ui.CompanyBox.Text)".Trim()
+    $script:Cfg.InvName = "$($ui.InvNameBox.Text)".Trim(); $script:Cfg.InvActivity = "$($ui.InvActBox.Text)".Trim(); $script:Cfg.InvNif = "$($ui.InvNifBox.Text)".Trim().ToUpper()
+    $script:Cfg.InvIban = "$($ui.InvIbanBox.Text)".Trim().ToUpper(); $script:Cfg.InvAddress = "$($ui.InvDomBox.Text)".Trim(); $script:Cfg.InvTown = "$($ui.InvPobBox.Text)".Trim()
+    $nx = 0; if ([int]::TryParse("$($ui.InvNextBox.Text)".Trim(), [ref]$nx) -and $nx -gt 0) { try { Set-InvoiceNext $nx } catch { Write-Log "facturas: $($_.Exception.Message)" } }
     $script:Cfg.CompanyLogo = Save-CompanyLogo $script:PendingLogo
     Apply-Branding
     $script:Cfg.Colleagues = @("$($ui.ColleaguesBox.Text)".Split(',') | ForEach-Object { $_.Trim().ToUpper() } | Where-Object { $_ })
@@ -5867,7 +6113,7 @@ foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings'
                  'PanelPaused','PausedText','PanelAdminLogin','AdmLoginHint','AdmKeyHint','AdmPw','AdmPw2','AdmLoginMsg','AdmLoginCancel','AdmLoginBtn','PanelAdmin','AdmLogout','AdmClose','AdmTabLocks','AdmTabLog','AdmLogErr','AdmTabTools','AdmPageLocks','AdmPageLog','AdmPageTools','AdmLockFile','AdmLockExt','AdmLockComp','AdmLockTeam','AdmLockPref','AdmLockHelp','AdmLockAll','AdmIgnorePause','AdmOwnerPC','AdmSaveLocks','AdmLocksMsg','AdmLogRefresh','AdmLogAll','AdmLogTeam','AdmLogAdmin','AdmLogTitle','AdmLog','AdmRemoteTxt','AdmUpdate','AdmOpenData','AdmOpenApp','AdmShowAll','AdmInfo','AdmNewPw','AdmNewPw2','AdmChangePw','AdmPwMsg','SecFileBox','SecExtBox','SecCompBox','SecTeamBox','SecPrefBox','SecHelpBox',
                  'TopBar','StatsScope','StatsAllBtn','StatsAllTxt','NavStats','PanelStats','StatsWho','StatsPeriod','StatsRefresh','StatsTitle','StatsSub','StatsTable','StatsGrid',
                  'KpiBillL','KpiBill','KpiBillF','KpiPaidL','KpiPaid','KpiPaidTrack','KpiPaidF','KpiPendL','KpiPend','KpiPendF','KpiNetL','KpiNet','KpiNetF',
-                 'SideLogo','SideCompany','SessLogo','SessCompany','AboutImg','AboutCompany','SetCompanyL','CompanyBox','SetLogoL','LogoPreview','LogoBtn','LogoClearBtn')) {
+                 'SideLogo','SideCompany','SessLogo','SessCompany','AboutImg','AboutCompany','SetCompanyL','CompanyBox','InvSecL','InvHintL','InvNameL','InvNameBox','InvActL','InvActBox','InvNifL','InvNifBox','InvIbanL','InvIbanBox','InvDomL','InvDomBox','InvPobL','InvPobBox','InvNextL','InvNextBox','SetLogoL','LogoPreview','LogoBtn','LogoClearBtn')) {
     $script:UI[$n] = $script:Win.FindName($n)
 }
 # menús y columnas no siempre se encuentran por nombre: se toman directamente
@@ -5958,12 +6204,12 @@ $ui.OnlyDebt.Add_Click({ Refresh-ClientGrid })
 $ui.ClientsGrid.Add_MouseDoubleClick({ if ($script:UI.ClientsGrid.SelectedItem) { Edit-Selected } })
 $ui.EditBtn.Add_Click({ Edit-Selected })
 $ui.DocsBtn.Add_Click({ $r = Get-SelectedClient; if ($r) { Open-DocsPanel $r } })
-$ui.ReceiptBtn.Add_Click({ $r = Get-SelectedClient; if ($r) { New-ClientReceipt $r } })
+$ui.ReceiptBtn.Add_Click({ $r = Get-SelectedClient; if ($r) { New-ClientInvoice $r } })
 $ui.ExportBtn.Add_Click({ $m = $this.ContextMenu; $m.PlacementTarget = $this; $m.Placement = 'Bottom'; $m.IsOpen = $true })
 $ui.ExpPdf.Add_Click({ Export-ClientsPdf })
 $ui.ExpCsv.Add_Click({ Export-ClientsCsv })
 $ui.CmEdit.Add_Click({ Edit-Selected })
-$ui.CmReceipt.Add_Click({ $r = Get-SelectedClient; if ($r) { New-ClientReceipt $r } })
+$ui.CmReceipt.Add_Click({ $r = Get-SelectedClient; if ($r) { New-ClientInvoice $r } })
 $ui.CmDocs.Add_Click({ $r = Get-SelectedClient; if ($r) { Open-DocsPanel $r } })
 # clic derecho: selecciona la fila que hay debajo antes de abrir el menú
 $ui.ClientsGrid.Add_PreviewMouseRightButtonDown({
