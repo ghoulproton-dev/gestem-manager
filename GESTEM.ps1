@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.8'
+$script:AppVersion = '1.5.9'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -214,7 +214,7 @@ $script:Text = @{
   loading='Leyendo el Excel…'; savingMsg='Guardando en el Excel…'; ready='{0} clientes · {1} con pago pendiente ({2})'
   noFile='Elige tu archivo Excel en Ajustes.'; tramite='Trámite'
   errNoFile='No encuentro el archivo Excel. Elígelo en Ajustes.'
-  errNoSheet='Este Excel no tiene la pestaña «{0}». Elige el archivo correcto en Ajustes.'; errTabsFound='Pestañas de este Excel: {0}'
+  errNoSheet='Este Excel no tiene la pestaña «{0}». Elige el archivo correcto en Ajustes.'; errTabsFound='Pestañas de este Excel: {0}'; handReadOnly='Este cliente está en la pestaña «{0}» del Excel. Cámbialo allí: GESTEM lo vuelve a leer solo cada vez que se guarda el Excel.'
   errLocked='El Excel está abierto en otro ordenador o en otro programa. Ciérralo allí y vuelve a intentarlo.'
   errBusy='Excel está ocupado: si estás escribiendo en una celda, pulsa Enter en Excel y vuelve a intentarlo.'
   errFull='No quedan filas libres en el Excel.'; errNoExcel='GESTEM MANAGER necesita Microsoft Excel instalado en este ordenador.'
@@ -254,7 +254,7 @@ $script:Text = @{
   loading='Reading the Excel file…'; savingMsg='Saving to Excel…'; ready='{0} clients · {1} with outstanding payment ({2})'
   noFile='Choose your Excel file in Settings.'; tramite='Procedure'
   errNoFile="Can't find the Excel file. Choose it in Settings."
-  errNoSheet='This Excel file has no «{0}» tab. Choose the right file in Settings.'; errTabsFound='Tabs in this Excel file: {0}'
+  errNoSheet='This Excel file has no «{0}» tab. Choose the right file in Settings.'; errTabsFound='Tabs in this Excel file: {0}'; handReadOnly='This client is in the «{0}» tab of the Excel file. Change it there: GESTEM reads it again by itself every time the Excel file is saved.'
   errLocked='The Excel file is open on another computer or program. Close it there and try again.'
   errBusy="Excel is busy: if you're typing in a cell, press Enter in Excel and try again."
   errFull='There are no free rows left in the Excel file.'; errNoExcel='GESTEM MANAGER needs Microsoft Excel installed on this computer.'
@@ -294,7 +294,7 @@ $script:Text = @{
   loading="Lecture de l'Excel…"; savingMsg="Enregistrement dans l'Excel…"; ready='{0} clients · {1} avec paiement en attente ({2})'
   noFile='Choisissez votre fichier Excel dans Paramètres.'; tramite='Démarche'
   errNoFile='Fichier Excel introuvable. Choisissez-le dans Paramètres.'
-  errNoSheet="Cet Excel n'a pas d'onglet « {0} ». Choisissez le bon fichier dans Paramètres."; errTabsFound='Onglets de cet Excel : {0}'
+  errNoSheet="Cet Excel n'a pas d'onglet « {0} ». Choisissez le bon fichier dans Paramètres."; errTabsFound='Onglets de cet Excel : {0}'; handReadOnly='Ce client se trouve dans l''onglet « {0} » de l''Excel. Modifiez-le là-bas : GESTEM le relit tout seul à chaque enregistrement de l''Excel.'
   errLocked="L'Excel est ouvert sur un autre ordinateur ou programme. Fermez-le puis réessayez."
   errBusy="Excel est occupé : si vous écrivez dans une cellule, appuyez sur Entrée dans Excel puis réessayez."
   errFull="Il n'y a plus de lignes libres dans l'Excel."; errNoExcel='GESTEM MANAGER a besoin de Microsoft Excel installé sur cet ordinateur.'
@@ -334,7 +334,7 @@ $script:Text = @{
   loading='جارٍ قراءة ملف Excel…'; savingMsg='جارٍ الحفظ في Excel…'; ready='{0} عميل · {1} بدفع متبقٍ ({2})'
   noFile='اختر ملف Excel من الإعدادات.'; tramite='الإجراء'
   errNoFile='لم أجد ملف Excel. اختره من الإعدادات.'
-  errNoSheet='ملف Excel هذا لا يحتوي على تبويب «{0}». اختر الملف الصحيح من الإعدادات.'; errTabsFound='تبويبات ملف Excel هذا: {0}'
+  errNoSheet='ملف Excel هذا لا يحتوي على تبويب «{0}». اختر الملف الصحيح من الإعدادات.'; errTabsFound='تبويبات ملف Excel هذا: {0}'; handReadOnly='هذا العميل موجود في تبويب «{0}» في ملف Excel. عدّله هناك: يعيد GESTEM قراءته تلقائياً كلما حُفظ ملف Excel.'
   errLocked='ملف Excel مفتوح على جهاز أو برنامج آخر. أغلقه هناك ثم حاول مرة أخرى.'
   errBusy='برنامج Excel مشغول: إذا كنت تكتب في خلية، اضغط Enter في Excel ثم حاول مرة أخرى.'
   errFull='لا توجد صفوف فارغة في ملف Excel.'; errNoExcel='يحتاج GESTEM MANAGER إلى برنامج Microsoft Excel مثبتًا على هذا الحاسوب.'
@@ -819,6 +819,328 @@ function New-TramiteSheet($h, $t) {
     Write-Log "pestaña creada en el Excel: $($t.Sheet)"
     return $ws
 }
+# =====================================================================
+#  PESTAÑAS HECHAS A MANO  · © Yano
+#  Si el Excel de la gestoría tiene un trámite en una pestaña propia (nombres en la columna A, pagos escritos
+#  como «PAGADO 70€»…), GESTEM la lee tal cual, directamente del archivo (sin abrir Excel), y la vuelve a leer
+#  cada vez que se guarda el Excel. Esos clientes se ven en GESTEM pero se cambian en el Excel:
+#  GESTEM nunca escribe en una pestaña hecha a mano.
+# =====================================================================
+$script:HandStamp   = $null
+$script:HandTabs    = @{}       # trámite -> pestaña hecha a mano que se está leyendo
+$script:HandRowBase = 100000    # clientes de una pestaña hecha a mano: fila = 100000 + fila del Excel (solo lectura)
+
+function Read-XlsxSheets([string]$path, [scriptblock]$Pick) {
+    # lee el .xlsx directamente (aunque esté abierto en Excel). $Pick recibe todos los nombres y devuelve los que hay que leer.
+    # devuelve @{ '__names' = nombres; '<pestaña>' = @{ fila = @{ columna = valor } } }
+    try { Add-Type -AssemblyName System.IO.Compression -ErrorAction Stop } catch { }
+    $out = @{}
+    $fs = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+    try {
+        $zip = New-Object IO.Compression.ZipArchive($fs, [IO.Compression.ZipArchiveMode]::Read)
+        $rd = {
+            param($n)
+            $e = $zip.GetEntry($n); if (-not $e) { return $null }
+            $sr = New-Object IO.StreamReader($e.Open())
+            try { $x = New-Object Xml.XmlDocument; $x.LoadXml($sr.ReadToEnd()); return $x } finally { $sr.Dispose() }
+        }
+        $shared = New-Object System.Collections.Generic.List[string]
+        $ss = & $rd 'xl/sharedStrings.xml'
+        if ($ss) { foreach ($si in $ss.SelectNodes("//*[local-name()='si']")) { $shared.Add((@($si.SelectNodes(".//*[local-name()='t']") | ForEach-Object { $_.InnerText }) -join '')) } }
+        $wbx = & $rd 'xl/workbook.xml'
+        $rels = & $rd 'xl/_rels/workbook.xml.rels'
+        $target = @{}
+        foreach ($r in $rels.SelectNodes("//*[local-name()='Relationship']")) { $target[$r.GetAttribute('Id')] = $r.GetAttribute('Target') }
+        $sheets = @()
+        foreach ($sh in $wbx.SelectNodes("//*[local-name()='sheet']")) {
+            $rid = ($sh.Attributes | Where-Object { $_.LocalName -eq 'id' } | Select-Object -First 1).Value
+            $sheets += [pscustomobject]@{ Name = $sh.GetAttribute('name'); Path = "$($target[$rid])" }
+        }
+        $all = @($sheets | ForEach-Object { $_.Name })
+        $out['__names'] = $all
+        $want = @(& $Pick $all)
+        foreach ($s in $sheets) {
+            if ($want -notcontains $s.Name) { continue }
+            $p = $s.Path.TrimStart('/'); if (-not $p.StartsWith('xl/')) { $p = 'xl/' + $p }
+            $e = $zip.GetEntry($p); if (-not $e) { continue }
+            # lectura en flujo: las pestañas tienen miles de celdas vacías con formato; solo se miran las que tienen valor
+            $cells = @{}
+            $xr = [Xml.XmlReader]::Create($e.Open())
+            try {
+                $ref = $null; $ct = $null; $inIs = $false; $buf = $null; $more = $xr.Read()
+                while ($more) {
+                    $next = $true    # ReadElementContentAsString ya avanza: entonces no se vuelve a leer
+                    if ($xr.NodeType -eq [Xml.XmlNodeType]::Element) {
+                        switch ($xr.LocalName) {
+                            'c' { $ref = $xr.GetAttribute('r'); $ct = $xr.GetAttribute('t'); $buf = $null; if ($xr.IsEmptyElement) { $ref = $null } }
+                            'v' { if ($ref) { $buf = $xr.ReadElementContentAsString(); $next = $false } }
+                            'is' { $inIs = $true; $buf = '' }
+                            't' { if ($inIs -and $ref) { $buf += $xr.ReadElementContentAsString(); $next = $false } }
+                        }
+                    } elseif ($xr.NodeType -eq [Xml.XmlNodeType]::EndElement) {
+                        if ($xr.LocalName -eq 'is') { $inIs = $false }
+                        elseif ($xr.LocalName -eq 'c' -and $ref) {
+                            if ($null -ne $buf -and $ref -match '^([A-Z]+)(\d+)$') {
+                                $col = ColNum $Matches[1]; $row = [int]$Matches[2]; $v = $null
+                                if ($row -gt 10 -and $cells.ContainsKey(10) -and $cells[10].ContainsKey(2)) {
+                                    # pestaña con el formato de GESTEM (cabecera en B10): no hace falta leer más
+                                    $h10 = ConvertTo-SheetKey "$($cells[10][2])"
+                                    if ($h10.StartsWith('CLIENTE') -or $h10.StartsWith('NOMBRE')) { break }
+                                }
+                                if ($ct -eq 's') { $v = $shared[[int]$buf] }
+                                elseif ($ct -eq 'str' -or $ct -eq 'inlineStr') { $v = $buf }
+                                elseif ($ct -eq 'b' -or $ct -eq 'e') { $v = $null }
+                                else { $d = 0.0; if ([double]::TryParse($buf, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$d)) { $v = $d } else { $v = $buf } }
+                                if ($null -ne $v -and "$v".Trim() -ne '') {
+                                    if (-not $cells.ContainsKey($row)) { $cells[$row] = @{} }
+                                    $cells[$row][$col] = $v
+                                }
+                            }
+                            $ref = $null
+                        }
+                    }
+                    if ($next) { $more = $xr.Read() } else { $more = -not $xr.EOF }
+                }
+            } finally { $xr.Dispose() }
+            $out[$s.Name] = $cells
+        }
+        $zip.Dispose()
+    } finally { $fs.Dispose() }
+    return $out
+}
+
+function Get-TabCandidates([string[]]$names, $t) {
+    # pestañas que pueden ser de este trámite: su nombre, sus alias y las que empiezan igual
+    $res = New-Object System.Collections.Generic.List[string]
+    $keys = @{}; foreach ($n in $names) { $keys[$n] = ConvertTo-SheetKey $n }
+    $wanted = @($t.Sheet)
+    if ($script:SheetAliases -and $script:SheetAliases.ContainsKey($t.Id)) { $wanted += @($script:SheetAliases[$t.Id]) }
+    foreach ($w in $wanted) { $k = ConvertTo-SheetKey $w; foreach ($n in $names) { if ($keys[$n] -eq $k -and -not $res.Contains($n)) { $res.Add($n) } } }
+    $key = ConvertTo-SheetKey $t.Sheet
+    foreach ($n in $names) {
+        $k = $keys[$n]
+        if ($k.StartsWith($key)) { $rest = $k.Substring($key.Length); if (($rest -eq 'S' -or $rest -eq 'ES' -or $rest.StartsWith(' ')) -and -not $res.Contains($n)) { $res.Add($n) } }
+    }
+    return $res.ToArray()
+}
+function Test-CellsGestem($cells, $t) {
+    # misma prueba que Test-GestemLayout pero sobre las celdas leídas del archivo
+    $r = $cells[[int]($t.FirstRow - 1)]; if (-not $r) { return $false }
+    $h = ConvertTo-SheetKey "$($r[(ColNum $t.NameCol)])"
+    return ($h.StartsWith('CLIENTE') -or $h.StartsWith('NOMBRE'))
+}
+function ConvertTo-HandKey([string]$s) { return ((ConvertTo-SheetKey $s) -replace '[^A-Z0-9 ]', ' ' -replace '\s+', ' ').Trim() }
+function Get-HandRole([string]$k, $t) {
+    # qué es cada columna según su cabecera (sin tildes ni mayúsculas)
+    if ($k -match '^(NOMBRE|CLIENTE)') { return 'name' }
+    if ($k -match '\b(NIE|DNI|PASAPORTE|DOCUMENTO)\b') { return 'doc' }
+    if ($k -match 'TELEFONO|MOVIL|\bTLF\b') { return 'tel' }
+    if ($k -match 'NACIONALIDAD') { return 'nat' }
+    if ($k -match '^(NO PAGADO|PENDIENTE|PENDIETE)') { return 'pend' }
+    if ($k -match '^(PAGADO|HA PAGADO|COBRADO|A CUENTA)$') { return 'paid' }
+    if ($k -match '^PAGOS?$|FORMA DE PAGO') { return 'paytext' }
+    if ($k -match 'PRECIO|IMPORTE|HONORARIOS|^TOTAL') { return 'price' }
+    if ($k -match 'OBSERVACION|NOTAS|COMENTARIO') { return 'obs' }
+    if ($k -match 'ESTADO|SITUACION') { return 'status' }
+    if ($k -match 'RESOLUCION') { return 'fres' }
+    if ($k -match 'FECHA|PRESENTACION|SOLICITUD') { return 'fsol' }
+    # campos propios del trámite (Contraseña, Tipo de gestión, Relevé de notes…), también por sus opciones (BACHILLERATO -> Título)
+    $kw = @($k.Split(' ') | Where-Object { $_.Length -ge 5 })
+    foreach ($f in $t.Fields) {
+        if ($f.Key -notlike 'x*') { continue }
+        $lb = ConvertTo-HandKey "$($f.Label['es'])"
+        if ($k -eq $lb -or $lb.Contains($k) -or $k.Contains($lb)) { return $f.Key }
+        foreach ($w in $kw) { if (@($lb.Split(' ')) -contains $w) { return $f.Key } }
+        if ("$($f.List)" -like 'fixed:*') { foreach ($o in $f.List.Substring(6).Split('|')) { if ((ConvertTo-HandKey $o) -eq $k) { return $f.Key } } }
+    }
+    return $null
+}
+function Get-HandLayout($cells, $t) {
+    # fila de cabecera: una de las 5 primeras con «NOMBRE…» o «CLIENTE»; sin cabecera, el nombre es la columna A
+    $hdr = 0
+    for ($r = 1; $r -le 5 -and -not $hdr; $r++) {
+        if (-not $cells.ContainsKey($r)) { continue }
+        foreach ($c in $cells[$r].Keys) { if ((ConvertTo-HandKey "$($cells[$r][$c])") -match '^(NOMBRE|CLIENTE)') { $hdr = $r; break } }
+    }
+    $map = @{}; $pres = $false
+    if ($hdr) {
+        foreach ($c in ($cells[$hdr].Keys | Sort-Object)) {
+            $k = ConvertTo-HandKey "$($cells[$hdr][$c])"
+            if (-not $k) { continue }
+            $role = Get-HandRole $k $t
+            if ($role -and @($map.Values) -contains $role -and $role -notin 'obs', 'paytext', 'status') { $role = $null }    # la primera columna gana
+            $map[[int]$c] = $role
+            if ($role -eq 'fsol' -and $k -match 'PRESENTACION') { $pres = $true }
+            if (-not $role) { $map[[int]$c] = '#' + "$($cells[$hdr][$c])".Trim() }    # cabecera desconocida: va a observaciones con su nombre
+        }
+    }
+    $nameCol = 1
+    foreach ($e in $map.GetEnumerator()) { if ($e.Value -eq 'name') { $nameCol = [int]$e.Key; break } }
+    $map[$nameCol] = 'name'
+    return @{ HeaderRow = $hdr; Map = $map; NameCol = $nameCol; PresDate = $pres }
+}
+function Format-HandText($v) {
+    if ($v -is [double]) { return $(if ($v -eq [Math]::Floor($v)) { ([long]$v).ToString() } else { $v.ToString('0.##', [Globalization.CultureInfo]::InvariantCulture) }) }
+    return ("$v" -replace '\s+', ' ').Trim()
+}
+function ConvertFrom-HandDate($v) {
+    # fecha de Excel (número) o «dd/mm/aaaa» dentro de un texto
+    if ($v -is [double]) { if ($v -ge 20000 -and $v -le 80000) { return [DateTime]::FromOADate($v).Date }; return $null }
+    if ("$v" -match '(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})') {
+        try { return (New-Object DateTime ([int]$Matches[3]), ([int]$Matches[2]), ([int]$Matches[1])) } catch { }
+    }
+    return $null
+}
+function Get-HandNumber($v) {
+    if ($v -is [double]) { return [double]$v }
+    if ("$v" -match '(\d+(?:[.,]\d{1,2})?)') { return (Parse-Money $Matches[1]) }
+    return $null
+}
+function Convert-HandStatus([string[]]$texts, [bool]$hasPresDate) {
+    # estado de GESTEM a partir de lo que escriben (los estados «fuertes» primero)
+    $all = ConvertTo-HandKey ($texts -join ' ')
+    if (-not $all -and -not $hasPresDate) { return $null }
+    if ($all -match 'FINALIZ|ENTREGAD|TERMINAD') { return 'Finalizado' }
+    if ($all -match 'DESFAVORABLE|DENEGAD') { return 'Desfavorable' }
+    if ($all -match 'FAVORABLE|CONCEDID|APROBAD') { return 'Favorable' }
+    if ($all -match 'REQUERIM') { return 'Requerimiento' }
+    if ($all -match 'PRESENTAD') { return 'Presentado' }
+    if ($all -match 'TRAMIT|EN GESTION') { return 'En Trámite' }
+    if ($hasPresDate) { return 'Presentado' }
+    if ($all -match 'ESPERA|PREPARAD|DOCUMENTAC|FALTA|PENDIENTE PARA') { return 'Documentación' }
+    return $null
+}
+function ConvertFrom-HandRow($row, $lay, $t) {
+    $FV = @{}; foreach ($f in $t.Fields) { $FV[$f.Key] = $null }
+    $notes = New-Object System.Collections.Generic.List[string]
+    $stTexts = New-Object System.Collections.Generic.List[string]
+    $payTexts = New-Object System.Collections.Generic.List[string]
+    $price = $null; $paid = $null; $pend = $null; $presDate = $false
+    foreach ($c in ($row.Keys | Sort-Object)) {
+        $v = $row[$c]
+        $role = $lay.Map[[int]$c]
+        if ($role -eq 'name') { continue }
+        $txt = Format-HandText $v
+        if (-not $txt) { continue }
+        switch -Wildcard ($role) {
+            'doc'     { $FV['doc'] = $txt.ToUpper() }
+            'tel'     { $FV['tel'] = $txt }
+            'nat'     { $FV['nat'] = $txt.ToUpper() }
+            'x*'      { $FV[$role] = $txt }
+            'price'   { $n = Get-HandNumber $v; if ($null -ne $n) { $price = $n } else { $notes.Add($txt) } }
+            'paid'    { $n = Get-HandNumber $v; if ($null -ne $n) { $paid = $n } else { $payTexts.Add($txt); $notes.Add($txt) } }
+            'pend'    { $n = Get-HandNumber $v; if ($null -ne $n) { $pend = $n } else { $notes.Add($txt) } }
+            'paytext' { $payTexts.Add($txt); $notes.Add("Pago: $txt") }
+            'status'  { $stTexts.Add($txt); $notes.Add($txt) }
+            'obs'     { $notes.Add($txt) }
+            { $_ -eq 'fsol' -or $_ -eq 'fres' } {
+                $d = ConvertFrom-HandDate $v
+                if ($d) { $FV[$role] = $d; if ($role -eq 'fsol' -and $lay.PresDate) { $presDate = $true } }
+                $rest = ("$txt" -replace '\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4}', '').Trim(' ', '-')
+                if (-not $d -or $rest) { $stTexts.Add($txt); $notes.Add($txt) }
+            }
+            '#*'      { $notes.Add("$($role.Substring(1)): $txt"); $stTexts.Add($txt) }
+            default {
+                # columna sin cabecera: fecha, estado o nota
+                $d = ConvertFrom-HandDate $v
+                if ($d -and -not $FV['fsol'] -and ($v -is [double] -or $txt -match '^\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4}$')) { $FV['fsol'] = $d }
+                else { $stTexts.Add($txt); $notes.Add($txt) }
+            }
+        }
+    }
+    # pago
+    foreach ($p in $payTexts) {
+        $k = ConvertTo-HandKey $p; $n = Get-HandNumber $p
+        if ($k -match 'NO PAGAD|PENDIENTE') { if ($null -eq $price -and $null -ne $n) { $price = $n }; if ($null -eq $paid) { $paid = 0.0 } }
+        elseif ($k -match 'PAGAD') { if ($null -eq $price -and $null -ne $n) { $price = $n }; if ($null -eq $paid -and $null -ne $price) { $paid = $price } }
+        elseif ($null -eq $price -and $null -ne $n) { $price = $n }
+    }
+    if ($null -eq $price -and $null -eq $paid -and $null -eq $pend) {
+        # «255 EUROS PAGADO …» escrito en otra columna
+        foreach ($s in $notes) { if ((ConvertTo-HandKey $s) -match '(\d+(?:[.,]\d{1,2})?)\s*(EUROS?|E)?\s*PAGAD') { $price = Parse-Money $Matches[1]; $paid = $price; break } }
+    }
+    if ($null -eq $price -and $null -ne $pend) { $price = $(if ($null -ne $paid) { $paid } else { 0.0 }) + $pend }
+    $FV['price'] = $price
+    if ($null -ne $price -and $null -ne $paid) {
+        if ($paid -ge $price) { $FV['paystate'] = 'Pagado'; $FV['paid'] = $price }
+        elseif ($paid -gt 0) { $FV['paystate'] = 'Parcial'; $FV['paid'] = $paid }
+        else { $FV['paystate'] = 'Pendiente'; $FV['paid'] = 0.0 }
+    } elseif ($null -ne $price) { $FV['paystate'] = 'Pendiente' }
+    elseif ($null -ne $paid -and $paid -gt 0) { $FV['paystate'] = 'Parcial'; $FV['paid'] = $paid }    # pagó algo, precio desconocido
+    $FV['status'] = Convert-HandStatus $stTexts.ToArray() $presDate
+    if ($notes.Count) { $FV['obs'] = ($notes | Select-Object -Unique) -join ' · ' }
+    return $FV
+}
+function ConvertFrom-HandSheet($cells, $t) {
+    $lay = Get-HandLayout $cells $t
+    $prefix = Get-DefaultIdPrefix $t
+    $list = New-Object System.Collections.Generic.List[object]
+    if (-not $cells.Count) { return ,$list }
+    $maxRow = ($cells.Keys | Measure-Object -Maximum).Maximum
+    $tname = ConvertTo-HandKey $t.Sheet
+    $gap = 0
+    for ($r = $lay.HeaderRow + 1; $r -le $maxRow; $r++) {
+        $row = $cells[$r]
+        $name = ''; if ($row) { $name = Format-HandText $row[$lay.NameCol] }
+        if (-not $name) { $gap++; if ($list.Count -gt 0 -and $gap -ge 8) { break }; continue }
+        $gap = 0
+        $nk = ConvertTo-HandKey $name
+        if ($nk -match '^(PRECIOS?|TOTAL(ES)?|TARIFAS?)\b') { break }        # tabla de precios debajo de los clientes
+        if ($nk -eq $tname -or ($tname -and $nk.StartsWith($tname))) { continue }   # título («MATRICULACION»)
+        $FV = ConvertFrom-HandRow $row $lay $t
+        $FV['name'] = $name.ToUpper()
+        $list.Add(@{ Row = $script:HandRowBase + $r; Id = $prefix + ([string]($r - $lay.HeaderRow)).PadLeft(3, '0'); F = $FV; Sync = $true; New = $false; Updated = ''; By = 'Excel' })
+    }
+    return ,$list
+}
+function Sync-HandmadeTabs([switch]$Force) {
+    # lee las pestañas hechas a mano si el Excel ha cambiado desde la última vez; devuelve $true si cambió algo
+    $p = "$($script:Cfg.ExcelPath)"
+    if (-not $p -or -not (Test-Path -LiteralPath $p)) { return $false }
+    $stamp = (Get-Item -LiteralPath $p).LastWriteTimeUtc.Ticks
+    if (-not $Force -and $script:HandStamp -eq $stamp) { return $false }
+    $gen = @($script:Tramites | Where-Object { Test-GenTramite $_ })
+    $book = $null
+    try {
+        $book = Read-XlsxSheets $p {
+            param($all)
+            $w = @(); foreach ($t in $gen) { $w += @(Get-TabCandidates $all $t) }
+            return $w
+        }
+    } catch { Write-Log "pestañas propias: no se pudo leer el Excel: $($_.Exception.Message)"; return $false }
+    $changed = $false
+    foreach ($t in $gen) {
+        $src = $null
+        foreach ($n in (Get-TabCandidates $book['__names'] $t)) { if ($book.ContainsKey($n) -and -not (Test-CellsGestem $book[$n] $t)) { $src = $n; break } }
+        $recs = New-Object System.Collections.Generic.List[object]
+        if ($src) { $recs = ConvertFrom-HandSheet $book[$src] $t; $script:HandTabs[$t.Id] = $src } else { [void]$script:HandTabs.Remove($t.Id) }
+        $lk = Enter-StoreLock
+        try {
+            $s = Read-Store $t
+            if (-not $s -and $recs.Count -eq 0) { continue }
+            if (-not $s) { $s = New-EmptyStore $t $null }
+            $sig = {
+                param($list)
+                (@($list | Sort-Object { [int]$_.Row } | ForEach-Object {
+                    $c = $_; "$($c.Row)|$($c.Id)|" + ((@($t.Fields | ForEach-Object { "$(ConvertTo-StoreValue $_ $c.F[$_.Key])" })) -join '|')
+                })) -join "`n"
+            }
+            $old = @($s.Clients | Where-Object { [int]$_.Row -ge $script:HandRowBase })
+            if ((& $sig $old) -ne (& $sig $recs)) {
+                $keep = New-Object System.Collections.Generic.List[object]
+                foreach ($c in $s.Clients) { if ([int]$c.Row -lt $script:HandRowBase) { $keep.Add($c) } }
+                foreach ($c in $recs) { $keep.Add($c) }
+                $s.Clients = $keep
+                Write-Store $t $s
+                $changed = $true
+                if ($src) { Write-Log ("leído del Excel (pestaña «{0}»): {1} clientes" -f $src, $recs.Count) }
+            }
+        } finally { Exit-StoreLock $lk }
+    }
+    $script:HandStamp = $stamp
+    return $changed
+}
+
 # pestañas que no se encontraron: no se vuelve a abrir el Excel para buscarlas hasta que el Excel cambie
 $script:MissingTabs = @{}
 $script:MissingWarned = @{}
@@ -1452,6 +1774,7 @@ function Refresh-FromExcel {
         if ($h) { try { Close-Book $h $false } catch { } }
         Write-Log "actualizar desde el Excel: $($_.Exception.Message)"
     }
+    try { [void](Sync-HandmadeTabs -Force) } catch { Write-Log "pestañas propias: $($_.Exception.Message)" }
     [void](Sync-PendingToExcel)
     return (Load-Data -All)
 }
@@ -1484,7 +1807,7 @@ function Load-Data([switch]$All, [switch]$Quiet) {
                             if ($s2 -and $tab -and $s2.Clients.Count -eq 0) { $s = Import-TramiteFromExcel $h $t }
                             elseif ($s2 -and -not $tab) {
                                 $keep = New-Object System.Collections.Generic.List[object]
-                                foreach ($c in $s2.Clients) { if ("$($c.By)" -ne 'Excel') { $keep.Add($c) } }
+                                foreach ($c in $s2.Clients) { if ("$($c.By)" -ne 'Excel' -or [int]$c.Row -ge $script:HandRowBase) { $keep.Add($c) } }
                                 if ($keep.Count -ne $s2.Clients.Count) {
                                     Write-Log ("{0}: {1} cliente(s) leídos de una pestaña que no es de GESTEM, quitados" -f $t.Sheet, ($s2.Clients.Count - $keep.Count))
                                     $s2.Clients = $keep; $s2.Meta = (New-EmptyStore $t $h).Meta
@@ -1581,6 +1904,7 @@ function Invoke-LiveRefresh {
     try {
         $script:LiveTick++
         $own = $false
+        try { [void](Sync-HandmadeTabs) } catch { Write-Log "pestañas propias: $($_.Exception.Message)" }    # ¿se guardó el Excel? se vuelven a leer sus pestañas
         if ($script:LiveTick % 9 -eq 0 -and (Get-PendingSyncCount) -gt 0 -and (Test-ExcelFree)) {
             if ((Sync-PendingToExcel) -gt 0) { $own = $true; $script:CacheStamp = -1 }
         }
@@ -1723,6 +2047,11 @@ function Open-ExcelWindow([int]$row = 0) {
                 if ("$($w.FullName)" -ieq [IO.Path]::GetFullPath($path)) {
                     $xl.Visible = $true; $w.Activate()
                     $tab = Find-TramiteSheet $w $script:T
+                    if ($row -ge $script:HandRowBase -and $script:HandTabs[$script:T.Id]) {
+                        $tab = Find-Sheet $w $script:HandTabs[$script:T.Id]; $row = $row - $script:HandRowBase
+                        if ($tab) { $tab.Activate(); $xl.Goto($tab.Range("A$row")) }
+                        return
+                    }
                     if ($row -gt 0 -and $tab) { $tab.Activate(); $xl.Goto($tab.Range("B$row")) }
                     return
                 }
@@ -3840,6 +4169,7 @@ function Edit-Selected {
     try {
         $sel = $script:UI.ClientsGrid.SelectedItem
         if (-not $sel) { Show-Info (L 'selectFirst'); return }
+        if ([int]$sel.Row -ge $script:HandRowBase) { Show-Info ((L 'handReadOnly') -f $script:HandTabs[$script:T.Id]); return }
         $script:UI.NavNew.IsChecked = $true
         Fill-FormForEdit $sel
     } catch {
@@ -5656,6 +5986,7 @@ $script:Win.Add_ContentRendered({
         return
     }
     $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    try { [void](Sync-HandmadeTabs -Force) } catch { Write-Log "pestañas propias: $($_.Exception.Message)" }
     if (Load-Data -All) {
         Apply-Language
         if ((Get-PendingSyncCount) -gt 0) { if ((Sync-PendingToExcel) -gt 0) { [void](Load-Data -All) } }
