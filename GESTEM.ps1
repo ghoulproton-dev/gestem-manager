@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.4'
+$script:AppVersion = '1.5.5'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -728,15 +728,63 @@ function Find-Sheet($wb, [string]$name) {
     foreach ($w in $wb.Worksheets) { if ((ConvertTo-SheetKey "$($w.Name)") -eq $key) { return $w } }
     return $null
 }
-function Get-Sheet($h) {
+function Test-GenTramite($t) { return ($t.Id -ne 'canje') }
+function Get-Sheet($h, [switch]$Create) {
+    # con -Create (solo al escribir un cliente): si al Excel le falta la pestaña del trámite, GESTEM la crea
     $T = $script:T
     $ws = Invoke-Excel { Find-Sheet $h.Wb $T.Sheet }
     if ($ws) { return $ws }
+    if ($Create -and (Test-GenTramite $T)) { return (Invoke-Excel { New-TramiteSheet $h $T }) }
     $names = @(); try { $names = @($h.Wb.Worksheets | ForEach-Object { "«$($_.Name)»" }) } catch { }
     $msg = (L 'errNoSheet') -f $T.Sheet
     if ($names.Count) { $msg += "`r`n`r`n" + ((L 'errTabsFound') -f ($names -join ', ')) }
     $script:MissingTabs[$T.Id] = (Get-ExcelStamp)
     throw $msg
+}
+$script:GenStatusList = @('Documentación', 'Presentado', 'En Trámite', 'Requerimiento', 'Favorable', 'Desfavorable', 'Finalizado')
+function Get-DefaultIdPrefix($t) {
+    $k = (ConvertTo-SheetKey $t.Sheet) -replace '[^A-Z]', ''
+    if (-not $k) { return '' }
+    return ($k.Substring(0, [Math]::Min(3, $k.Length)) + '-')
+}
+function New-EmptyStore($t, $h) {
+    # trámite sin pestaña en el Excel: GESTEM empieza con la lista vacía (el Excel es solo una copia)
+    $price = $null
+    if ($h -and $t.PriceKey) { try { $price = Read-TramitePrice $h.Wb $t.PriceKey } catch { } }
+    $meta = @{ Lists = @{ 'excel:N' = $script:GenStatusList; 'excel:M' = @('Pagado', 'Parcial', 'Pendiente') }
+               Tariff = @{}; TariffNet = @{}; DefaultPrice = $price; IdPrefix = (Get-DefaultIdPrefix $t); IdWidth = 3 }
+    return @{ Meta = $meta; Clients = (New-Object System.Collections.Generic.List[object]) }
+}
+function New-TramiteSheet($h, $t) {
+    # crea en el Excel la pestaña del trámite (cabeceras, nº de expediente y fórmulas básicas)
+    $wb = $h.Wb
+    $ws = $wb.Worksheets.Add([Type]::Missing, $wb.Worksheets.Item($wb.Worksheets.Count))
+    $ws.Name = $t.Sheet
+    $ws.Range('A1').Value2 = "$($t.Title['es'])".ToUpper()
+    $ws.Range('A1').Font.Bold = $true; $ws.Range('A1').Font.Size = 14
+    $ws.Range('A2').Value2 = 'Pestaña creada por GESTEM MANAGER'
+    $hr = $t.FirstRow - 1
+    $heads = @{ A = 'Nº'; L = 'Pendiente (€)'; T = 'Días'; W = 'Neto (€)' }
+    foreach ($f in $t.Fields) { $heads[$f.Col] = "$($f.Label['es'])" }
+    foreach ($k in $heads.Keys) { $ws.Range("$k$hr").Value2 = $heads[$k] }
+    $hdr = $ws.Range("A$($hr):$($t.LastCol)$hr"); $hdr.Font.Bold = $true; $hdr.Interior.Color = 14277081
+    $f1 = $t.FirstRow; $l1 = $t.LastRow
+    $meta = $null; try { $s = Read-Store $t; if ($s) { $meta = $s.Meta } } catch { }
+    if (-not $meta) { $meta = (New-EmptyStore $t $null).Meta }
+    $n = $l1 - $f1 + 1
+    $ids = New-Object 'object[,]' $n, 1
+    for ($i = 0; $i -lt $n; $i++) { $ids[$i, 0] = Get-RowId $t $meta ($f1 + $i) }
+    $ws.Range("A$($f1):A$l1").Value2 = $ids
+    $ws.Range("L$($f1):L$l1").Formula = "=IF(J$f1=`"`",`"`",IF(M$f1=`"Pagado`",0,MAX(0,J$f1-N(K$f1))))"
+    $ws.Range("T$($f1):T$l1").Formula = "=IF(OR(O$f1=`"`",N$f1=`"Finalizado`",N$f1=`"Desfavorable`"),`"`",TODAY()-O$f1)"
+    $ws.Range("W$($f1):W$l1").Formula = "=IF(J$f1=`"`",`"`",J$f1-N(V$f1))"
+    foreach ($c in 'O', 'P') { $ws.Range("$c$($f1):$c$l1").NumberFormat = 'dd/mm/yyyy' }
+    foreach ($c in 'J', 'K', 'L', 'V', 'W') { $ws.Range("$c$($f1):$c$l1").NumberFormat = '#,##0.00 "€"' }
+    $ws.Range("T$($f1):T$l1").NumberFormat = '0'
+    $ws.Columns("A:$($t.LastCol)").ColumnWidth = 16
+    $ws.Columns('B').ColumnWidth = 32; $ws.Columns('R').ColumnWidth = 40
+    Write-Log "pestaña creada en el Excel: $($t.Sheet)"
+    return $ws
 }
 # pestañas que no se encontraron: no se vuelve a abrir el Excel para buscarlas hasta que el Excel cambie
 $script:MissingTabs = @{}
@@ -885,10 +933,12 @@ function Restore-Formula($ws, [string]$col, [int]$row) {
     # una sola llamada a Excel para encontrar las fórmulas (antes se miraban las 1000 filas una a una)
     $T = $script:T
     $fx = $null
-    try { $fx = $ws.Range("$col$($T.FirstRow):$col$($T.LastRow)").SpecialCells(-4123) } catch { if (Test-ExcelBusyError $_.Exception) { throw }; return }   # -4123 = celdas con fórmula
+    # devuelve $false si esa columna no tiene fórmulas (pestaña creada por GESTEM): entonces se escribe el valor
+    try { $fx = $ws.Range("$col$($T.FirstRow):$col$($T.LastRow)").SpecialCells(-4123) } catch { if (Test-ExcelBusyError $_.Exception) { throw }; return $false }   # -4123 = celdas con fórmula
     foreach ($src in $fx.Cells) {
-        if ($src.Row -ne $row) { $ws.Range("$col$row").FormulaR1C1 = $src.FormulaR1C1; return }
+        if ($src.Row -ne $row) { $ws.Range("$col$row").FormulaR1C1 = $src.FormulaR1C1; return $true }
     }
+    return [bool]$ws.Range("$col$row").HasFormula    # la única fórmula es la de esa fila: se deja
 }
 
 function ConvertTo-CellNumber($v) {
@@ -923,7 +973,7 @@ function Save-Client([hashtable]$vals, $row, [string]$ExpectName, [switch]$IsNew
     $h = $Handle; $own = -not $Handle
     try {
         if ($own) { $h = Invoke-Excel { Open-Book -ForWrite } }
-        $ws = Get-Sheet $h
+        $ws = Get-Sheet $h -Create
         if ($own -and $script:Cfg.Backup) { Backup-Excel }
         if ($row -and $IsNew) {
             # si esa fila del Excel ya tiene otro cliente (escrito a mano), se usa la primera libre
@@ -944,16 +994,16 @@ function Save-Client([hashtable]$vals, $row, [string]$ExpectName, [switch]$IsNew
             $op = @{ Col = $f.Col; Kind = 'value'; Value = $null; Type = 'Text' }
             switch ($f.Role) {
                 'nationality' {
-                    if (-not "$v" -or "$v" -ieq $T.DefaultNationality) { $op.Kind = 'formula' } else { $op.Value = "$v" }
+                    if (-not "$v" -or "$v" -ieq $T.DefaultNationality) { $op.Kind = 'formula'; $op.Value = $T.DefaultNationality } else { $op.Value = "$v" }
                 }
                 'price' {
                     $tar = $null; $pv = ConvertTo-CellNumber $v
                     if ($tipo -and $script:Tariff.ContainsKey($tipo)) { $tar = [double]$script:Tariff[$tipo] }
-                    if ($null -eq $pv -or ($null -ne $tar -and $pv -eq $tar)) { $op.Kind = 'formula' } else { $op.Value = $pv; $op.Type = 'Money' }
+                    if ($null -eq $pv -or ($null -ne $tar -and $pv -eq $tar)) { $op.Kind = 'formula'; $op.Value = $(if ($null -ne $pv) { $pv } else { $tar }); $op.Type = 'Money' } else { $op.Value = $pv; $op.Type = 'Money' }
                 }
                 'paid' {
                     $pv = ConvertTo-CellNumber $v
-                    if ("$($vals['paystate'])" -eq 'Parcial' -and $null -ne $pv) { $op.Value = $pv; $op.Type = 'Money' } else { $op.Kind = 'formula' }
+                    if ("$($vals['paystate'])" -eq 'Parcial' -and $null -ne $pv) { $op.Value = $pv; $op.Type = 'Money' } else { $op.Kind = 'formula'; $op.Value = $pv; $op.Type = 'Money' }
                 }
                 default {
                     if ($f.Type -eq 'Date') { $op.Value = ConvertTo-CellDate $v; $op.Type = 'Date' }
@@ -966,8 +1016,9 @@ function Save-Client([hashtable]$vals, $row, [string]$ExpectName, [switch]$IsNew
         # 2) se escribe la fila
         Invoke-Excel {
             foreach ($op in $ops) {
-                if ($op.Kind -eq 'formula') { Restore-Formula $ws $op.Col $row }
-                else { Set-CellValue $ws "$($op.Col)$row" $op.Value $op.Type }
+                # sin fórmula en esa columna (pestaña creada por GESTEM): se escribe el valor calculado
+                if ($op.Kind -eq 'formula' -and (Restore-Formula $ws $op.Col $row)) { continue }
+                Set-CellValue $ws "$($op.Col)$row" $op.Value $op.Type
             }
         }
         $id = "$($ws.Range("$($T.IdCol)$row").Value2)"
@@ -1186,14 +1237,27 @@ function Read-ExcelMeta($h, $t, $d) {
     $ws = Get-Sheet $h
     $lists = @{}
     foreach ($k in $d.Lists.Keys) { if ($k -like 'excel:*') { $lists[$k] = @($d.Lists[$k]) } }
+    if (Test-GenTramite $t) {
+        # pestaña sin listas desplegables (p. ej. creada por GESTEM): listas de siempre
+        if (-not @($lists['excel:N'] | Where-Object { "$_".Trim() }).Count) { $lists['excel:N'] = $script:GenStatusList }
+        if (-not @($lists['excel:M'] | Where-Object { "$_".Trim() }).Count) { $lists['excel:M'] = @('Pagado', 'Parcial', 'Pendiente') }
+    }
     $net = @{}
     if ($t.TipoCol) { $net = Invoke-Excel { Read-TariffNet $ws $t.TipoCol } }
     $prefix = ''; $width = 3
     $first = "$($ws.Range("$($t.IdCol)$($t.FirstRow)").Value2)"
     if ($first -match '^(.*?)(\d+)$') { $prefix = $Matches[1]; $width = $Matches[2].Length }
+    elseif (-not $first.Trim() -and (Test-GenTramite $t)) { $prefix = Get-DefaultIdPrefix $t }
     return @{ Lists = $lists; Tariff = $d.Tariff; TariffNet = $net; DefaultPrice = $d.DefaultPrice; IdPrefix = $prefix; IdWidth = $width }
 }
 function Import-TramiteFromExcel($h, $t) {
+    if ((Test-GenTramite $t) -and -not (Invoke-Excel { Find-Sheet $h.Wb $t.Sheet })) {
+        # el Excel no tiene esta pestaña: se empieza vacío (sin aviso) y la pestaña se crea al guardar el primer cliente
+        $store = New-EmptyStore $t $h
+        Write-Store $t $store
+        Write-Log ("sin pestaña en el Excel, trámite empezado vacío: {0}" -f $t.Sheet)
+        return (Read-Store $t)
+    }
     $d = Read-TramiteData $h
     $meta = Read-ExcelMeta $h $t $d
     $clients = New-Object System.Collections.Generic.List[object]
