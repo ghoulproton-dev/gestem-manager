@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.2'
+$script:AppVersion = '1.6.3'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -430,6 +430,15 @@ $script:TextMore = @{
   invNoIssuer = 'Faltan los datos del emisor de las facturas (nombre y NIF/NIE). Rellénalos en Ajustes → Empresa → Datos para las facturas.'
   invNoPrice = 'Este cliente no tiene precio: no se puede hacer la factura.'
   invDone = '✓ Factura {0} guardada en los documentos del cliente'
+  cmFolder = 'Abrir carpeta de documentos'
+  cmStatus = 'Cambiar estado'
+  cmPaid = 'Marcar como pagado'
+  cmCopyName = 'Copiar nombre'
+  cmCopyDoc = 'Copiar documento (NIE / DNI)'
+  cmCopyTel = 'Copiar teléfono'
+  cmExcel = 'Ver en el Excel'
+  cmCopied = '✓ Copiado: {0}'
+  docsTip = 'Ver los documentos de este cliente'
   exTitle = 'Clientes  ·  {0}'
   exFilters = 'Filtros'
   exNoFilter = 'Todos los clientes'
@@ -513,6 +522,15 @@ $script:TextMore = @{
   invNoIssuer = 'The invoice issuer details are missing (name and NIF/NIE). Fill them in Settings → Company → Invoice details.'
   invNoPrice = 'This client has no price: the invoice cannot be made.'
   invDone = '✓ Invoice {0} saved in the client''s documents'
+  cmFolder = 'Open documents folder'
+  cmStatus = 'Change status'
+  cmPaid = 'Mark as paid'
+  cmCopyName = 'Copy name'
+  cmCopyDoc = 'Copy ID (NIE / DNI)'
+  cmCopyTel = 'Copy phone'
+  cmExcel = 'Show in Excel'
+  cmCopied = '✓ Copied: {0}'
+  docsTip = 'See this client''s documents'
   exTitle = 'Clients  ·  {0}'
   exFilters = 'Filters'
   exNoFilter = 'All clients'
@@ -596,6 +614,15 @@ $script:TextMore = @{
   invNoIssuer = 'Il manque les données de l''émetteur des factures (nom et NIF/NIE). Remplissez-les dans Paramètres → Entreprise → Données pour les factures.'
   invNoPrice = 'Ce client n''a pas de prix : impossible de faire la facture.'
   invDone = '✓ Facture {0} enregistrée dans les documents du client'
+  cmFolder = 'Ouvrir le dossier des documents'
+  cmStatus = 'Changer l''état'
+  cmPaid = 'Marquer comme payé'
+  cmCopyName = 'Copier le nom'
+  cmCopyDoc = 'Copier la pièce (NIE / DNI)'
+  cmCopyTel = 'Copier le téléphone'
+  cmExcel = 'Voir dans l''Excel'
+  cmCopied = '✓ Copié : {0}'
+  docsTip = 'Voir les documents de ce client'
   exTitle = 'Clients  ·  {0}'
   exFilters = 'Filtres'
   exNoFilter = 'Tous les clients'
@@ -679,6 +706,15 @@ $script:TextMore = @{
   invNoIssuer = 'بيانات مُصدِر الفواتير ناقصة (الاسم و NIF/NIE). أكملها في الإعدادات ← الشركة ← بيانات الفواتير.'
   invNoPrice = 'هذا العميل بلا سعر: لا يمكن إنشاء الفاتورة.'
   invDone = '✓ تم حفظ الفاتورة {0} في مستندات العميل'
+  cmFolder = 'فتح مجلد المستندات'
+  cmStatus = 'تغيير الحالة'
+  cmPaid = 'تحديد كمدفوع'
+  cmCopyName = 'نسخ الاسم'
+  cmCopyDoc = 'نسخ الوثيقة (NIE / DNI)'
+  cmCopyTel = 'نسخ الهاتف'
+  cmExcel = 'عرض في Excel'
+  cmCopied = '✓ تم النسخ: {0}'
+  docsTip = 'عرض مستندات هذا العميل'
   exTitle = 'العملاء  ·  {0}'
   exFilters = 'المرشحات'
   exNoFilter = 'كل العملاء'
@@ -3165,7 +3201,7 @@ $xaml = @'
               <DataGridTemplateColumn x:Name="DocsCol" Width="64">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding DocsVis}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding DocsVis}" Cursor="Hand" Background="Transparent">
                       <TextBlock Text="&#xE723;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="#9E1820" VerticalAlignment="Center"/>
                       <TextBlock Text="{Binding DocsN}" Margin="5,0,0,0" FontWeight="SemiBold" Foreground="#4B4345" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -4295,6 +4331,58 @@ function Save-FromForm {
 # =====================================================================
 #  LISTA DE CLIENTES
 # =====================================================================
+# ---------- atajos del clic derecho ----------
+function Set-CmHeaders {
+    $ui = $script:UI
+    if (-not $ui.CmFolder) { return }
+    $ui.CmFolder.Header = L 'cmFolder'; $ui.CmStatus.Header = L 'cmStatus'; $ui.CmPaid.Header = L 'cmPaid'
+    $ui.CmCopyName.Header = L 'cmCopyName'; $ui.CmCopyDoc.Header = L 'cmCopyDoc'; $ui.CmCopyTel.Header = L 'cmCopyTel'; $ui.CmExcel.Header = L 'cmExcel'
+}
+function Fill-CmMenu($sel) {
+    # el menú se ajusta al cliente: estados del trámite, y solo lo que tiene sentido
+    $ui = $script:UI
+    $m = $ui.CmStatus; $m.Items.Clear()
+    $f = @($script:T.Fields | Where-Object { $_.Key -eq 'status' })[0]
+    if ($f) {
+        foreach ($s in @(Get-List $f.List)) {
+            if (-not "$s".Trim()) { continue }
+            $it = New-Object Windows.Controls.MenuItem
+            $it.Header = ("$s" -replace '_', '__'); $it.Tag = "$s"
+            if ("$($sel.Status)" -eq "$s") { $it.IsChecked = $true; $it.FontWeight = 'SemiBold' }
+            $it.Add_Click({ Quick-SetField 'status' "$($this.Tag)" })
+            [void]$m.Items.Add($it)
+        }
+    }
+    $m.IsEnabled = ($m.Items.Count -gt 0)
+    $ui.CmPaid.IsEnabled = ([bool]@($script:T.Fields | Where-Object { $_.Key -eq 'paystate' }).Count -and "$($sel.Pay)" -ne 'Pagado')
+    $ui.CmCopyDoc.IsEnabled = [bool]"$($sel.Doc)".Trim()
+    $ui.CmCopyTel.IsEnabled = [bool]"$($sel.Data['tel'])".Trim()
+}
+function Quick-SetField([string]$key, $value) {
+    # cambia un solo dato sin abrir la ficha: pasa por el guardado normal (GESTEM + Excel + registro)
+    $sel = $script:UI.ClientsGrid.SelectedItem
+    if (-not $sel) { return }
+    $f = @($script:T.Fields | Where-Object { $_.Key -eq $key })[0]
+    if (-not $f) { return }
+    try {
+        Fill-FormForEdit $sel
+        $script:Filling = $true
+        try { Set-FieldValue $f $value } finally { $script:Filling = $false }
+        Update-Preview
+        Save-FromForm
+    } catch {
+        Write-Log "atajo ($key): $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    } finally {
+        if ($script:EditRow) { try { Reset-Form } catch { } }
+    }
+}
+function Copy-ClientText([string]$text) {
+    $text = "$text".Trim()
+    if (-not $text) { return }
+    try { [Windows.Clipboard]::SetText($text); Set-Status ((L 'cmCopied') -f $text) } catch { Write-Log "copiar: $($_.Exception.Message)" }
+}
+
 function Refresh-ClientGrid {
     $ui = $script:UI
     if (-not $ui -or -not $script:Rows) { return }
@@ -5040,6 +5128,7 @@ function Apply-Language {
     $ui.DocsBtn.Content = L 'btnDocs'; $ui.ReceiptBtn.Content = L 'btnReceipt'; $ui.ExportBtn.Content = (L 'btnExport') + '  ' + [char]0x25BE
     $ui.ExpPdf.Header = L 'expPdf'; $ui.ExpCsv.Header = L 'expCsv'
     $ui.CmEdit.Header = L 'btnEdit'; $ui.CmReceipt.Header = L 'btnReceipt'; $ui.CmDocs.Header = L 'btnDocs'
+    Set-CmHeaders
     $ui.DocsAddBtn.Content = L 'docsAdd'; $ui.DocsOpenBtn.Content = L 'docsOpen'; $ui.DocsRemoveBtn.Content = L 'docsRemove'; $ui.DocsFolderBtn.Content = L 'docsFolder'
     $ui.DocsEmptyT.Text = L 'docsEmpty'; $ui.DocsDropT.Text = L 'docsDrop'; $ui.DocsClose.ToolTip = L 'docsClose'
     $ui.SetTitle.Text = L 'setTitle'; $ui.SetFileL.Text = L 'setFile'; $ui.ChangeFileBtn.Content = L 'btnChange'
@@ -6147,6 +6236,30 @@ foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings'
 if (-not $script:UI.ExpPdf) { $script:UI.ExpPdf = $script:UI.ExportBtn.ContextMenu.Items[0]; $script:UI.ExpCsv = $script:UI.ExportBtn.ContextMenu.Items[1] }
 if (-not $script:UI.CmEdit) { $cm = $script:UI.ClientsGrid.ContextMenu; $script:UI.CmEdit = $cm.Items[0]; $script:UI.CmReceipt = $cm.Items[1]; $script:UI.CmDocs = $cm.Items[2] }
 if (-not $script:UI.DocsCol) { $script:UI.DocsCol = $script:UI.ClientsGrid.Columns[$script:UI.ClientsGrid.Columns.Count - 1] }
+# menú del clic derecho en la lista: más atajos (con icono)
+$cmMenu = $script:UI.ClientsGrid.ContextMenu
+function New-CmItem([int]$glyph) {
+    $m = New-Object Windows.Controls.MenuItem
+    $tb = New-Object Windows.Controls.TextBlock
+    $tb.Text = [string][char]$glyph; $tb.FontFamily = 'Segoe Fluent Icons, Segoe MDL2 Assets'; $tb.FontSize = 13
+    $tb.Foreground = (Brush '#9E1820'); $tb.HorizontalAlignment = 'Center'; $tb.VerticalAlignment = 'Center'
+    $m.Icon = $tb
+    return $m
+}
+foreach ($pair in @(@($script:UI.CmEdit, 0xE70F), @($script:UI.CmReceipt, 0xE8A5), @($script:UI.CmDocs, 0xE723))) {
+    $tb = New-Object Windows.Controls.TextBlock
+    $tb.Text = [string][char]$pair[1]; $tb.FontFamily = 'Segoe Fluent Icons, Segoe MDL2 Assets'; $tb.FontSize = 13; $tb.Foreground = (Brush '#9E1820')
+    $pair[0].Icon = $tb
+}
+$script:UI.CmFolder = New-CmItem 0xE838
+$script:UI.CmStatus = New-CmItem 0xE7C1
+$script:UI.CmPaid = New-CmItem 0xE8C7
+$script:UI.CmCopyName = New-CmItem 0xE8C8
+$script:UI.CmCopyDoc = New-CmItem 0xE8C8
+$script:UI.CmCopyTel = New-CmItem 0xE717
+$script:UI.CmExcel = New-CmItem 0xE8A7
+foreach ($it in @($script:UI.CmFolder, (New-Object Windows.Controls.Separator), $script:UI.CmStatus, $script:UI.CmPaid, (New-Object Windows.Controls.Separator),
+                  $script:UI.CmCopyName, $script:UI.CmCopyDoc, $script:UI.CmCopyTel, (New-Object Windows.Controls.Separator), $script:UI.CmExcel)) { [void]$cmMenu.Items.Add($it) }
 $script:UI.AboutImg.Source = $script:AppLogo
 $script:PendingLogo = ''
 Import-DefaultBranding
@@ -6238,6 +6351,32 @@ $ui.ExpCsv.Add_Click({ Export-ClientsCsv })
 $ui.CmEdit.Add_Click({ Edit-Selected })
 $ui.CmReceipt.Add_Click({ $r = Get-SelectedClient; if ($r) { New-ClientInvoice $r } })
 $ui.CmDocs.Add_Click({ $r = Get-SelectedClient; if ($r) { Open-DocsPanel $r } })
+$ui.CmFolder.Add_Click({ $r = Get-SelectedClient; if ($r) { $script:DocsRow = $r; Open-DocsFolder } })
+$ui.CmPaid.Add_Click({ Quick-SetField 'paystate' 'Pagado' })
+$ui.CmCopyName.Add_Click({ $r = Get-SelectedClient; if ($r) { Copy-ClientText "$($r.Name)" } })
+$ui.CmCopyDoc.Add_Click({ $r = Get-SelectedClient; if ($r) { Copy-ClientText "$($r.Doc)" } })
+$ui.CmCopyTel.Add_Click({ $r = Get-SelectedClient; if ($r) { Copy-ClientText "$($r.Data['tel'])" } })
+$ui.CmExcel.Add_Click({ $r = Get-SelectedClient; if ($r) { if ([int]$r.Row -lt $script:HandRowBase) { Open-ExcelWindow $r.Row } else { Open-ExcelWindow } } })
+$ui.ClientsGrid.Add_ContextMenuOpening({
+    $sel = $script:UI.ClientsGrid.SelectedItem
+    if (-not $sel) { $_.Handled = $true; return }    # sin cliente debajo: no hay menú
+    try { Fill-CmMenu $sel } catch { Write-Log "menú: $($_.Exception.Message)" }
+})
+# clic en el clip de la columna «Docs»: abre directamente los documentos del cliente
+$ui.ClientsGrid.Add_PreviewMouseLeftButtonUp({
+    try {
+        $o = $_.OriginalSource
+        while ($o -and -not ($o -is [Windows.Controls.DataGridCell])) {
+            if ($o -is [Windows.Controls.Primitives.DataGridColumnHeader]) { return }
+            if ($o -is [Windows.Media.Visual] -or $o -is [Windows.Media.Media3D.Visual3D]) { $o = [Windows.Media.VisualTreeHelper]::GetParent($o) }
+            else { $o = [Windows.LogicalTreeHelper]::GetParent($o) }
+        }
+        if ($o -and $o.Column -eq $script:UI.DocsCol -and $o.DataContext -and $o.DataContext.PSObject.Properties['Id']) {
+            $script:UI.ClientsGrid.SelectedItem = $o.DataContext
+            Open-DocsPanel $o.DataContext
+        }
+    } catch { Write-Log "docs clic: $($_.Exception.Message)" }
+})
 # clic derecho: selecciona la fila que hay debajo antes de abrir el menú
 $ui.ClientsGrid.Add_PreviewMouseRightButtonDown({
     $o = $_.OriginalSource
