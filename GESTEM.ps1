@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.1'
+$script:AppVersion = '1.6.2'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -4742,64 +4742,89 @@ function Get-InvoiceConcept($t, $r) {
     return @{ Title = ("Gestión y tramitación: {0}{1}" -f $title, $extra); Desc = 'Asesoramiento, preparación de documentación y presentación del trámite.' }
 }
 function Draw-Invoice($g, $page) {
+    # mismo diseño que el recibo de GESTEM (banda roja, logo, cajas grises) con los datos de la factura
     $d = $script:PdfData
     $LE = 18; $RE = 192; $W = $RE - $LE
-    $navy = '#0F172A'; $blue = '#2563EB'; $grey = '#475569'; $muted = '#64748B'
+    $red = '#9E1820'; $dark = '#1E1A1B'; $grey = '#8A7F81'; $mid = '#4B4345'
     # cabecera
-    PdfText $g 'FACTURA' $LE 13 95 26 'Semibold' $navy
-    PdfLV $g 'Nº de Factura:' $d.No $LE 29 90 9.5 $navy $grey
-    PdfLV $g 'Fecha de Emisión:' $d.Date $LE 34.5 90 9.5 $navy $grey
-    PdfText $g $d.Issuer 95 15 ($RE - 95) 15 'Semibold' $navy 'Far'
-    if ("$($d.Activity)".Trim()) { PdfText $g $d.Activity 95 23.5 ($RE - 95) 9 'Regular' $muted 'Far' }
-    if ($d.Paid) {
-        PdfRect $g ($RE - 30) 31 30 7 '#E7F4EC' 2
-        PdfText $g 'PAGADA' ($RE - 30) 32.3 30 8 'Semibold' '#1F7A45' 'Center'
-    }
+    PdfRect $g 0 0 210 4 $red
+    $hasLogo = PdfLogo $g $LE 14 20
+    $tx = $(if ($hasLogo) { $LE + 25 } else { $LE })
+    PdfText $g $d.Company $tx 16.5 90 15 'Semibold' $dark
+    PdfText $g $d.Activity $tx 25 90 9 'Regular' $grey
+    PdfText $g 'FACTURA' 110 14 ($RE - 110) 24 'Light' $red 'Far'
+    PdfText $g ("Nº {0}" -f $d.No) 110 27 ($RE - 110) 10 'Semibold' $dark 'Far'
+    PdfText $g ("Fecha de emisión: {0}" -f $d.Date) 110 32.5 ($RE - 110) 9 'Regular' '#6E6466' 'Far'
+    PdfLine $g $LE 44 $RE 44 '#E6E1E2' 0.35
     # emisor y cliente
-    $y0 = 46; $bw = ($W - 4) / 2
-    foreach ($box in @(@{ X = $LE; Head = 'EMISOR / PRESTADOR DEL SERVICIO'; Name = $d.Issuer; Lines = $d.IssuerLines },
-                       @{ X = $LE + $bw + 4; Head = 'CLIENTE / RECEPTOR'; Name = $d.Client; Lines = $d.ClientLines })) {
-        PdfRect $g $box.X $y0 $bw 36 '#F8FAFC' 2.5
-        PdfText $g $box.Head ($box.X + 6) ($y0 + 5) ($bw - 12) 7.5 'Semibold' $blue
-        PdfText $g $box.Name ($box.X + 6) ($y0 + 10.5) ($bw - 12) 11 'Semibold' $navy
-        $ly = $y0 + 18
-        foreach ($ln in $box.Lines) { PdfLV $g $ln[0] $ln[1] ($box.X + 6) $ly ($bw - 12) 8.5 $navy $grey; $ly += 5.5 }
+    $y = 52
+    PdfText $g 'EMISOR' $LE $y 80 7.5 'Semibold' $red
+    PdfText $g 'CLIENTE' 110 $y 80 7.5 'Semibold' $red
+    PdfText $g $d.Issuer $LE ($y + 5) 88 12 'Semibold' $dark
+    PdfText $g $d.Client 110 ($y + 5) 82 12 'Semibold' $dark
+    $i = 0
+    foreach ($ln in $d.IssuerLines) {
+        $yy = $y + 13 + $i * 6
+        PdfText $g $ln[0] $LE $yy 30 8.5 'Regular' $grey
+        PdfText $g $ln[1] ($LE + 28) $yy 62 9 'Semibold' '#2B2526'
+        $i++
+    }
+    $i = 0
+    foreach ($ln in $d.ClientLines) {
+        $yy = $y + 13 + $i * 6
+        PdfText $g $ln[0] 110 $yy 32 8.5 'Regular' $grey
+        PdfText $g $ln[1] 140 $yy 52 9 'Semibold' '#2B2526'
+        $i++
     }
     # concepto
-    $ty = 90
-    PdfRect $g $LE $ty $W 11 $navy
-    PdfText $g 'CONCEPTO / DESCRIPCIÓN' ($LE + 4) ($ty + 3.4) 90 7.5 'Semibold' '#FFFFFF'
-    PdfText $g 'CANTIDAD' ($LE + 100) ($ty + 3.4) 22 7.5 'Semibold' '#FFFFFF' 'Center'
-    PdfText $g 'PRECIO UNID.' ($LE + 122) ($ty + 3.4) 26 7.5 'Semibold' '#FFFFFF' 'Far'
-    PdfText $g 'IMPORTE' ($LE + 148) ($ty + 3.4) ($W - 152) 7.5 'Semibold' '#FFFFFF' 'Far'
-    $ry = $ty + 15
-    PdfText $g $d.ConceptTitle ($LE + 4) $ry 94 9.5 'Semibold' '#1E293B'
-    PdfWrap $g $d.ConceptDesc ($LE + 4) ($ry + 5) 94 11 8 $muted
-    PdfText $g '1' ($LE + 100) ($ry + 2.5) 22 9.5 'Regular' '#334155' 'Center'
-    PdfText $g (Format-Money $d.Base) ($LE + 122) ($ry + 2.5) 26 9.5 'Regular' '#334155' 'Far'
-    PdfText $g (Format-Money $d.Base) ($LE + 148) ($ry + 2.5) ($W - 152) 9.5 'Regular' '#334155' 'Far'
-    PdfLine $g $LE ($ry + 18) $RE ($ry + 18) '#E2E8F0' 0.3
-    # totales
-    $sx = $LE + 96; $vy = $ry + 23
-    PdfText $g 'Base Imponible:' $sx $vy 50 9.5 'Regular' $grey
-    PdfText $g (Format-Money $d.Base) ($RE - 44) $vy 40 9.5 'Regular' $grey 'Far'
-    PdfText $g 'IVA (21%):' $sx ($vy + 7) 50 9.5 'Regular' $grey
-    PdfText $g (Format-Money $d.Iva) ($RE - 44) ($vy + 7) 40 9.5 'Regular' $grey 'Far'
-    PdfLine $g ($sx - 2) ($vy + 14) $RE ($vy + 14) $navy 0.6
-    PdfText $g 'TOTAL FACTURA:' $sx ($vy + 17) 60 12 'Semibold' $navy
-    PdfText $g (Format-Money $d.Total) ($RE - 54) ($vy + 16.5) 50 13 'Semibold' $navy 'Far'
+    $cy = 88
+    PdfText $g 'CONCEPTO' $LE $cy 80 7.5 'Semibold' $red
+    PdfRect $g $LE ($cy + 5) $W 8 '#F3EFEF' 1.5
+    PdfText $g 'Descripción' ($LE + 4) ($cy + 6.8) 90 7.5 'Semibold' '#6E6466'
+    PdfText $g 'Cant.' ($LE + 100) ($cy + 6.8) 22 7.5 'Semibold' '#6E6466' 'Center'
+    PdfText $g 'Precio unid.' ($LE + 122) ($cy + 6.8) 26 7.5 'Semibold' '#6E6466' 'Far'
+    PdfText $g 'Importe' ($LE + 148) ($cy + 6.8) ($W - 152) 7.5 'Semibold' '#6E6466' 'Far'
+    $ry = $cy + 17
+    PdfText $g $d.ConceptTitle ($LE + 4) $ry 94 10 'Semibold' $dark
+    PdfWrap $g $d.ConceptDesc ($LE + 4) ($ry + 5.5) 94 11 8 '#6E6466'
+    PdfText $g '1' ($LE + 100) ($ry + 2.5) 22 9.5 'Regular' $mid 'Center'
+    PdfText $g (Format-Money $d.Base) ($LE + 122) ($ry + 2.5) 26 9.5 'Regular' $mid 'Far'
+    PdfText $g (Format-Money $d.Base) ($LE + 148) ($ry + 2.5) ($W - 152) 9.5 'Semibold' $dark 'Far'
+    PdfLine $g $LE ($ry + 18) $RE ($ry + 18) '#EEE9EA' 0.3
+    # importes
+    $by = $ry + 24
+    PdfRect $g $LE $by $W 46 '#F7F5F5' 3
+    PdfText $g 'Base imponible' ($LE + 8) ($by + 8) 100 10 'Regular' $mid
+    PdfText $g (Format-Money $d.Base) 110 ($by + 8) ($RE - 118) 10 'Semibold' $dark 'Far'
+    PdfText $g 'IVA (21 %)' ($LE + 8) ($by + 16) 100 10 'Regular' $mid
+    PdfText $g (Format-Money $d.Iva) 110 ($by + 16) ($RE - 118) 10 'Semibold' $dark 'Far'
+    PdfLine $g ($LE + 8) ($by + 26) ($RE - 8) ($by + 26) '#DDD6D7' 0.3
+    PdfText $g 'TOTAL FACTURA' ($LE + 8) ($by + 31) 100 12 'Semibold' $dark
+    PdfText $g (Format-Money $d.Total) 100 ($by + 30) ($RE - 108) 16 'Semibold' $red 'Far'
     # forma de pago
-    $py = $vy + 32
-    $pl = @($d.PayLines)
-    $ph = 6 + 5.5 * $pl.Count
-    PdfRect $g $LE $py $W $ph '#EFF6FF' 2
-    PdfRect $g $LE $py 1.2 $ph $blue
-    $ly = $py + 3.5
-    foreach ($ln in $pl) { PdfLV $g $ln[0] $ln[1] ($LE + 7) $ly ($W - 12) 8.5 '#1E3A8A' '#1D4ED8'; $ly += 5.5 }
+    $py = $by + 54
+    PdfText $g 'PAGO' $LE $py 80 7.5 'Semibold' $red
+    $i = 0
+    foreach ($ln in $d.PayLines) {
+        $yy = $py + 5.5 + $i * 6
+        PdfText $g $ln[0] $LE $yy 40 8.5 'Regular' $grey
+        PdfText $g $ln[1] ($LE + 40) $yy 90 9 'Semibold' '#2B2526'
+        $i++
+    }
+    # sello de pago
+    $stamp = $(if ($d.Pend -le 0) { 'PAGADA' } elseif ($d.PaidAmt -gt 0) { 'PAGO PARCIAL' } else { '' })
+    if ($stamp) {
+        $ok = ($d.Pend -le 0)
+        PdfRect $g ($RE - 52) ($py + 4) 52 10 $(if ($ok) { '#E7F4EC' } else { '#FDF3E1' }) 5
+        PdfText $g $stamp ($RE - 52) ($py + 6.3) 52 9 'Semibold' $(if ($ok) { '#1F7A45' } else { '#B7791F' }) 'Center'
+    }
+    # firma
+    PdfLine $g $LE 235 ($LE + 70) 235 '#B9B0B2' 0.3
+    PdfText $g 'Firma y sello' $LE 237 70 8 'Regular' $grey
     # pie
-    PdfLine $g $LE 280 $RE 280 '#E2E8F0' 0.3
-    PdfText $g ("Factura Nº {0} — {1}" -f $d.No, $d.Issuer) $LE 282.5 120 7.5 'Regular' $muted
-    PdfText $g 'Página 1 de 1' 140 282.5 ($RE - 140) 7.5 'Regular' $muted 'Far'
+    PdfLine $g $LE 280 $RE 280 '#EEE9EA' 0.3
+    PdfText $g ("Factura Nº {0} — {1}" -f $d.No, $d.Issuer) $LE 282.5 110 7.5 'Regular' '#A69C9E'
+    PdfText $g (L 'rcFooter') 120 282.5 ($RE - 120) 7.5 'Regular' '#A69C9E' 'Far'
     return $false
 }
 function New-ClientInvoice($r) {
@@ -4819,22 +4844,24 @@ function New-ClientInvoice($r) {
         $forma = "$($r.Data['forma'])".Trim()
         $cash = ($forma -match '(?i)efectivo|cash|esp[eè]ces')
         $pay = New-Object System.Collections.Generic.List[object]
-        $pay.Add(@('Forma de pago:', $(if ($forma) { $forma } else { 'Transferencia bancaria / Bizum' })))
-        if ("$($cfg.InvIban)".Trim() -and -not $cash) { $pay.Add(@('Número de Cuenta / IBAN:', "$($cfg.InvIban)".Trim())) }
-        $pay.Add(@('Concepto del pago:', ("Factura {0} - {1}" -f $inv.No, "$($r.Name)")))
-        $issuerLines = @(,@('NIF/NIE:', "$($cfg.InvNif)"))
-        if ("$($cfg.InvAddress)".Trim()) { $issuerLines += ,@('Domicilio Fiscal:', "$($cfg.InvAddress)") }
-        if ("$($cfg.InvTown)".Trim()) { $issuerLines += ,@('Población:', "$($cfg.InvTown)") }
-        $clientLines = @(,@('NIF/NIE:', $(if ("$($r.Doc)".Trim()) { "$($r.Doc)" } else { '—' })))
-        $nat = "$($r.Data['nat'])".Trim(); if ($nat) { $clientLines += ,@('Nacionalidad:', $nat) }
-        $tel = "$($r.Data['tel'])".Trim(); if ($tel) { $clientLines += ,@('Teléfono:', $tel) }
+        $pay.Add(@('Forma de pago', $(if ($forma) { $forma } else { 'Transferencia bancaria / Bizum' })))
+        if ("$($cfg.InvIban)".Trim() -and -not $cash) { $pay.Add(@('IBAN', "$($cfg.InvIban)".Trim())) }
+        $pay.Add(@('Concepto', ("Factura {0} - {1}" -f $inv.No, "$($r.Name)")))
+        $issuerLines = @(,@('NIF/NIE', "$($cfg.InvNif)"))
+        if ("$($cfg.InvAddress)".Trim()) { $issuerLines += ,@('Domicilio', "$($cfg.InvAddress)") }
+        if ("$($cfg.InvTown)".Trim()) { $issuerLines += ,@('Población', "$($cfg.InvTown)") }
+        $clientLines = @(,@('NIF/NIE', $(if ("$($r.Doc)".Trim()) { "$($r.Doc)" } else { '—' })))
+        $nat = "$($r.Data['nat'])".Trim(); if ($nat) { $clientLines += ,@('Nacionalidad', $nat) }
+        $tel = "$($r.Data['tel'])".Trim(); if ($tel) { $clientLines += ,@('Teléfono', $tel) }
+        $clientLines += ,@('Expediente', $id)
         $c = Get-InvoiceConcept $t $r
         $script:PdfData = @{
             No = $inv.No; Date = $inv.Date.ToString('dd/MM/yyyy')
             Issuer = "$($cfg.InvName)"; Activity = "$($cfg.InvActivity)"; IssuerLines = $issuerLines
             Client = "$($r.Name)"; ClientLines = $clientLines
             ConceptTitle = $c.Title; ConceptDesc = $c.Desc
-            Base = $sp.Base; Iva = $sp.Iva; Total = $total; Paid = ($pend -le 0)
+            Base = $sp.Base; Iva = $sp.Iva; Total = $total; Pend = $pend; PaidAmt = [math]::Max([double]0, $total - $pend)
+            Company = $(if ("$($cfg.CompanyName)".Trim()) { "$($cfg.CompanyName)" } else { "$($cfg.InvName)" })
             PayLines = $pay.ToArray()
         }
         $dir = Get-ClientDocsDir $r -Create
