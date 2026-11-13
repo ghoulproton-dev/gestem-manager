@@ -31,7 +31,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security, System.Drawing
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.1'
+$script:AppVersion = '1.5.2'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -209,7 +209,7 @@ $script:Text = @{
   loading='Leyendo el Excel…'; savingMsg='Guardando en el Excel…'; ready='{0} clientes · {1} con pago pendiente ({2})'
   noFile='Elige tu archivo Excel en Ajustes.'; tramite='Trámite'
   errNoFile='No encuentro el archivo Excel. Elígelo en Ajustes.'
-  errNoSheet='Este Excel no tiene la pestaña «{0}». Elige el archivo correcto en Ajustes.'
+  errNoSheet='Este Excel no tiene la pestaña «{0}». Elige el archivo correcto en Ajustes.'; errTabsFound='Pestañas de este Excel: {0}'
   errLocked='El Excel está abierto en otro ordenador o en otro programa. Ciérralo allí y vuelve a intentarlo.'
   errBusy='Excel está ocupado: si estás escribiendo en una celda, pulsa Enter en Excel y vuelve a intentarlo.'
   errFull='No quedan filas libres en el Excel.'; errNoExcel='GESTEM MANAGER necesita Microsoft Excel instalado en este ordenador.'
@@ -249,7 +249,7 @@ $script:Text = @{
   loading='Reading the Excel file…'; savingMsg='Saving to Excel…'; ready='{0} clients · {1} with outstanding payment ({2})'
   noFile='Choose your Excel file in Settings.'; tramite='Procedure'
   errNoFile="Can't find the Excel file. Choose it in Settings."
-  errNoSheet='This Excel file has no «{0}» tab. Choose the right file in Settings.'
+  errNoSheet='This Excel file has no «{0}» tab. Choose the right file in Settings.'; errTabsFound='Tabs in this Excel file: {0}'
   errLocked='The Excel file is open on another computer or program. Close it there and try again.'
   errBusy="Excel is busy: if you're typing in a cell, press Enter in Excel and try again."
   errFull='There are no free rows left in the Excel file.'; errNoExcel='GESTEM MANAGER needs Microsoft Excel installed on this computer.'
@@ -289,7 +289,7 @@ $script:Text = @{
   loading="Lecture de l'Excel…"; savingMsg="Enregistrement dans l'Excel…"; ready='{0} clients · {1} avec paiement en attente ({2})'
   noFile='Choisissez votre fichier Excel dans Paramètres.'; tramite='Démarche'
   errNoFile='Fichier Excel introuvable. Choisissez-le dans Paramètres.'
-  errNoSheet="Cet Excel n'a pas d'onglet « {0} ». Choisissez le bon fichier dans Paramètres."
+  errNoSheet="Cet Excel n'a pas d'onglet « {0} ». Choisissez le bon fichier dans Paramètres."; errTabsFound='Onglets de cet Excel : {0}'
   errLocked="L'Excel est ouvert sur un autre ordinateur ou programme. Fermez-le puis réessayez."
   errBusy="Excel est occupé : si vous écrivez dans une cellule, appuyez sur Entrée dans Excel puis réessayez."
   errFull="Il n'y a plus de lignes libres dans l'Excel."; errNoExcel='GESTEM MANAGER a besoin de Microsoft Excel installé sur cet ordinateur.'
@@ -329,7 +329,7 @@ $script:Text = @{
   loading='جارٍ قراءة ملف Excel…'; savingMsg='جارٍ الحفظ في Excel…'; ready='{0} عميل · {1} بدفع متبقٍ ({2})'
   noFile='اختر ملف Excel من الإعدادات.'; tramite='الإجراء'
   errNoFile='لم أجد ملف Excel. اختره من الإعدادات.'
-  errNoSheet='ملف Excel هذا لا يحتوي على تبويب «{0}». اختر الملف الصحيح من الإعدادات.'
+  errNoSheet='ملف Excel هذا لا يحتوي على تبويب «{0}». اختر الملف الصحيح من الإعدادات.'; errTabsFound='تبويبات ملف Excel هذا: {0}'
   errLocked='ملف Excel مفتوح على جهاز أو برنامج آخر. أغلقه هناك ثم حاول مرة أخرى.'
   errBusy='برنامج Excel مشغول: إذا كنت تكتب في خلية، اضغط Enter في Excel ثم حاول مرة أخرى.'
   errFull='لا توجد صفوف فارغة في ملف Excel.'; errNoExcel='يحتاج GESTEM MANAGER إلى برنامج Microsoft Excel مثبتًا على هذا الحاسوب.'
@@ -702,9 +702,48 @@ function Close-Book($h, [bool]$Save) {
     }
 }
 
+function ConvertTo-SheetKey([string]$s) {
+    # nombre de pestaña sin tildes, mayúsculas ni espacios de más («Homologacion » = «HOMOLOGACIÓN»)
+    $d = "$s".Trim().ToUpperInvariant().Normalize([Text.NormalizationForm]::FormD)
+    $sb = New-Object Text.StringBuilder
+    foreach ($ch in $d.ToCharArray()) {
+        if ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne [Globalization.UnicodeCategory]::NonSpacingMark) { [void]$sb.Append($ch) }
+    }
+    return ($sb.ToString() -replace '\s+', ' ')
+}
+function Test-ExcelBusyError($e) {
+    $x = $e; while ($x) { if ($x.HResult -eq -2147418111 -or $x.HResult -eq -2147417846) { return $true }; $x = $x.InnerException }
+    return $false
+}
+function Find-Sheet($wb, [string]$name) {
+    # busca la pestaña aunque tenga otra tilde, mayúsculas o espacios; $null si de verdad no está
+    # (si Excel está ocupado se lanza el error de «ocupado», nunca «no tiene la pestaña»)
+    try { return $wb.Worksheets.Item($name) } catch { if (Test-ExcelBusyError $_.Exception) { throw } }
+    $key = ConvertTo-SheetKey $name
+    foreach ($w in $wb.Worksheets) { if ((ConvertTo-SheetKey "$($w.Name)") -eq $key) { return $w } }
+    return $null
+}
 function Get-Sheet($h) {
     $T = $script:T
-    try { return $h.Wb.Worksheets.Item($T.Sheet) } catch { throw ((L 'errNoSheet') -f $T.Sheet) }
+    $ws = Invoke-Excel { Find-Sheet $h.Wb $T.Sheet }
+    if ($ws) { return $ws }
+    $names = @(); try { $names = @($h.Wb.Worksheets | ForEach-Object { "«$($_.Name)»" }) } catch { }
+    $msg = (L 'errNoSheet') -f $T.Sheet
+    if ($names.Count) { $msg += "`r`n`r`n" + ((L 'errTabsFound') -f ($names -join ', ')) }
+    $script:MissingTabs[$T.Id] = (Get-ExcelStamp)
+    throw $msg
+}
+# pestañas que no se encontraron: no se vuelve a abrir el Excel para buscarlas hasta que el Excel cambie
+$script:MissingTabs = @{}
+$script:MissingWarned = @{}
+function Get-ExcelStamp {
+    try { return (Get-Item -LiteralPath $script:Cfg.ExcelPath).LastWriteTimeUtc.Ticks } catch { return 0 }
+}
+function Test-TabKnownMissing($t) {
+    if (-not $script:MissingTabs.ContainsKey($t.Id)) { return $false }
+    if ($script:MissingTabs[$t.Id] -eq (Get-ExcelStamp)) { return $true }
+    $script:MissingTabs.Remove($t.Id); $script:MissingWarned.Remove($t.Id)    # el Excel cambió: se vuelve a mirar
+    return $false
 }
 
 function ColNum([string]$c) { $n = 0; foreach ($ch in $c.ToUpper().ToCharArray()) { $n = $n * 26 + ([int]$ch - 64) }; return $n }
@@ -837,12 +876,13 @@ function Get-CachedData {
 }
 
 function Restore-Formula($ws, [string]$col, [int]$row) {
-    # vuelve a poner la fórmula automática de esa columna (copiándola de una fila vacía)
+    # vuelve a poner la fórmula automática de esa columna (copiándola de otra fila)
+    # una sola llamada a Excel para encontrar las fórmulas (antes se miraban las 1000 filas una a una)
     $T = $script:T
-    for ($r = $T.LastRow; $r -ge $T.FirstRow; $r--) {
-        if ($r -eq $row) { continue }
-        $src = $ws.Range("$col$r")
-        if ($src.HasFormula) { $ws.Range("$col$row").FormulaR1C1 = $src.FormulaR1C1; return }
+    $fx = $null
+    try { $fx = $ws.Range("$col$($T.FirstRow):$col$($T.LastRow)").SpecialCells(-4123) } catch { if (Test-ExcelBusyError $_.Exception) { throw }; return }   # -4123 = celdas con fórmula
+    foreach ($src in $fx.Cells) {
+        if ($src.Row -ne $row) { $ws.Range("$col$row").FormulaR1C1 = $src.FormulaR1C1; return }
     }
 }
 
@@ -1328,6 +1368,10 @@ function Load-Data([switch]$All, [switch]$Quiet) {
             try {
                 $s = Read-Store $t
                 if (-not $s -and $Quiet) { if ($script:Cache -and $script:Cache.ContainsKey($t.Id)) { $newCache[$t.Id] = $script:Cache[$t.Id] }; continue }
+                if (-not $s -and (Test-TabKnownMissing $t)) {
+                    if ($t.Id -ne $cur.Id) { continue }
+                    throw ((L 'errNoSheet') -f $t.Sheet)
+                }
                 if (-not $s) {
                     if (-not $h) { $h = Invoke-Excel { Open-Book } }
                     $lk = Enter-StoreLock
@@ -1350,7 +1394,14 @@ function Load-Data([switch]$All, [switch]$Quiet) {
         $script:T = $cur
         if ($h) { try { Close-Book $h $false } catch {} }
         Write-Log "Load-Data: $($_.Exception.Message)"
-        if (-not $Quiet) { Set-Status ($_.Exception.Message); Show-Error $_.Exception.Message }
+        if (-not $Quiet) {
+            Set-Status ($_.Exception.Message)
+            # el aviso de pestaña que falta sale una sola vez (no en cada cambio de trámite)
+            if (-not ($script:MissingTabs.ContainsKey($cur.Id) -and $script:MissingWarned.ContainsKey($cur.Id))) {
+                if ($script:MissingTabs.ContainsKey($cur.Id)) { $script:MissingWarned[$cur.Id] = $true }
+                Show-Error $_.Exception.Message
+            }
+        }
         return $false
     }
 }
@@ -1419,6 +1470,7 @@ function Invoke-LiveRefresh {
     finally { $script:Busy = $false }
 }
 $script:Busy = $false
+$script:Switching = $false
 $script:LiveTick = 0
 $script:LiveTimer = New-Object Windows.Threading.DispatcherTimer
 $script:LiveTimer.Interval = [TimeSpan]::FromSeconds(20)
@@ -1541,7 +1593,8 @@ function Open-ExcelWindow([int]$row = 0) {
             foreach ($w in $xl.Workbooks) {
                 if ("$($w.FullName)" -ieq [IO.Path]::GetFullPath($path)) {
                     $xl.Visible = $true; $w.Activate()
-                    if ($row -gt 0) { $w.Worksheets.Item($script:T.Sheet).Activate(); $xl.Goto($w.Worksheets.Item($script:T.Sheet).Range("B$row")) }
+                    $tab = Find-Sheet $w $script:T.Sheet
+                    if ($row -gt 0 -and $tab) { $tab.Activate(); $xl.Goto($tab.Range("B$row")) }
                     return
                 }
             }
@@ -5375,10 +5428,19 @@ $ui.OnlyMine.Add_Click({ Refresh-ClientGrid })
 $ui.TramiteBox.Add_SelectionChanged({
     $i = $script:UI.TramiteBox.SelectedIndex
     if ($i -ge 0 -and $script:Tramites[$i].Id -ne $script:T.Id) {
-        $script:T = $script:Tramites[$i]; $script:Cfg.Tramite = $script:T.Id; Save-Config
-        $script:Rows = $null; $script:UI.ClientsGrid.ItemsSource = $null
-        if (Get-CachedData) { Apply-Language } else { Build-Form; Reset-Form }
-        if ($script:UI.PanelStats.Visibility -eq 'Visible') { $script:StatsScopeId = $script:T.Id; Fill-StatsFilters; Update-Stats }
+        # mientras se carga un trámite no se puede cambiar a otro (si no, la ficha y el trámite se mezclan)
+        if ($script:Switching) {
+            $script:UI.TramiteBox.SelectedIndex = [array]::IndexOf(@($script:Tramites | ForEach-Object { $_.Id }), $script:T.Id)
+            return
+        }
+        $script:Switching = $true; $wasBusy = $script:Busy; $script:Busy = $true
+        $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+        try {
+            $script:T = $script:Tramites[$i]; $script:Cfg.Tramite = $script:T.Id; Save-Config
+            $script:Rows = $null; $script:UI.ClientsGrid.ItemsSource = $null
+            if (Get-CachedData) { Apply-Language } else { Build-Form; Reset-Form }
+            if ($script:UI.PanelStats.Visibility -eq 'Visible') { $script:StatsScopeId = $script:T.Id; Fill-StatsFilters; Update-Stats }
+        } finally { $script:Switching = $false; $script:Busy = $wasBusy; $script:Win.Cursor = $null }
     }
 })
 
