@@ -31,7 +31,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security, System.Drawing
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5'
+$script:AppVersion = '1.5.1'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -344,6 +344,9 @@ $script:Text = @{
 # textos de documentos, recibos y exportar
 $script:TextMore = @{
  es = @{
+  conflictAsk = '{0} cambió este cliente a las {1}, mientras lo tenías abierto. ¿Guardar igualmente tus cambios encima de los suyos?'
+  someoneElse = 'Otra persona'
+  liveUpdated = '↻ Lista actualizada con cambios de otro PC'
   loading = 'Cargando los datos…'
   savingMsg = 'Guardando…'
   errStoreBusy = 'Otro PC está guardando en este momento. Vuelve a intentarlo en unos segundos.'
@@ -409,6 +412,9 @@ $script:TextMore = @{
   exDone = '✓ Exportado: {0}'
  }
  en = @{
+  conflictAsk = '{0} changed this client at {1} while you had it open. Save your changes over theirs anyway?'
+  someoneElse = 'Someone else'
+  liveUpdated = '↻ List updated with changes from another PC'
   loading = 'Loading data…'
   savingMsg = 'Saving…'
   errStoreBusy = 'Another PC is saving right now. Try again in a few seconds.'
@@ -474,6 +480,9 @@ $script:TextMore = @{
   exDone = '✓ Exported: {0}'
  }
  fr = @{
+  conflictAsk = '{0} a modifié ce client à {1} pendant que vous l''aviez ouvert. Enregistrer quand même vos modifications par-dessus les siennes ?'
+  someoneElse = 'Quelqu''un d''autre'
+  liveUpdated = '↻ Liste mise à jour avec des changements d''un autre PC'
   loading = 'Chargement des données…'
   savingMsg = 'Enregistrement…'
   errStoreBusy = 'Un autre PC enregistre en ce moment. Réessayez dans quelques secondes.'
@@ -539,6 +548,9 @@ $script:TextMore = @{
   exDone = '✓ Exporté : {0}'
  }
  ar = @{
+  conflictAsk = '{0} عدّل هذا العميل في {1} بينما كان مفتوحًا لديك. هل تريد حفظ تغييراتك فوق تغييراته على أي حال؟'
+  someoneElse = 'شخص آخر'
+  liveUpdated = '↻ تم تحديث القائمة بتغييرات من حاسوب آخر'
   loading = 'جارٍ تحميل البيانات…'
   savingMsg = 'جارٍ الحفظ…'
   errStoreBusy = 'حاسوب آخر يحفظ الآن. حاول مرة أخرى بعد ثوانٍ.'
@@ -1075,7 +1087,7 @@ function New-RowObject($t, $c, $meta) {
         PaidV = $(if ($null -ne $paid) { [double]$paid } else { 0 })
         NetV = $net
         Fecha = $(if ($FV['fsol'] -is [DateTime]) { $FV['fsol'] } else { $null })
-        Sync = $c.Sync
+        Sync = $c.Sync; Updated = "$($c.Updated)"; By = "$($c.By)"
     }
 }
 function Get-RowId($t, $meta, [int]$row) {
@@ -1189,7 +1201,7 @@ function Save-ClientStore([hashtable]$vals, $editRow) {
         }
         $rec.Sync = $false
         $rec.Updated = (Get-Date).ToString('s')
-        $rec.By = $(if ($script:IsAdmin -or $script:IsOwnerPC) { 'ADMIN' } else { $script:User })
+        $rec.By = $(if ($script:User) { $script:User } else { 'ADMIN' })
         Write-Store $t $store
     } finally { Exit-StoreLock $lk }
     # el Excel se actualiza después; si no se puede ahora, se hará más tarde
@@ -1300,26 +1312,28 @@ function Refresh-FromExcel {
     [void](Sync-PendingToExcel)
     return (Load-Data -All)
 }
-function Load-Data([switch]$All) {
+function Load-Data([switch]$All, [switch]$Quiet) {
     # lee los datos de GESTEM (rápido, sin Excel); la primera vez los importa del Excel
-    Set-Status (L 'loading')
+    if (-not $Quiet) { Set-Status (L 'loading') }
     $h = $null
     $cur = $script:T
     try {
         if (-not $script:Cfg.ExcelPath -or -not (Test-Path -LiteralPath $script:Cfg.ExcelPath)) { throw (L 'errNoFile') }
-        if ($All -or $null -eq $script:Cache) { $script:Cache = @{} }
+        $newCache = $script:Cache
+        if ($All -or $null -eq $newCache) { $newCache = @{} }
         $list = @($cur)
         if ($All) { $list = @($cur) + @($script:Tramites | Where-Object { $_.Id -ne $cur.Id }) }
         foreach ($t in $list) {
             $script:T = $t
             try {
                 $s = Read-Store $t
+                if (-not $s -and $Quiet) { if ($script:Cache -and $script:Cache.ContainsKey($t.Id)) { $newCache[$t.Id] = $script:Cache[$t.Id] }; continue }
                 if (-not $s) {
                     if (-not $h) { $h = Invoke-Excel { Open-Book } }
                     $lk = Enter-StoreLock
                     try { $s = Read-Store $t; if (-not $s) { $s = Import-TramiteFromExcel $h $t } } finally { Exit-StoreLock $lk }
                 }
-                $script:Cache[$t.Id] = Build-TramiteData $t $s
+                $newCache[$t.Id] = Build-TramiteData $t $s
             } catch {
                 if ($t.Id -eq $cur.Id) { throw }
                 Write-Log "pestaña no leída ($($t.Sheet)): $($_.Exception.Message)"
@@ -1327,6 +1341,8 @@ function Load-Data([switch]$All) {
         }
         $script:T = $cur
         if ($h) { Close-Book $h $false; $h = $null }
+        if (-not $newCache.ContainsKey($cur.Id)) { throw (L 'errNoStore') }
+        $script:Cache = $newCache
         $script:CacheStamp = Get-FileStamp
         Use-TramiteData $script:Cache[$cur.Id]
         return $true
@@ -1334,8 +1350,7 @@ function Load-Data([switch]$All) {
         $script:T = $cur
         if ($h) { try { Close-Book $h $false } catch {} }
         Write-Log "Load-Data: $($_.Exception.Message)"
-        Set-Status ($_.Exception.Message)
-        Show-Error $_.Exception.Message
+        if (-not $Quiet) { Set-Status ($_.Exception.Message); Show-Error $_.Exception.Message }
         return $false
     }
 }
@@ -1349,6 +1364,65 @@ function Sync-DataBackup([string]$dir) {
         try { Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $dst $f.Name) -Force } catch { }
     }
 }
+
+# ---------- varios PCs a la vez ----------
+function Get-EditConflict {
+    # ¿alguien cambió este cliente desde que se abrió para editar?
+    if (-not $script:EditRow) { return $null }
+    try {
+        $s = Read-Store $script:T
+        if (-not $s) { return $null }
+        $c = $s.Clients | Where-Object { $_.Row -eq [int]$script:EditRow.Row } | Select-Object -First 1
+        if ($c -and "$($c.Updated)" -and "$($c.Updated)" -ne "$($script:EditRow.Updated)") { return $c }
+    } catch { Write-Log "DEBUG conflicto: $($_.Exception.Message)" }
+    return $null
+}
+function Format-WhoWhen($c) {
+    $who = "$($c.By)"
+    if (-not $who -or $who -in 'Excel', 'ADMIN') { $who = L 'someoneElse' }
+    $when = ''
+    $d = [DateTime]::MinValue
+    if ([DateTime]::TryParse("$($c.Updated)", [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$d)) {
+        $when = $(if ($d.Date -eq [DateTime]::Today) { $d.ToString('HH:mm') } else { $d.ToString('dd/MM HH:mm') })
+    }
+    return @($who, $when)
+}
+function Test-ExcelFree {
+    # el Excel está libre si nadie lo tiene abierto (o si lo tiene abierto este mismo PC)
+    $p = "$($script:Cfg.ExcelPath)"
+    if (-not $p -or -not (Test-Path -LiteralPath $p)) { return $false }
+    try { $fs = [IO.File]::Open($p, 'Open', 'ReadWrite', 'None'); $fs.Dispose(); return $true }
+    catch { return [bool](Get-Process -Name EXCEL -ErrorAction SilentlyContinue) }
+}
+function Invoke-LiveRefresh {
+    # cada 20 s: si otro PC guardó, se actualiza la lista; cada 3 min se reintenta lo pendiente del Excel
+    if ($script:Busy -or -not $script:User) { return }
+    $script:Busy = $true
+    try {
+        $script:LiveTick++
+        $own = $false
+        if ($script:LiveTick % 9 -eq 0 -and (Get-PendingSyncCount) -gt 0 -and (Test-ExcelFree)) {
+            if ((Sync-PendingToExcel) -gt 0) { $own = $true; $script:CacheStamp = -1 }
+        }
+        if ((Get-FileStamp) -ne $script:CacheStamp) {
+            $selRow = $null
+            if ($script:UI.ClientsGrid.SelectedItem) { $selRow = $script:UI.ClientsGrid.SelectedItem.Row }
+            if (Load-Data -All -Quiet) {
+                if ($selRow) {
+                    foreach ($it in $script:UI.ClientsGrid.Items) { if ($it.Row -eq $selRow) { $script:UI.ClientsGrid.SelectedItem = $it; $script:UI.ClientsGrid.ScrollIntoView($it); break } }
+                }
+                if ($script:UI.PanelStats.Visibility -eq 'Visible') { Update-Stats }
+                if (-not $own) { Set-Status (L 'liveUpdated') }
+            }
+        }
+    } catch { Write-Log "DEBUG actualización automática: $($_.Exception.Message)" }
+    finally { $script:Busy = $false }
+}
+$script:Busy = $false
+$script:LiveTick = 0
+$script:LiveTimer = New-Object Windows.Threading.DispatcherTimer
+$script:LiveTimer.Interval = [TimeSpan]::FromSeconds(20)
+$script:LiveTimer.Add_Tick({ Invoke-LiveRefresh })
 
 # nube de la empresa: primero OneDrive de empresa (Microsoft 365), luego Google Drive, luego OneDrive personal
 function Find-CompanyCloud {
@@ -3517,8 +3591,17 @@ function Save-FromForm {
         $ans = [Windows.MessageBox]::Show($script:Win, ((L 'dupAsk') -f $dup.Id, $dup.Name, $nl), $script:AppName, 'YesNo', 'Question')
         if ("$ans" -ne 'Yes') { return }
     }
+    $script:Busy = $true
+    $conf = Get-EditConflict
+    $script:Busy = $false
+    if ($conf) {
+        $ww = Format-WhoWhen $conf
+        $ans = [Windows.MessageBox]::Show($script:Win, ((L 'conflictAsk') -f $ww[0], $ww[1]), $script:AppName, 'YesNo', 'Warning')
+        if ("$ans" -ne 'Yes') { return }
+    }
     $ui = $script:UI
     $ui.SaveBtn.IsEnabled = $false
+    $script:Busy = $true
     $script:Win.Cursor = [Windows.Input.Cursors]::Wait
     Set-Status (L 'savingMsg')
     try {
@@ -3540,6 +3623,7 @@ function Save-FromForm {
         Set-Status ''
     } finally {
         $ui.SaveBtn.IsEnabled = $true
+        $script:Busy = $false
         $script:Win.Cursor = $null
     }
 }
@@ -5351,6 +5435,7 @@ $script:Win.Add_ContentRendered({
     if (Load-Data -All) {
         Apply-Language
         if ((Get-PendingSyncCount) -gt 0) { if ((Sync-PendingToExcel) -gt 0) { [void](Load-Data -All) } }
+        $script:LiveTimer.Start()
     }
     $script:Win.Cursor = $null
     # primera vez sin carpeta externa: se usa sola la nube de la empresa si este PC la tiene
