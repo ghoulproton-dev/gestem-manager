@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.10'
+$script:AppVersion = '1.5.11'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -782,7 +782,7 @@ function New-EmptyStore($t, $h) {
     if ($h -and $t.PriceKey) { try { $price = Read-TramitePrice $h.Wb $t.PriceKey } catch { } }
     $meta = @{ Lists = @{ 'excel:N' = $script:GenStatusList; 'excel:M' = @('Pagado', 'Parcial', 'Pendiente') }
                Tariff = @{}; TariffNet = @{}; DefaultPrice = $price; IdPrefix = (Get-DefaultIdPrefix $t); IdWidth = 3 }
-    return @{ Meta = $meta; Clients = (New-Object System.Collections.Generic.List[object]) }
+    return @{ Meta = $meta; Clients = (New-Object System.Collections.Generic.List[object]); Adopted = (New-Object System.Collections.Generic.List[string]) }
 }
 function New-TramiteSheet($h, $t) {
     # crea en el Excel la pestaña del trámite (cabeceras, nº de expediente y fórmulas básicas)
@@ -1119,6 +1119,13 @@ function Sync-HandmadeTabs([switch]$Force) {
             $s = Read-Store $t
             if (-not $s -and $recs.Count -eq 0) { continue }
             if (-not $s) { $s = New-EmptyStore $t $null }
+            # clientes de la pestaña hecha a mano que ya se editaron en GESTEM: ahora son de GESTEM, no se vuelven a leer
+            $adoptedKeys = @(@($s.Adopted) | ForEach-Object { ConvertTo-HandKey "$_" })
+            if ($adoptedKeys.Count) {
+                $f2 = New-Object System.Collections.Generic.List[object]
+                foreach ($c in $recs) { if ($adoptedKeys -notcontains (ConvertTo-HandKey "$($c.F['name'])")) { $f2.Add($c) } }
+                $recs = $f2
+            }
             $sig = {
                 param($list)
                 (@($list | Sort-Object { [int]$_.Row } | ForEach-Object {
@@ -1461,7 +1468,9 @@ function Read-Store($t) {
         foreach ($f in $t.Fields) { $FV[$f.Key] = ConvertFrom-StoreValue $f $c.f.($f.Key) }
         $clients.Add(@{ Row = [int]$c.row; Id = "$($c.id)"; F = $FV; Sync = [bool]$c.sync; New = [bool]$c.nuevo; Updated = "$($c.updated)"; By = "$($c.by)" })
     }
-    return @{ Meta = $meta; Clients = $clients }
+    $adopted = New-Object System.Collections.Generic.List[string]
+    foreach ($a in @($j.adoptados)) { if ("$a".Trim()) { $adopted.Add("$a") } }
+    return @{ Meta = $meta; Clients = $clients; Adopted = $adopted }
 }
 function Write-Store($t, $store) {
     $p = Get-StorePath $t
@@ -1477,6 +1486,7 @@ function Write-Store($t, $store) {
         app = 'GESTEM MANAGER'; formato = 1; tramite = $t.Id; hoja = $t.Sheet; guardado = (Get-Date).ToString('s')
         meta = [ordered]@{ idPrefix = $m.IdPrefix; idWidth = $m.IdWidth; defaultPrice = $m.DefaultPrice; tariff = $m.Tariff; tariffNet = $m.TariffNet; lists = $m.Lists }
         clients = $list.ToArray()
+        adoptados = @($store.Adopted | Where-Object { "$_".Trim() })
     }
     $json = $obj | ConvertTo-Json -Depth 8
     $tmp = "$p.tmp"
@@ -1609,6 +1619,7 @@ function Import-TramiteFromExcel($h, $t) {
     if ((Test-GenTramite $t) -and -not (Invoke-Excel { Find-TramiteSheet $h.Wb $t })) {
         # el Excel no tiene esta pestaña: se empieza vacío (sin aviso) y la pestaña se crea al guardar el primer cliente
         $store = New-EmptyStore $t $h
+        try { $old = Read-Store $t; if ($old) { $store.Adopted = @($old.Adopted) } } catch { }
         Write-Store $t $store
         Write-Log ("sin pestaña en el Excel, trámite empezado vacío: {0}" -f $t.Sheet)
         return (Read-Store $t)
@@ -1621,7 +1632,8 @@ function Import-TramiteFromExcel($h, $t) {
         foreach ($f in $t.Fields) { $FV[$f.Key] = $r.Data[$f.Key] }
         $clients.Add(@{ Row = [int]$r.Row; Id = "$($r.Id)"; F = $FV; Sync = $true; Updated = (Get-Date).ToString('s'); By = 'Excel' })
     }
-    $store = @{ Meta = $meta; Clients = $clients }
+    $adopted = @(); try { $old = Read-Store $t; if ($old) { $adopted = @($old.Adopted) } } catch { }
+    $store = @{ Meta = $meta; Clients = $clients; Adopted = $adopted }
     Write-Store $t $store
     Write-Log ("importó del Excel: {0} ({1} clientes)" -f $t.Sheet, $clients.Count)
     return (Read-Store $t)    # mismos valores que se guardaron (fechas e importes ya convertidos)
@@ -1650,6 +1662,17 @@ function Save-ClientStore([hashtable]$vals, $editRow) {
         $FV = @{}
         foreach ($f in $t.Fields) { $FV[$f.Key] = $vals[$f.Key] }
         $FV = Resolve-Record $t $FV $store.Meta
+        if ($editRow -and [int]$editRow -ge $script:HandRowBase) {
+            # cliente de una pestaña hecha a mano editado en GESTEM: pasa a ser de GESTEM (fila nueva) y la pestaña a mano ya no lo vuelve a traer
+            $old = $store.Clients | Where-Object { $_.Row -eq [int]$editRow } | Select-Object -First 1
+            if ($old) {
+                [void]$store.Clients.Remove($old)
+                if (-not $store.Adopted) { $store.Adopted = New-Object System.Collections.Generic.List[string] }
+                $store.Adopted = @(@($store.Adopted) + "$($old.F['name'])" | Where-Object { "$_".Trim() } | Select-Object -Unique)
+                Write-Log ("cliente de la pestaña hecha a mano pasa a GESTEM: {0}" -f "$($old.F['name'])")
+            }
+            $editRow = $null
+        }
         if ($editRow) {
             $rec = $store.Clients | Where-Object { $_.Row -eq [int]$editRow } | Select-Object -First 1
         }
@@ -4171,7 +4194,6 @@ function Edit-Selected {
     try {
         $sel = $script:UI.ClientsGrid.SelectedItem
         if (-not $sel) { Show-Info (L 'selectFirst'); return }
-        if ([int]$sel.Row -ge $script:HandRowBase) { Show-Info ((L 'handReadOnly') -f $script:HandTabs[$script:T.Id]); return }
         $script:UI.NavNew.IsChecked = $true
         Fill-FormForEdit $sel
     } catch {
