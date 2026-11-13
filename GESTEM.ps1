@@ -18,7 +18,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.3.2'
+$script:AppVersion = '1.3.3'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -664,6 +664,33 @@ function Find-CompanyCloud {
     foreach ($c in $cands) { if ($c -and (Test-Path -LiteralPath $c)) { return (Join-Path $c 'GESTEM copias') } }
     return $null
 }
+# registro de actividad legible en la carpeta de la copia externa (nube de la empresa):
+# un archivo por PC, lo más reciente arriba, SIN nombres de clientes (solo nº de expediente y trámite)
+function Export-ActivityLog([string]$dir) {
+    try {
+        if (-not (Test-Path -LiteralPath $script:LogPath)) { return }
+        $lines = @(Get-Content -LiteralPath $script:LogPath -Encoding UTF8 -Tail 4000)
+        [array]::Reverse($lines)
+        $out = New-Object System.Collections.Generic.List[string]
+        $keys = @($script:AdmTr.Keys | Sort-Object { $_.Length } -Descending)
+        foreach ($ln in $lines) {
+            if ($ln -notmatch '^(\d{4})-(\d\d)-(\d\d) (\d\d:\d\d):\d\d  \[([^\]]*)\] (.+)$') { continue }
+            $d = "$($Matches[3])/$($Matches[2])/$($Matches[1]) $($Matches[4])"; $who = $Matches[5]; $txt = $Matches[6]
+            if ($txt -match '^(Load-Data|Save-FromForm|clic |DEBUG|pestaña no leída|copia externa: |icono:)') { continue }
+            # quita el nombre del cliente
+            if ($txt -match '^(añadió|editó) cliente (\S+) · .* · (.+)$') { $txt = "$($Matches[1]) cliente $($Matches[2]) · $($Matches[3])" }
+            foreach ($k in $keys) {
+                if ($k.Length -ge 8 -and $txt.StartsWith($k)) { $v = $script:AdmTr[$k]['en']; if ($v) { $txt = $v + $txt.Substring($k.Length) }; break }
+            }
+            $label = $(if ($who -eq 'ADMIN') { 'ADMIN' } elseif ($who) { $who } else { 'system' })
+            $out.Add(("{0}   {1,-12} {2}" -f $d, $label, $txt))
+            if ($out.Count -ge 2000) { break }
+        }
+        $head = @("GESTEM MANAGER - activity on PC $($env:COMPUTERNAME)", "Updated: $((Get-Date).ToString('dd/MM/yyyy HH:mm'))  ·  newest first  ·  no client names", '')
+        $file = Join-Path $dir ("actividad GESTEM - {0}.txt" -f $env:COMPUTERNAME)
+        [IO.File]::WriteAllLines($file, [string[]]($head + $out), (New-Object Text.UTF8Encoding($true)))
+    } catch { }
+}
 function Backup-External([switch]$Quiet) {
     # copia completa del Excel en una carpeta externa (USB, OneDrive, Google Drive, red): un archivo por día, 60 días
     $dir = "$($script:Cfg.ExtBackupDir)".Trim()
@@ -689,6 +716,7 @@ function Backup-External([switch]$Quiet) {
         $script:Cfg.LastExtBackup = (Get-Date).ToString('yyyy-MM-dd HH:mm')
         Save-Config
         Write-Log "copia externa: $dst"
+        Export-ActivityLog $dir
         return $true
     } catch {
         Write-Log "copia externa fallida: $($_.Exception.Message)"
@@ -3141,6 +3169,7 @@ $script:AdmTr = @{
  'añadió cliente' = @{ en = 'added client'; fr = 'a ajouté le client'; ar = 'أضاف العميل' }
  'editó cliente' = @{ en = 'edited client'; fr = 'a modifié le client'; ar = 'عدّل العميل' }
  'cambió los ajustes' = @{ en = 'changed the settings'; fr = 'a modifié les paramètres'; ar = 'غيّر الإعدادات' }
+ 'cerró GESTEM' = @{ en = 'closed GESTEM'; fr = 'a fermé GESTEM'; ar = 'أغلق GESTEM' }
  'sesión iniciada' = @{ en = 'signed in'; fr = 'session ouverte'; ar = 'بدأ الجلسة' }
  'copia externa:' = @{ en = 'external backup:'; fr = 'copie externe :'; ar = 'نسخة خارجية:' }
  'admin: acceso' = @{ en = 'admin: signed in'; fr = 'admin : connexion'; ar = 'المسؤول: دخول' }
@@ -3428,6 +3457,7 @@ function Start-Session([string]$who) {
     $script:UI.PanelSession.Visibility = 'Collapsed'
     $script:UI.UserBtn.Content = ((L 'userTip') -f $who)
     Write-Log "sesión iniciada"
+    if ("$($script:Cfg.ExtBackupDir)".Trim() -and (Test-Path -LiteralPath $script:Cfg.ExtBackupDir)) { Export-ActivityLog $script:Cfg.ExtBackupDir }   # así se ve enseguida quién lo abrió
     if (-not $script:EditRow) { Build-Form; Reset-Form }
     Refresh-ClientGrid
 }
@@ -3621,6 +3651,7 @@ Apply-Language
 # copia al cerrar
 $script:Win.Add_Closing({
     if ($script:Restarting) { return }
+    if ($script:User) { Write-Log 'cerró GESTEM' }
     if ($script:Cfg.ExtBackupDir -and $script:Cfg.ExcelPath) { try { [void](Backup-External -Quiet) } catch {} }
 })
 
