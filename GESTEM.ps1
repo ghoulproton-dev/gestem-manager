@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.5'
+$script:AppVersion = '1.5.6'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -1735,7 +1735,10 @@ function Get-List([string]$name) {
     return ,$out.ToArray()
 }
 function Brush([string]$hex) { return (New-Object Windows.Media.BrushConverter).ConvertFromString($hex) }
-function Show-Error([string]$msg) { [void][Windows.MessageBox]::Show($script:Win, $msg, $script:AppName, 'OK', 'Warning') }
+function Show-Error([string]$msg) {
+    try { Write-Log ("aviso mostrado: " + ($msg -replace '\s+', ' ')) } catch { }    # lo que ve la usuaria queda en «Errores» del admin
+    [void][Windows.MessageBox]::Show($script:Win, $msg, $script:AppName, 'OK', 'Warning')
+}
 function Show-Info([string]$msg) { [void][Windows.MessageBox]::Show($script:Win, $msg, $script:AppName, 'OK', 'Information') }
 function Set-Status([string]$msg) {
     $script:UI.StatusText.Text = $msg
@@ -3375,6 +3378,7 @@ $xaml = @'
                     <RadioButton x:Name="AdmLogAll" Style="{StaticResource Seg}" GroupName="admlog" IsChecked="True" Content="Todo"/>
                     <RadioButton x:Name="AdmLogTeam" Style="{StaticResource Seg}" GroupName="admlog" Content="Equipo"/>
                     <RadioButton x:Name="AdmLogAdmin" Style="{StaticResource Seg}" GroupName="admlog" Content="Admin"/>
+                    <RadioButton x:Name="AdmLogErr" Style="{StaticResource Seg}" GroupName="admlog" Content="Errores"/>
                   </StackPanel>
                 </Border>
                 <TextBlock x:Name="AdmLogTitle" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" VerticalAlignment="Center"/>
@@ -4951,6 +4955,8 @@ $script:AdmTr = @{
  '(vacío)' = @{ en = '(empty)'; fr = '(vide)'; ar = '(فارغ)' }
  'Este PC es mío: todo lo que se haga aquí cuenta como admin' = @{ en = 'This PC is mine: everything done here counts as admin'; fr = 'Ce PC est à moi : tout ce qui est fait ici compte comme admin'; ar = 'هذا الحاسوب لي: كل ما يُفعل هنا يُحسب للمسؤول' }
  'Todo' = @{ en = 'All'; fr = 'Tout'; ar = 'الكل' }
+ 'Errores' = @{ en = 'Errors'; fr = 'Erreurs'; ar = 'الأخطاء' }
+ 'Errores · {0} en este PC (los más recientes arriba)' = @{ en = 'Errors · {0} on this PC (most recent first)'; fr = 'Erreurs · {0} sur ce PC (les plus récentes en haut)'; ar = 'الأخطاء · {0} على هذا الجهاز (الأحدث أولاً)' }
  'Equipo' = @{ en = 'Team'; fr = 'Équipe'; ar = 'الفريق' }
  'Admin' = @{ en = 'Admin'; fr = 'Admin'; ar = 'المسؤول' }
  'Sistema' = @{ en = 'System'; fr = 'Système'; ar = 'النظام' }
@@ -5160,14 +5166,30 @@ function Open-AdminPanel {
 function Fill-AdminLog {
     $ui = $script:UI
     $items = New-Object System.Collections.Generic.List[object]
-    $nAdm = 0; $nTeam = 0
+    $nAdm = 0; $nTeam = 0; $nErr = 0
+    $onlyErr = ($script:AdmLogFilter -eq 'errors')
     if (Test-Path -LiteralPath $script:LogPath) {
-        $lines = @(Get-Content -LiteralPath $script:LogPath -Encoding UTF8 -Tail 1500)
+        $lines = @(Get-Content -LiteralPath $script:LogPath -Encoding UTF8 -Tail 3000)
         [array]::Reverse($lines)
         foreach ($ln in $lines) {
+            # los cierres inesperados se guardan con otro formato: «fecha  FATAL  mensaje»
+            if ($ln -match '^(\d{4})-(\d\d)-(\d\d) (\d\d:\d\d):\d\d  FATAL  (.+)$') { $ln = "$($Matches[1])-$($Matches[2])-$($Matches[3]) $($Matches[4]):00  [] fatal: $($Matches[5])" }
             if ($ln -match '^(\d{4})-(\d\d)-(\d\d) (\d\d:\d\d):\d\d  \[([^\]]*)\] (.+)$') {
                 $txt = $Matches[6]; $user = $Matches[5]
-                if ($txt -match '^(Load-Data|Save-FromForm|clic |DEBUG|pestaña no leída)') { continue }
+                $time = "$($Matches[3])/$($Matches[2])/$($Matches[1]) $($Matches[4])"    # se guarda ya: los -match de abajo cambian $Matches
+                $isErr = Test-ErrorLogLine $txt
+                if ($isErr) { $nErr++ }
+                if ($onlyErr) {
+                    if (-not $isErr -or $items.Count -ge 400) { continue }
+                    $items.Add([pscustomobject]@{
+                        Time = $time
+                        User = $(if ($user -eq 'ADMIN') { AdmT 'Admin' } elseif ($user) { $user } else { AdmT 'Sistema' })
+                        UserBg = '#FDECEC'; UserFg = '#B42318'
+                        Text = $txt; Fg = '#B42318'
+                    })
+                    continue
+                }
+                if ($txt -match '^(Load-Data|Save-FromForm|clic |DEBUG|pestaña no leída|aviso mostrado: |fatal: )') { continue }
                 $isAdm = ($user -eq 'ADMIN')
                 $kind = $(if ($isAdm) { 'admin' } elseif ($user) { 'team' } else { 'system' })
                 if ($kind -eq 'admin') { $nAdm++ } elseif ($kind -eq 'team') { $nTeam++ }
@@ -5179,7 +5201,7 @@ function Fill-AdminLog {
                 elseif ($txt -match '^(añadió|editó)') { $fg = '#1E1A1B' }
                 elseif ($txt -match '^(copia externa|sesión)') { $fg = '#6E6466' }
                 $items.Add([pscustomobject]@{
-                    Time = "$($Matches[3])/$($Matches[2])/$($Matches[1]) $($Matches[4])"
+                    Time = $time
                     User = $(switch ($kind) { 'admin' { AdmT 'Admin' } 'team' { $user } default { AdmT 'Sistema' } })
                     UserBg = $(switch ($kind) { 'admin' { '#9E1820' } 'team' { '#F3EFEF' } default { '#FFFFFF' } })
                     UserFg = $(switch ($kind) { 'admin' { '#FFFFFF' } 'team' { '#2B2526' } default { '#A69C9E' } })
@@ -5190,7 +5212,14 @@ function Fill-AdminLog {
         }
     }
     $ui.AdmLog.ItemsSource = $items
-    $ui.AdmLogTitle.Text = (AdmT 'Actividad · {0} del equipo · {1} del admin') -f $nTeam, $nAdm
+    if ($onlyErr) { $ui.AdmLogTitle.Text = (AdmT 'Errores · {0} en este PC (los más recientes arriba)') -f $nErr }
+    else { $ui.AdmLogTitle.Text = (AdmT 'Actividad · {0} del equipo · {1} del admin') -f $nTeam, $nAdm }
+    if ($ui.AdmLogErr) { $ui.AdmLogErr.Content = $(if ($nErr) { (AdmT 'Errores') + " ($nErr)" } else { AdmT 'Errores' }) }
+}
+function Test-ErrorLogLine([string]$txt) {
+    # líneas del registro que son fallos (también los que no enseñan ningún aviso)
+    if ($txt -match '^(fatal: |UI ERROR|aviso mostrado: |Load-Data: |Save-FromForm: |Guardar ERROR|Excel no actualizado|sincronizar con el Excel: |actualizar desde el Excel: |actualización: |pestaña no leída|listas \(|importar \(|config ilegible|accesos directos: |icono: |logo: |logo no válido|recibo: |exportar PDF: |calendario: |copia externa fallida|copia de seguridad fallida|admin: no se pudo|DEBUG (error|editar|conflicto|actualización automática): )') { return $true }
+    return $false
 }
 function Show-AdminTab([string]$name) {
     $ui = $script:UI
@@ -5353,7 +5382,7 @@ foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings'
                  'ChartDay','ChartWeek','ChartMonth','ChartTitle','ChartSub','ChartLegPaid','ChartLegPend','ChartGrid',
                  'ChartCanvas','ChartLabels','ChartDelta','ChartDeltaB','ChartLegMoney',
                  'DocsBtn','ReceiptBtn','ExportBtn','ExpPdf','ExpCsv','CmEdit','CmReceipt','CmDocs','DocsCol','PanelDocs','DocsCard','DocsClose','DocsTitle','DocsSub','DocsOpenBtn','DocsRemoveBtn','DocsFolderBtn','DocsAddBtn','DocsCount','DocsMsg','DocsList','DocsEmpty','DocsEmptyT','DocsDrop','DocsDropT',
-                 'PanelPaused','PausedText','PanelAdminLogin','AdmLoginHint','AdmKeyHint','AdmPw','AdmPw2','AdmLoginMsg','AdmLoginCancel','AdmLoginBtn','PanelAdmin','AdmLogout','AdmClose','AdmTabLocks','AdmTabLog','AdmTabTools','AdmPageLocks','AdmPageLog','AdmPageTools','AdmLockFile','AdmLockExt','AdmLockComp','AdmLockTeam','AdmLockPref','AdmLockHelp','AdmLockAll','AdmIgnorePause','AdmOwnerPC','AdmSaveLocks','AdmLocksMsg','AdmLogRefresh','AdmLogAll','AdmLogTeam','AdmLogAdmin','AdmLogTitle','AdmLog','AdmRemoteTxt','AdmUpdate','AdmOpenData','AdmOpenApp','AdmShowAll','AdmInfo','AdmNewPw','AdmNewPw2','AdmChangePw','AdmPwMsg','SecFileBox','SecExtBox','SecCompBox','SecTeamBox','SecPrefBox','SecHelpBox',
+                 'PanelPaused','PausedText','PanelAdminLogin','AdmLoginHint','AdmKeyHint','AdmPw','AdmPw2','AdmLoginMsg','AdmLoginCancel','AdmLoginBtn','PanelAdmin','AdmLogout','AdmClose','AdmTabLocks','AdmTabLog','AdmLogErr','AdmTabTools','AdmPageLocks','AdmPageLog','AdmPageTools','AdmLockFile','AdmLockExt','AdmLockComp','AdmLockTeam','AdmLockPref','AdmLockHelp','AdmLockAll','AdmIgnorePause','AdmOwnerPC','AdmSaveLocks','AdmLocksMsg','AdmLogRefresh','AdmLogAll','AdmLogTeam','AdmLogAdmin','AdmLogTitle','AdmLog','AdmRemoteTxt','AdmUpdate','AdmOpenData','AdmOpenApp','AdmShowAll','AdmInfo','AdmNewPw','AdmNewPw2','AdmChangePw','AdmPwMsg','SecFileBox','SecExtBox','SecCompBox','SecTeamBox','SecPrefBox','SecHelpBox',
                  'TopBar','StatsScope','StatsAllBtn','StatsAllTxt','NavStats','PanelStats','StatsWho','StatsPeriod','StatsRefresh','StatsTitle','StatsSub','StatsTable','StatsGrid',
                  'KpiBillL','KpiBill','KpiBillF','KpiPaidL','KpiPaid','KpiPaidTrack','KpiPaidF','KpiPendL','KpiPend','KpiPendF','KpiNetL','KpiNet','KpiNetF',
                  'SideLogo','SideCompany','SessLogo','SessCompany','AboutImg','AboutCompany','SetCompanyL','CompanyBox','SetLogoL','LogoPreview','LogoBtn','LogoClearBtn')) {
@@ -5414,6 +5443,7 @@ $ui.AdmLogRefresh.Add_Click({ Fill-AdminLog })
 $ui.AdmLogAll.Add_Checked({ $script:AdmLogFilter = 'all'; Fill-AdminLog })
 $ui.AdmLogTeam.Add_Checked({ $script:AdmLogFilter = 'team'; Fill-AdminLog })
 $ui.AdmLogAdmin.Add_Checked({ $script:AdmLogFilter = 'admin'; Fill-AdminLog })
+$ui.AdmLogErr.Add_Checked({ $script:AdmLogFilter = 'errors'; Fill-AdminLog })
 $ui.AdmChangePw.Add_Click({ Change-AdminPw })
 $ui.AdmUpdate.Add_Click({ $script:UI.PanelAdmin.Visibility = 'Collapsed'; Check-Update -Manual })
 $ui.AdmOpenData.Add_Click({ Start-Process explorer.exe -ArgumentList "`"$($script:DataDir)`"" })
