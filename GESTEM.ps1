@@ -18,7 +18,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security, System.Drawing
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.4.2'
+$script:AppVersion = '1.4.4'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -331,6 +331,7 @@ $script:Text = @{
 # textos de documentos, recibos y exportar
 $script:TextMore = @{
  es = @{
+  calToday = 'Hoy'
   btnDocs = 'Documentos'
   btnReceipt = 'Recibo PDF'
   btnExport = 'Exportar'
@@ -385,6 +386,7 @@ $script:TextMore = @{
   exDone = '✓ Exportado: {0}'
  }
  en = @{
+  calToday = 'Today'
   btnDocs = 'Documents'
   btnReceipt = 'PDF receipt'
   btnExport = 'Export'
@@ -439,6 +441,7 @@ $script:TextMore = @{
   exDone = '✓ Exported: {0}'
  }
  fr = @{
+  calToday = 'Aujourd''hui'
   btnDocs = 'Documents'
   btnReceipt = 'Reçu PDF'
   btnExport = 'Exporter'
@@ -493,6 +496,7 @@ $script:TextMore = @{
   exDone = '✓ Exporté : {0}'
  }
  ar = @{
+  calToday = 'اليوم'
   btnDocs = 'المستندات'
   btnReceipt = 'إيصال PDF'
   btnExport = 'تصدير'
@@ -1232,29 +1236,42 @@ $xaml = @'
       </Setter>
     </Style>
     <Style x:Key="CalDay" TargetType="CalendarDayButton">
-      <Setter Property="MinWidth" Value="34"/>
-      <Setter Property="MinHeight" Value="32"/>
-      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="MinWidth" Value="40"/>
+      <Setter Property="MinHeight" Value="38"/>
+      <Setter Property="FontSize" Value="13"/>
       <Setter Property="Foreground" Value="#2B2526"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="CalendarDayButton">
             <Grid Background="Transparent">
-              <Ellipse x:Name="hov" Width="30" Height="30" Fill="#F1EDED" Visibility="Collapsed"/>
-              <Ellipse x:Name="today" Width="30" Height="30" Stroke="#C4161C" StrokeThickness="1.2" Visibility="Collapsed"/>
-              <Ellipse x:Name="sel" Width="30" Height="30" Fill="#C4161C" Visibility="Collapsed"/>
+              <Ellipse x:Name="hov" Width="34" Height="34" Fill="#FBEDEE" Visibility="Collapsed"/>
+              <Ellipse x:Name="today" Width="34" Height="34" Stroke="#C4161C" StrokeThickness="1.4" Visibility="Collapsed"/>
+              <Ellipse x:Name="sel" Width="34" Height="34" Visibility="Collapsed">
+                <Ellipse.Fill>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#D42A31" Offset="0"/>
+                    <GradientStop Color="#9E1820" Offset="1"/>
+                  </LinearGradientBrush>
+                </Ellipse.Fill>
+                <Ellipse.Effect><DropShadowEffect BlurRadius="8" ShadowDepth="2" Direction="270" Opacity="0.3" Color="#9E1820"/></Ellipse.Effect>
+              </Ellipse>
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="hov" Property="Visibility" Value="Visible"/></Trigger>
-              <Trigger Property="IsInactive" Value="True"><Setter Property="Foreground" Value="#C2BABC"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="hov" Property="Visibility" Value="Visible"/>
+                <Setter Property="Foreground" Value="#9E1820"/>
+              </Trigger>
+              <Trigger Property="IsInactive" Value="True"><Setter Property="Foreground" Value="#C9C1C3"/></Trigger>
               <Trigger Property="IsToday" Value="True">
                 <Setter TargetName="today" Property="Visibility" Value="Visible"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="#9E1820"/>
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
                 <Setter TargetName="sel" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="today" Property="Visibility" Value="Collapsed"/>
                 <Setter Property="Foreground" Value="White"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
               </Trigger>
@@ -1264,14 +1281,170 @@ $xaml = @'
         </Setter.Value>
       </Setter>
     </Style>
+    <Style x:Key="CalBtn" TargetType="CalendarButton">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Foreground" Value="#2B2526"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CalendarButton">
+            <Border x:Name="b" Width="62" Height="44" Margin="4" CornerRadius="10" Background="Transparent">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#FBEDEE"/>
+                <Setter Property="Foreground" Value="#9E1820"/>
+              </Trigger>
+              <Trigger Property="HasSelectedDays" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#C4161C"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+              </Trigger>
+              <Trigger Property="IsInactive" Value="True"><Setter Property="Foreground" Value="#C9C1C3"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalNav" TargetType="Button">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Width="30" Height="30" CornerRadius="15" Background="#1FFFFFFF">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#40FFFFFF"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.35"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalHead" TargetType="Button">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" CornerRadius="8" Padding="10,4" Background="Transparent" HorizontalAlignment="Center">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#26FFFFFF"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalItem" TargetType="CalendarItem">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CalendarItem">
+            <ControlTemplate.Resources>
+              <DataTemplate x:Key="{x:Static CalendarItem.DayTitleTemplateResourceKey}">
+                <TextBlock Text="{Binding}" FontSize="11" FontWeight="SemiBold" Foreground="#A69C9E" HorizontalAlignment="Center" Margin="0,10,0,4"/>
+              </DataTemplate>
+            </ControlTemplate.Resources>
+            <Grid x:Name="PART_Root">
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+              <Border CornerRadius="11,11,0,0" Padding="10,10">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#9E1820" Offset="0"/>
+                    <GradientStop Color="#6E0E14" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <Button x:Name="PART_PreviousButton" Style="{StaticResource CalNav}">
+                    <TextBlock Text="&#xE76B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="White"/>
+                  </Button>
+                  <Button x:Name="PART_HeaderButton" Grid.Column="1" Style="{StaticResource CalHead}"/>
+                  <Button x:Name="PART_NextButton" Grid.Column="2" Style="{StaticResource CalNav}">
+                    <TextBlock Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="White"/>
+                  </Button>
+                </Grid>
+              </Border>
+              <Grid x:Name="PART_MonthView" Grid.Row="1" Margin="10,0,10,6" Visibility="Visible">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+              </Grid>
+              <Grid x:Name="PART_YearView" Grid.Row="1" Margin="10,10,10,10" Visibility="Hidden" HorizontalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              </Grid>
+              <Rectangle x:Name="PART_DisabledVisual" Grid.RowSpan="2" Fill="#80FFFFFF" Visibility="Collapsed" RadiusX="12" RadiusY="12"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="PART_DisabledVisual" Property="Visibility" Value="Visible"/></Trigger>
+              <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Calendar}}}" Value="Year">
+                <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden"/>
+                <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible"/>
+              </DataTrigger>
+              <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Calendar}}}" Value="Decade">
+                <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden"/>
+                <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible"/>
+              </DataTrigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalToday" TargetType="Button">
+      <Setter Property="Foreground" Value="#9E1820"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" CornerRadius="16" Padding="16,6" Background="#FBEDEE" HorizontalAlignment="Center">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE8D1;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                <ContentPresenter VerticalAlignment="Center"/>
+              </StackPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#C4161C"/>
+                <Setter Property="Foreground" Value="White"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
     <Style x:Key="Cal" TargetType="Calendar">
       <Setter Property="CalendarDayButtonStyle" Value="{StaticResource CalDay}"/>
+      <Setter Property="CalendarButtonStyle" Value="{StaticResource CalBtn}"/>
+      <Setter Property="CalendarItemStyle" Value="{StaticResource CalItem}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Calendar">
-            <Border Margin="0,6,14,16" Background="White" BorderBrush="#E4DFE0" BorderThickness="1" CornerRadius="12" Padding="8,6">
-              <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="5" Direction="270" Opacity="0.18" Color="#000000"/></Border.Effect>
-              <CalendarItem x:Name="PART_CalendarItem" Style="{TemplateBinding CalendarItemStyle}" Background="White" BorderBrush="White" BorderThickness="0"/>
+            <Border Margin="0,6,16,18" Background="White" BorderBrush="#E4DFE0" BorderThickness="1" CornerRadius="12">
+              <Border.Effect><DropShadowEffect BlurRadius="26" ShadowDepth="6" Direction="270" Opacity="0.22" Color="#3A0A0D"/></Border.Effect>
+              <StackPanel>
+                <CalendarItem x:Name="PART_CalendarItem" Style="{TemplateBinding CalendarItemStyle}" Background="White" BorderBrush="White" BorderThickness="0"/>
+                <Border BorderBrush="#F1EDED" BorderThickness="0,1,0,0" Padding="0,10,0,12">
+                  <Button x:Name="TodayBtn" Style="{StaticResource CalToday}" Content="Hoy"/>
+                </Border>
+              </StackPanel>
             </Border>
           </ControlTemplate>
         </Setter.Value>
@@ -2602,6 +2775,23 @@ function Add-ToGrid($el, [int]$col, [int]$span) {
     [void]$g.Children.Add($el)
 }
 
+# botón «Hoy» del calendario desplegable
+function Connect-CalendarToday($dp) {
+    try {
+        $pop = $dp.Template.FindName('PART_Popup', $dp)
+        if (-not $pop -or -not $pop.Child) { return }
+        $cal = $pop.Child
+        [void]$cal.ApplyTemplate()
+        $b = $cal.Template.FindName('TodayBtn', $cal)
+        if (-not $b) { return }
+        $b.Content = L 'calToday'
+        $b.Tag = $dp
+        if ($b.Uid -ne 'w') {
+            $b.Uid = 'w'
+            $b.Add_Click({ $d = $this.Tag; $d.SelectedDate = [DateTime]::Today; $d.DisplayDate = [DateTime]::Today; $d.IsDropDownOpen = $false })
+        }
+    } catch { Write-Log "calendario: $($_.Exception.Message)" }
+}
 function Build-Form {
     $T = $script:T
     $g = $script:UI.FormGrid
@@ -2642,8 +2832,12 @@ function Build-Form {
             'Date' {
                 $c = New-Object Windows.Controls.DatePicker
                 $c.SelectedDateFormat = 'Short'
-                $c.Language = [Windows.Markup.XmlLanguage]::GetLanguage('es-ES')
+                # calendario en el idioma del programa (todos con fecha dd/mm/aaaa y semana desde el lunes)
+                $cal = @{ es = 'es-ES'; en = 'en-GB'; fr = 'fr-FR'; ar = 'ar-MA' }["$($script:Cfg.Language)"]
+                if (-not $cal) { $cal = 'es-ES' }
+                $c.Language = [Windows.Markup.XmlLanguage]::GetLanguage($cal)
                 $c.Add_SelectedDateChanged({ On-FieldChanged $this })
+                $c.Add_CalendarOpened({ Connect-CalendarToday $this })
             }
             'Pills' {
                 $c = New-Object Windows.Controls.WrapPanel
