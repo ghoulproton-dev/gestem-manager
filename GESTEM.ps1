@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.7.1'
+$script:AppVersion = '1.7.2'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -789,7 +789,7 @@ function Get-FieldLabel($field) { $l = $field.Label[$script:Cfg.Language]; if (-
 # =====================================================================
 function Load-Config {
     $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = ''
-             InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = '' }    # emisor por defecto de las facturas: la gestora
+             InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = ''; SumsRepaired = $false }    # emisor por defecto de las facturas: la gestora
     if (Test-Path $script:CfgPath) {
         try {
             $j = Get-Content -Raw -Path $script:CfgPath -Encoding UTF8 | ConvertFrom-Json
@@ -1466,16 +1466,20 @@ function Get-CachedData {
 }
 
 function Restore-Formula($ws, [string]$col, [int]$row) {
-    # vuelve a poner la fórmula automática de esa columna (copiándola de otra fila)
-    # una sola llamada a Excel para encontrar las fórmulas (antes se miraban las 1000 filas una a una)
+    # vuelve a poner la fórmula automática de esa columna, copiándola de OTRA FILA DE CLIENTE
+    # (nunca de la fila de totales: su SUM(...) en una fila de cliente es un error)
     $T = $script:T
     $fx = $null
-    # devuelve $false si esa columna no tiene fórmulas (pestaña creada por GESTEM): entonces se escribe el valor
+    # devuelve $false si esa columna no tiene fórmulas de clientes: entonces se escribe el valor
     try { $fx = $ws.Range("$col$($T.FirstRow):$col$($T.LastRow)").SpecialCells(-4123) } catch { if (Test-ExcelBusyError $_.Exception) { throw }; return $false }   # -4123 = celdas con fórmula
     foreach ($src in $fx.Cells) {
-        if ($src.Row -ne $row) { $ws.Range("$col$row").FormulaR1C1 = $src.FormulaR1C1; return $true }
+        if ($src.Row -eq $row) { continue }
+        if ("$($src.Formula)".TrimStart('=').ToUpperInvariant().StartsWith('SUM(')) { continue }
+        if (-not "$($ws.Range("$($T.NameCol)$($src.Row)").Value2)".Trim()) { continue }
+        $ws.Range("$col$row").FormulaR1C1 = $src.FormulaR1C1; return $true
     }
-    return [bool]$ws.Range("$col$row").HasFormula    # la única fórmula es la de esa fila: se deja
+    $own = $ws.Range("$col$row")
+    return ([bool]$own.HasFormula -and -not "$($own.Formula)".TrimStart('=').ToUpperInvariant().StartsWith('SUM('))
 }
 
 function ConvertTo-CellNumber($v) {
@@ -1539,7 +1543,16 @@ function Get-ClientOps([hashtable]$vals) {
     return ,$ops
 }
 function Save-ClientToFile($ops, $row, [string]$ExpectName, [switch]$IsNew) {
+    # un solo cliente: ver Save-ClientsToFile
+    $r = Save-ClientsToFile @(@{ Ops = $ops; Row = $row; Expect = $ExpectName; IsNew = [bool]$IsNew })
+    if ($r) { return $r[0] }
+    return $null
+}
+function Save-ClientsToFile($items, [switch]$OnlyBroken) {
+    # varios clientes del mismo trámite en una sola pasada por el archivo
+    # -OnlyBroken: solo arregla celdas con una fórmula SUM(...) copiada por error de la fila de totales
     $T = $script:T
+    $script:SumFixed = 0
     $path = "$($script:Cfg.ExcelPath)"
     if (-not $path -or -not (Test-Path -LiteralPath $path)) { return $null }
     # abierto en Excel (aquí o en otro PC): Excel tiene el archivo bloqueado -> se usa Excel
@@ -1645,70 +1658,90 @@ function Save-ClientToFile($ops, $row, [string]$ExpectName, [switch]$IsNew) {
                 }
                 return $null
             }
+            $colFx = @{}
+            $isSum = { param($fx) return ($fx -and "$($fx.InnerText)".Trim().TrimStart('=').ToUpperInvariant().StartsWith('SUM(')) }
             $colHasFormula = {
-                # ¿esa columna tiene fórmulas en otras filas de clientes?
+                # ¿esa columna tiene fórmulas en OTRAS filas de clientes? (filas con nombre; nunca la fila de totales)
                 param([string]$col, [int]$skip)
+                if ($colFx.ContainsKey($col)) { return $colFx[$col] }    # una sola búsqueda por columna
+                $colFx[$col] = $false
                 foreach ($k in $rows.Keys) {
                     if ($k -lt $T.FirstRow -or $k -gt $T.LastRow -or $k -eq $skip) { continue }
+                    if (-not (& $cellText (& $getCell $k $T.NameCol $false)).Trim()) { continue }
                     foreach ($c in $rows[$k].ChildNodes) {
-                        if ($c.LocalName -eq 'c' -and $c.GetAttribute('r') -eq "$col$k") { foreach ($ch in $c.ChildNodes) { if ($ch.LocalName -eq 'f') { return $true } } }
+                        if ($c.LocalName -eq 'c' -and $c.GetAttribute('r') -eq "$col$k") { foreach ($ch in $c.ChildNodes) { if ($ch.LocalName -eq 'f' -and -not (& $isSum $ch)) { $colFx[$col] = $true; return $true } } }
                     }
                 }
                 return $false
             }
-            # fila: la guardada, salvo que en el Excel ya haya otro cliente escrito a mano
-            if ($row -and $IsNew) {
-                $cur = (& $cellText (& $getCell ([int]$row) $T.NameCol $false)).Trim()
-                if ($cur -and $cur -ne "$ExpectName".Trim()) { $row = $null }
-            }
-            if (-not $row) {
-                for ($r = $T.FirstRow; $r -le $T.LastRow; $r++) { if (-not (& $cellText (& $getCell $r $T.NameCol $false)).Trim()) { $row = $r; break } }
-                if (-not $row) { throw (L 'errFull') }
-            }
-            $row = [int]$row
-            foreach ($op in $ops) {
-                $c = & $getCell $row $op.Col $false
-                $empty = ($null -eq $op.Value -or "$($op.Value)" -eq '')
-                if (-not $c -and $empty) { continue }
-                $fx = $null; if ($c) { foreach ($ch in $c.ChildNodes) { if ($ch.LocalName -eq 'f') { $fx = $ch } } }
-                if ($op.Kind -eq 'formula' -and $fx) { continue }                                   # la fórmula del Excel se queda
-                if ($op.Kind -eq 'formula' -and (& $colHasFormula $op.Col $row)) { Write-Log "Excel directo: la columna $($op.Col) tiene fórmula"; return $null }   # Excel copia la fórmula de la columna a esta fila
-                if ($fx -and $fx.GetAttribute('t') -eq 'shared' -and $fx.GetAttribute('ref')) { Write-Log "Excel directo: fórmula compartida en $($op.Col)$row"; return $null }   # fórmula compartida: mejor Excel
-                if (-not $c) { $c = & $getCell $row $op.Col $true }
-                if ($op.Type -eq 'Date' -and -not $empty -and -not $c.GetAttribute('s')) {
-                    $st = & $colStyle $op.Col
-                    if (-not $st) { Write-Log "Excel directo: la columna $($op.Col) no tiene formato de fecha"; return $null }    # sin formato de fecha la celda saldría como un número
-                    $c.SetAttribute('s', $st)
+            $results = New-Object System.Collections.Generic.List[object]
+            $changed = $false
+            foreach ($it in $items) {
+                # fila: la guardada, salvo que en el Excel ya haya otro cliente escrito a mano
+                $row = $it.Row
+                if ($row -and $it.IsNew) {
+                    $cur = (& $cellText (& $getCell ([int]$row) $T.NameCol $false)).Trim()
+                    if ($cur -and $cur -ne "$($it.Expect)".Trim()) { $row = $null }
                 }
-                foreach ($ch in @($c.ChildNodes)) { if ($ch.LocalName -in 'f', 'v', 'is') { [void]$c.RemoveChild($ch) } }
-                $c.RemoveAttribute('t')
-                if ($empty) { continue }
-                if ($op.Type -in 'Date', 'Money') {
-                    $v = $doc.CreateElement('v', $ns); $v.InnerText = ([double]$op.Value).ToString('R', [Globalization.CultureInfo]::InvariantCulture)
-                    [void]$c.AppendChild($v)
-                } else {
-                    $c.SetAttribute('t', 'inlineStr')
-                    $is = $doc.CreateElement('is', $ns); $tx = $doc.CreateElement('t', $ns)
-                    $tx.InnerText = "$($op.Value)"
-                    if ("$($op.Value)" -ne "$($op.Value)".Trim()) { [void]$tx.SetAttribute('space', 'http://www.w3.org/XML/1998/namespace', 'preserve') }
-                    [void]$is.AppendChild($tx); [void]$c.AppendChild($is)
+                if (-not $row) {
+                    for ($r = $T.FirstRow; $r -le $T.LastRow; $r++) { if (-not (& $cellText (& $getCell $r $T.NameCol $false)).Trim()) { $row = $r; break } }
+                    if (-not $row) { throw (L 'errFull') }
                 }
+                $row = [int]$row
+                foreach ($op in $it.Ops) {
+                    $c = & $getCell $row $op.Col $false
+                    $empty = ($null -eq $op.Value -or "$($op.Value)" -eq '')
+                    if (-not $c -and $empty) { continue }
+                    $fx = $null; if ($c) { foreach ($ch in $c.ChildNodes) { if ($ch.LocalName -eq 'f') { $fx = $ch } } }
+                    $broken = (& $isSum $fx)    # SUM(...) en una fila de cliente: copiada por error de la fila de totales
+                    if ($OnlyBroken -and -not $broken) { continue }
+                    if ($broken) { $fx = $null; $script:SumFixed++ }
+                    if ($op.Kind -eq 'formula' -and $fx) { continue }                                   # la fórmula del Excel se queda
+                    if ($op.Kind -eq 'formula' -and (& $colHasFormula $op.Col $row)) { Write-Log "Excel directo: la columna $($op.Col) tiene fórmula"; return $null }   # Excel copia la fórmula de la columna a esta fila
+                    if ($fx -and $fx.GetAttribute('t') -eq 'shared' -and $fx.GetAttribute('ref')) { Write-Log "Excel directo: fórmula compartida en $($op.Col)$row"; return $null }   # fórmula compartida: mejor Excel
+                    if (-not $c) { $c = & $getCell $row $op.Col $true }
+                    if ($op.Type -eq 'Date' -and -not $empty -and -not $c.GetAttribute('s')) {
+                        $st = & $colStyle $op.Col
+                        if (-not $st) { Write-Log "Excel directo: la columna $($op.Col) no tiene formato de fecha"; return $null }    # sin formato de fecha la celda saldría como un número
+                        $c.SetAttribute('s', $st)
+                    }
+                    foreach ($ch in @($c.ChildNodes)) { if ($ch.LocalName -in 'f', 'v', 'is') { [void]$c.RemoveChild($ch) } }
+                    $changed = $true
+                    $c.RemoveAttribute('t')
+                    if ($empty) { continue }
+                    if ($op.Type -in 'Date', 'Money') {
+                        $v = $doc.CreateElement('v', $ns); $v.InnerText = ([double]$op.Value).ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+                        [void]$c.AppendChild($v)
+                    } else {
+                        $c.SetAttribute('t', 'inlineStr')
+                        $is = $doc.CreateElement('is', $ns); $tx = $doc.CreateElement('t', $ns)
+                        $tx.InnerText = "$($op.Value)"
+                        if ("$($op.Value)" -ne "$($op.Value)".Trim()) { [void]$tx.SetAttribute('space', 'http://www.w3.org/XML/1998/namespace', 'preserve') }
+                        [void]$is.AppendChild($tx); [void]$c.AppendChild($is)
+                    }
+                }
+                $id = (& $cellText (& $getCell $row $T.IdCol $false)).Trim()
+                $results.Add(@{ Id = $id; Row = $row })
             }
-            $id = (& $cellText (& $getCell $row $T.IdCol $false)).Trim()
+            if (-not $changed) { $result = $results; $sheetPath = $null }
+            else {
             & $writeXml $sheetPath $doc
             # que Excel vuelva a calcular los totales al abrir
             $calc = $wbx.GetElementsByTagName('calcPr', $ns) | Select-Object -First 1
             if ($calc) { $calc.SetAttribute('fullCalcOnLoad', '1'); & $writeXml 'xl/workbook.xml' $wbx }
-            $result = @{ Id = $id; Row = $row }
+            $result = $results
+            }
         } finally { $zip.Dispose() }
         if (-not $result) { return $null }
+        if (-not $sheetPath) { return ,$result }    # nada que cambiar en el archivo
         # comprobación: el archivo nuevo se abre y la pestaña se lee bien
         $chk = [IO.Compression.ZipFile]::OpenRead($tmp)
         try { $e = $chk.GetEntry($sheetPath); $sr = New-Object IO.StreamReader($e.Open()); try { $xx = New-Object Xml.XmlDocument; $xx.LoadXml($sr.ReadToEnd()) } finally { $sr.Dispose() } } finally { $chk.Dispose() }
         if ($script:Cfg.Backup) { Backup-Excel }
         [IO.File]::Copy($tmp, $path, $true)    # si Excel lo acaba de abrir, falla aquí y se usa Excel
-        Write-Log ("Excel (directo): fila {0} ({1})" -f $result.Row, $result.Id)
-        return $result
+        if ($OnlyBroken) { Write-Log ("Excel (directo): {0} celda(s) con SUM(...) copiada de la fila de totales, arreglada(s) · {1}" -f $script:SumFixed, $T.Sheet) }
+        else { Write-Log ("Excel (directo): {0}" -f ((@($result | ForEach-Object { "fila $($_.Row) ($($_.Id))" })) -join ', ')) }
+        return ,$result
     } finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
 }
 function Save-Client([hashtable]$vals, $row, [string]$ExpectName, [switch]$IsNew, $Handle, [switch]$FileOnly) {
@@ -2101,6 +2134,59 @@ function Sync-RecordToExcel($t, $rec, $h, [switch]$FileOnly) {
         return $false
     } finally { $script:T = $prevT; $script:Tariff = $prevTar }
 }
+function Save-PendingBatchToFile($t, $recs) {
+    # todos los pendientes de un trámite en una sola pasada por el archivo; $false si hay que usar Excel
+    $prevT = $script:T; $prevTar = $script:Tariff
+    try {
+        $script:T = $t
+        $s0 = Read-Store $t; if ($s0) { $script:Tariff = $s0.Meta.Tariff }
+        $items = @(foreach ($rec in $recs) {
+            $vals = @{}; foreach ($k in $rec.F.Keys) { $vals[$k] = $rec.F[$k] }
+            @{ Ops = (Get-ClientOps $vals); Row = $rec.Row; Expect = "$($rec.F['name'])"; IsNew = [bool]$rec.New }
+        })
+        $res = $null
+        try { $res = Save-ClientsToFile $items } catch { Write-Log "Excel directo no posible: $($_.Exception.Message)" }
+        if (-not $res) { return $false }
+        $lk = Enter-StoreLock
+        try {
+            $s = Read-Store $t
+            for ($i = 0; $i -lt @($recs).Count; $i++) {
+                $rec = @($recs)[$i]; $r = $res[$i]
+                $c = $s.Clients | Where-Object { $_.Row -eq [int]$rec.Row } | Select-Object -First 1
+                if (-not $c) { continue }
+                if ($r.Row -ne $rec.Row) { $c.Row = $r.Row; Write-Log ("expediente {0} pasa a la fila {1} del Excel" -f $rec.Id, $r.Row) }
+                if ($r.Id) { $c.Id = $r.Id }
+                $c.Sync = $true; $c.New = $false
+            }
+            Write-Store $t $s
+        } finally { Exit-StoreLock $lk }
+        return $true
+    } finally { $script:T = $prevT; $script:Tariff = $prevTar }
+}
+function Repair-TotalsFormulas {
+    # una vez: las versiones anteriores, al guardar con Excel, copiaban en «Importe pagado» (y a veces el precio)
+    # la fórmula SUM(...) de la fila de totales. Se cambia por el valor guardado en GESTEM, solo en esas celdas.
+    if ($script:Cfg.SumsRepaired) { return }
+    $ok = $true; $prevT = $script:T; $prevTar = $script:Tariff
+    try {
+        foreach ($t in $script:Tramites) {
+            $s = $null; try { $s = Read-Store $t } catch { }
+            if (-not $s) { continue }
+            $recs = @($s.Clients | Where-Object { [int]$_.Row -lt $script:HandRowBase -and $_.Sync })
+            if (-not $recs.Count) { continue }
+            $script:T = $t; $script:Tariff = $s.Meta.Tariff
+            $items = @(foreach ($rec in $recs) {
+                $vals = @{}; foreach ($k in $rec.F.Keys) { $vals[$k] = $rec.F[$k] }
+                @{ Ops = (Get-ClientOps $vals); Row = $rec.Row; Expect = "$($rec.F['name'])"; IsNew = $false }
+            })
+            $res = $null
+            try { $res = Save-ClientsToFile $items -OnlyBroken } catch { Write-Log "reparar totales ($($t.Sheet)): $($_.Exception.Message)" }
+            if (-not $res -and (Test-GenTramite $t)) { continue }    # trámite sin pestaña de GESTEM: nada que reparar
+            if (-not $res) { $ok = $false }
+        }
+    } finally { $script:T = $prevT; $script:Tariff = $prevTar }
+    if ($ok) { $script:Cfg.SumsRepaired = $true; Save-Config }
+}
 function Sync-PendingToExcel {
     # clientes guardados en GESTEM que todavía no están en el Excel
     $todo = @()
@@ -2112,7 +2198,11 @@ function Sync-PendingToExcel {
     $h = $null; $n = 0
     # primero directamente en el archivo; Excel solo para lo que no se pueda así
     $left = @()
-    foreach ($x in $todo) { if (Sync-RecordToExcel $x[0] $x[1] -FileOnly) { $n++ } else { $left += ,$x } }
+    foreach ($t in $script:Tramites) {
+        $grp = @($todo | Where-Object { $_[0].Id -eq $t.Id })
+        if (-not $grp.Count) { continue }
+        if ((Save-PendingBatchToFile $t @($grp | ForEach-Object { $_[1] }))) { $n += $grp.Count } else { $left += $grp }
+    }
     if (-not $left.Count) { if ($n) { Write-Log ("Excel actualizado con {0} cliente(s) pendiente(s)" -f $n) }; return $n }
     try {
         $h = Invoke-Excel { Open-Book -ForWrite }
@@ -7013,6 +7103,7 @@ $script:Win.Add_ContentRendered({
     if (Load-Data -All) {
         Apply-Language
         if ((Get-PendingSyncCount) -gt 0) { if ((Sync-PendingToExcel) -gt 0) { [void](Load-Data -All) } }
+        try { Repair-TotalsFormulas } catch { Write-Log "reparar totales: $($_.Exception.Message)" }
         $script:LiveTimer.Start()
     }
     $script:Win.Cursor = $null
