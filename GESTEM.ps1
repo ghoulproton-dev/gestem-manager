@@ -18,7 +18,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security, System.Drawing
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.4.1'
+$script:AppVersion = '1.4.2'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -4094,6 +4094,12 @@ $script:HelpTr = @{
  'GESTEM Manager · todo lo que necesitas para trabajar con el programa' = @{ en = 'GESTEM Manager · everything you need to work with the program'; fr = 'GESTEM Manager · tout ce qu''il faut pour travailler avec le programme'; ar = 'GESTEM Manager · كل ما تحتاجه للعمل بالبرنامج' }
 }
 foreach ($k in $script:HelpTr.Keys) { $script:AdmTr[$k] = $script:HelpTr[$k] }
+# pantalla «Acerca de» en otros idiomas
+$script:AboutTr = @{
+ '© 2026 Yano · Todos los derechos reservados' = @{ en = '© 2026 Yano · All rights reserved'; fr = '© 2026 Yano · Tous droits réservés'; ar = '© 2026 Yano · جميع الحقوق محفوظة' }
+ 'Programa con licencia de uso para la empresa titular. Prohibida su copia, modificación, distribución o reventa sin permiso escrito del autor.' = @{ en = 'Licensed for use by the company that holds it. Copying, modifying, distributing or reselling it without the author''s written permission is prohibited.'; fr = 'Programme sous licence d''utilisation pour l''entreprise titulaire. Copie, modification, distribution ou revente interdites sans l''autorisation écrite de l''auteur.'; ar = 'برنامج مرخّص للاستخدام من قِبل الشركة صاحبة الترخيص. يُمنع نسخه أو تعديله أو توزيعه أو إعادة بيعه دون إذن مكتوب من المؤلف.' }
+}
+foreach ($k in $script:AboutTr.Keys) { $script:AdmTr[$k] = $script:AboutTr[$k] }
 # texto del área de administrador en el idioma elegido (las claves son el texto en español)
 function AdmT([string]$es) {
     $lang = "$($script:Cfg.Language)"
@@ -4117,7 +4123,7 @@ function Set-AdmTree($node) {
     foreach ($c in [Windows.LogicalTreeHelper]::GetChildren($node)) { Set-AdmTree $c }
 }
 function Apply-AdminLanguage {
-    foreach ($p in 'PanelPaused', 'PanelAdminLogin', 'PanelAdmin', 'PanelHelp') { Set-AdmTree $script:UI[$p] }
+    foreach ($p in 'PanelPaused', 'PanelAdminLogin', 'PanelAdmin', 'PanelHelp', 'PanelAbout') { Set-AdmTree $script:UI[$p] }
 }
 # registro de actividad: traduce solo el principio conocido de cada línea
 function Convert-LogText([string]$txt) {
