@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.3'
+$script:AppVersion = '1.5.4'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -1035,7 +1035,7 @@ function ConvertFrom-StoreValue($f, $v) {
         if ([DateTime]::TryParseExact("$v", 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$d)) { return $d }
         return $null
     }
-    if ($f.Type -eq 'Money') { return [double]$v }
+    if ($f.Type -eq 'Money') { return (ConvertTo-CellNumber $v) }    # texto en una columna de importes («CNTA …») = sin importe
     return $v
 }
 function Read-Store($t) {
@@ -1093,6 +1093,7 @@ function Resolve-Record($t, [hashtable]$FV, $meta) {
     $natF = $t.Fields | Where-Object { $_.Role -eq 'nationality' } | Select-Object -First 1
     if ($natF -and -not "$($FV[$natF.Key])".Trim() -and "$($FV['name'])".Trim()) { $FV[$natF.Key] = $t.DefaultNationality }
     $tipo = "$($FV['tipo'])"
+    foreach ($k in 'price', 'paid', 'gastos') { if ($FV.ContainsKey($k)) { $FV[$k] = ConvertTo-CellNumber $FV[$k] } }
     if ($t.TipoCol -and $null -eq $FV['price'] -and $tipo -and $meta.Tariff.ContainsKey($tipo)) { $FV['price'] = $meta.Tariff[$tipo] }
     $price = $FV['price']
     $ps = "$($FV['paystate'])"
@@ -1106,7 +1107,7 @@ function New-RowObject($t, $c, $meta) {
     $FV = $c.F
     $rec = @{ Row = $c.Row }
     foreach ($k in $FV.Keys) { $rec[$k] = $FV[$k] }
-    $price = $FV['price']; $paid = $FV['paid']; $ps = "$($FV['paystate'])"; $status = "$($FV['status'])"
+    $price = ConvertTo-CellNumber $FV['price']; $paid = ConvertTo-CellNumber $FV['paid']; $ps = "$($FV['paystate'])"; $status = "$($FV['status'])"
     $pend = 0.0
     if ($null -ne $price) {
         if ($ps -ne 'Pagado') { $pv = 0.0; if ($null -ne $paid) { $pv = [double]$paid }; $pend = [math]::Max([double]0, [double]$price - $pv) }
@@ -1116,7 +1117,7 @@ function New-RowObject($t, $c, $meta) {
     if ($FV['fsol'] -is [DateTime] -and $status -notin $closed) { $days = [int]([DateTime]::Today - $FV['fsol'].Date).TotalDays }
     $net = 0.0
     if ($null -ne $price) {
-        if ($t.NetCol -eq 'W') { $g = 0.0; if ($null -ne $FV['gastos']) { $g = [double]$FV['gastos'] }; $net = [double]$price - $g }
+        if ($t.NetCol -eq 'W') { $g = 0.0; $gv = ConvertTo-CellNumber $FV['gastos']; if ($null -ne $gv) { $g = $gv }; $net = [double]$price - $g }
         elseif ($t.TipoCol -and $meta.TariffNet.ContainsKey("$($FV['tipo'])")) { $net = $meta.TariffNet["$($FV['tipo'])"] }
     }
     $color = '#FFFFFF'
@@ -1204,7 +1205,7 @@ function Import-TramiteFromExcel($h, $t) {
     $store = @{ Meta = $meta; Clients = $clients }
     Write-Store $t $store
     Write-Log ("importó del Excel: {0} ({1} clientes)" -f $t.Sheet, $clients.Count)
-    return $store
+    return (Read-Store $t)    # mismos valores que se guardaron (fechas e importes ya convertidos)
 }
 function Update-StoreMeta($h, $t) {
     # vuelve a leer del Excel solo las listas y los precios (los clientes no se tocan)
