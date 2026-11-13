@@ -7,6 +7,19 @@
 #  Escribe directamente en el Excel de la gestoría usando Microsoft Excel.
 #  Requiere: Windows 10/11, Windows PowerShell 5.1 y Microsoft Excel instalado.
 
+param([switch]$Oculto)
+# sin ventana de consola: si se abrió de otra forma (Terminal de Windows), se vuelve a abrir oculto
+if (-not $Oculto -and $PSCommandPath) {
+    try {
+        $psi = New-Object Diagnostics.ProcessStartInfo
+        $psi.FileName = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -STA -File "' + $PSCommandPath + '" -Oculto'
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        [void][Diagnostics.Process]::Start($psi)
+        exit
+    } catch { }
+}
 $ErrorActionPreference = 'Stop'
 trap {
     $msg = "$($_.Exception.Message)`r`n$($_.InvocationInfo.PositionMessage)"
@@ -18,7 +31,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security, System.Drawing
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.4.4'
+$script:AppVersion = '1.4.5'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -1028,8 +1041,12 @@ function Check-Update([switch]$Manual) {
         Unblock-File -LiteralPath $me
         Set-Content -Path (Join-Path $script:DataDir 'actualizado.txt') -Value $remote -Encoding UTF8
         Write-Log "actualizado de $($script:AppVersion) a $remote"
-        $ps = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
-        Start-Process -FilePath $ps -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-WindowStyle', 'Hidden', '-File', "`"$me`"") -WindowStyle Hidden
+        $psi = New-Object Diagnostics.ProcessStartInfo
+        $psi.FileName = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -STA -File "' + $me + '" -Oculto'
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        [void][Diagnostics.Process]::Start($psi)
         $script:Restarting = $true
         $script:Win.Close()
     } catch {
@@ -1350,7 +1367,16 @@ $xaml = @'
           <ControlTemplate TargetType="CalendarItem">
             <ControlTemplate.Resources>
               <DataTemplate x:Key="{x:Static CalendarItem.DayTitleTemplateResourceKey}">
-                <TextBlock Text="{Binding}" FontSize="11" FontWeight="SemiBold" Foreground="#A69C9E" HorizontalAlignment="Center" Margin="0,10,0,4"/>
+                <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A69C9E" HorizontalAlignment="Center" Margin="0,10,0,4">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="Text" Value="{Binding}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding}" Value="X"><Setter Property="Text" Value="Mi"/></DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
               </DataTemplate>
             </ControlTemplate.Resources>
             <Grid x:Name="PART_Root">
@@ -3696,6 +3722,30 @@ function Apply-Branding {
     $ui.AboutCompany.Text = $name
     $script:Win.Title = $(if ($name) { "GESTEM MANAGER · $name" } else { 'GESTEM MANAGER' })
 }
+# accesos directos sin ventana: abren GESTEM con conhost --headless (nada de Terminal de Windows)
+function Repair-Shortcuts {
+    try {
+        $ps = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        $ch = Join-Path $env:WINDIR 'System32\conhost.exe'
+        if (-not (Test-Path -LiteralPath $ch)) { return }
+        $me = Join-Path $script:AppDir 'GESTEM.ps1'
+        $want = '--headless "' + $ps + '" -NoProfile -ExecutionPolicy Bypass -STA -File "' + $me + '" -Oculto'
+        $sh = New-Object -ComObject WScript.Shell
+        foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
+            $f = Join-Path $d 'GESTEM MANAGER.lnk'
+            if (-not (Test-Path -LiteralPath $f)) { continue }
+            $l = $sh.CreateShortcut($f)
+            if ($l.TargetPath -like '*conhost.exe' -and $l.Arguments -eq $want) { continue }
+            if ($l.TargetPath -notlike '*powershell.exe' -and $l.TargetPath -notlike '*conhost.exe') { continue }
+            $l.TargetPath = $ch
+            $l.Arguments = $want
+            $l.WorkingDirectory = $script:AppDir
+            $l.WindowStyle = 7
+            $l.Save()
+            Write-Log "acceso directo corregido: $f"
+        }
+    } catch { Write-Log "accesos directos: $($_.Exception.Message)" }
+}
 function Import-DefaultBranding {
     # primera vez: si el instalador trae empresa.png / empresa.txt junto al programa, se usan solos
     $changed = $false
@@ -4630,6 +4680,7 @@ if (-not $script:UI.DocsCol) { $script:UI.DocsCol = $script:UI.ClientsGrid.Colum
 $script:UI.AboutImg.Source = $script:AppLogo
 $script:PendingLogo = ''
 Import-DefaultBranding
+Repair-Shortcuts
 Apply-Branding
 
 $ui = $script:UI
