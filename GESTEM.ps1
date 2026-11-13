@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.9'
+$script:AppVersion = '1.5.10'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -1747,6 +1747,8 @@ function Import-AllFromExcel {
         } finally { Exit-StoreLock $lk }
         $script:T = $cur
         Close-Book $h $false; $h = $null
+        # los trámites que solo tienen una pestaña hecha a mano se acaban de vaciar: se vuelven a leer ahora
+        try { [void](Sync-HandmadeTabs -Force) } catch { Write-Log "pestañas propias: $($_.Exception.Message)" }
         [void](Load-Data -All)
         Set-Status (L 'importDone')
     } catch {
