@@ -17,8 +17,17 @@ La versión PowerShell (GESTEM.ps1) sigue siendo la que usa la gestoría hasta e
       Prueba 13/11/2026 con los datos de la copia real: 309 clientes en 12 trámites, resumen idéntico y
       los 9 archivos guardados idénticos a los de PowerShell.
 
+- [x] Etapa 2a — leer el xlsx sin Excel: Xlsx (Read-XlsxSheets, Read-XlsxValidationLists), Hand (pestañas hechas a mano,
+      Sync-HandmadeTabs, Update-ListsFromFile). Prueba 14/11/2026: idéntico (9 pestañas a mano, 309 clientes campo a campo).
+      Ojo: se usan Hashtable con CurrentCultureIgnoreCase para recorrer en el mismo orden que @{} de PowerShell.
+- [x] Etapa 2b — escribir directo en el xlsx: ExcelFile (Get-ClientOps, Save-ClientsToFile, Backup-Excel).
+      Prueba 14/11/2026: editar, cliente nuevo, lote de 2, pasada SUM y trámite sin pestaña -> los .xlsx resultantes
+      son idénticos byte a byte en todas las entradas.
+
 ## Pendiente
-- [ ] Etapa 2 — Excel: leer xlsx (pestañas a mano, listas), escribir directo (Save-ClientsToFile), COM como respaldo, copias
+- [ ] Etapa 2c — Excel por COM (respaldo cuando el archivo está abierto): Open-Book/Close-Book/Invoke-Excel, Get-Sheet,
+      New-TramiteSheet, Restore-Formula, Set-CellValue, Save-Client, Read-TramiteData, Import-TramiteFromExcel,
+      Sync-RecordToExcel, Save-PendingBatchToFile, Sync-PendingToExcel, Repair-TotalsFormulas, Refresh-FromExcel, Load-Data
 - [ ] Etapa 3 — ventana: lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos
 - [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto
 - [ ] Etapa 5 — facturas PDF, exportar CSV/PDF, copia externa, actualizaciones

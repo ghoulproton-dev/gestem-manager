@@ -103,3 +103,17 @@ namespace Gestem
         }
     }
 }
+namespace Gestem
+{
+    public static class PsH
+    {
+        // @{} de PowerShell: Hashtable sin distinguir mayúsculas (mismo orden al recorrerla que en PowerShell)
+        public static System.Collections.Hashtable New() { return new System.Collections.Hashtable(System.StringComparer.CurrentCultureIgnoreCase); }
+        // -match de PowerShell (sin distinguir mayúsculas)
+        public static System.Text.RegularExpressions.Match M(string s, string pattern) { return System.Text.RegularExpressions.Regex.Match(s ?? "", pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase); }
+        public static bool Is(string s, string pattern) { return M(s, pattern).Success; }
+        // -replace de PowerShell (sin distinguir mayúsculas)
+        public static string Rep(string s, string pattern, string with) { return System.Text.RegularExpressions.Regex.Replace(s ?? "", pattern, with, System.Text.RegularExpressions.RegexOptions.IgnoreCase); }
+        public static bool ContainsI(System.Collections.Generic.IEnumerable<string> list, string v) { foreach (string x in list) if (string.Equals(x, v, System.StringComparison.CurrentCultureIgnoreCase)) return true; return false; }
+    }
+}

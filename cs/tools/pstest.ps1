@@ -42,4 +42,54 @@ foreach ($t in $script:Tramites) {
     }
     Write-Store $t $s
 }
+$script:HandRowBase = 100000; $script:HandTabs = @{}
+$xl = $script:Cfg.ExcelPath
+$dv = Read-XlsxValidationLists $xl
+[string[]]$dk = @($dv.Keys); [Array]::Sort($dk, [StringComparer]::Ordinal)
+foreach ($k in $dk) {
+    $sh = $dv[$k]
+    [string[]]$ck = @($sh.Cols.Keys); [Array]::Sort($ck, [StringComparer]::Ordinal)
+    foreach ($c in $ck) { $v = $sh.Cols[$c]; $vs = $(if ($v -is [string]) { $v } else { @($v) -join '|' }); [void]$o.Append("D $k [$($sh.Name)] $c=$vs`r`n") }
+}
+foreach ($t in $script:Tramites) { [void]$o.Append("U $($t.Id) $(Update-ListsFromFile $t $dv)`r`n") }
+[void]$o.Append("S changed=$(Sync-HandmadeTabs -Force)`r`n")
+[string[]]$ht = @($script:HandTabs.Keys); [Array]::Sort($ht, [StringComparer]::Ordinal)
+foreach ($k in $ht) { [void]$o.Append("HT $k=$($script:HandTabs[$k])`r`n") }
+foreach ($t in $script:Tramites) {
+    $s = Read-Store $t
+    if (-not $s) { [void]$o.Append("T2 $($t.Id) (sin datos)`r`n"); continue }
+    $d = Build-TramiteData $t $s
+    [void]$o.Append("T2 $($t.Id) rows=$($d.Rows.Count)`r`n")
+    $sc = @($s.Clients | Sort-Object { $_.Row })
+    for ($i = 0; $i -lt $sc.Count; $i++) {
+        $r = $d.Rows[$i]
+        $line = "R2 $($t.Id) $($r.Row) $($r.Id)"
+        foreach ($f in $t.Fields) { $line += "|$($f.Key)=$(ConvertTo-StoreValue $f $sc[$i].F[$f.Key])" }
+        [void]$o.Append("$line`r`n")
+    }
+    [string[]]$keys = @($d.Lists.Keys); [Array]::Sort($keys, [StringComparer]::Ordinal)
+    foreach ($k in $keys) { [void]$o.Append("L2 $($t.Id) $k=$(@($d.Lists[$k]) -join '|')`r`n") }
+}
+function WR($r) { if (-not $r) { return 'null' }; return "$($r.Row):$($r.Id)" }
+function WRL($l) { if (-not $l) { return 'null' }; return (@($l | ForEach-Object { WR $_ }) -join ',') }
+$script:Cfg.Backup = $false
+$t = $script:Tramites | Where-Object { $_.Id -eq 'canje' }; $script:T = $t
+$s = Read-Store $t; $d = Build-TramiteData $t $s; $script:Tariff = $d.Tariff
+$byRow = @{}; foreach ($c in $s.Clients) { if (-not $byRow.ContainsKey([int]$c.Row)) { $byRow[[int]$c.Row] = $c } }
+$v1 = @{}; foreach ($k in $byRow[13].F.Keys) { $v1[$k] = $byRow[13].F[$k] }
+$v1['status'] = 'Finalizado'; $v1['paystate'] = 'Parcial'; $v1['paid'] = [double]50
+[void]$o.Append("W1 $(WR (Save-ClientToFile (Get-ClientOps $v1) 13 "$($v1['name'])"))`r`n")
+$v2 = @{}; foreach ($f in $t.Fields) { $v2[$f.Key] = $null }
+$v2['name'] = 'PRUEBA GESTEM CS'; $v2['doc'] = 'X1234567Z'; $v2['tipo'] = 'B (Coche)'; $v2['status'] = 'Documentación'
+$v2['paystate'] = 'Pendiente'; $v2['fsol'] = (New-Object DateTime 2026, 11, 14); $v2['obs'] = ' espacio '
+$v3 = @{}; foreach ($k in $byRow[20].F.Keys) { $v3[$k] = $byRow[20].F[$k] }
+$v3['obs'] = 'nota de prueba'; $v3['price'] = [double]99
+$batch = @(@{ Ops = (Get-ClientOps $v2); Row = $d.FirstEmpty; Expect = 'PRUEBA GESTEM CS'; IsNew = $true }, @{ Ops = (Get-ClientOps $v3); Row = 20; Expect = "$($v3['name'])"; IsNew = $false })
+[void]$o.Append("W2 $(WRL (Save-ClientsToFile $batch))`r`n")
+$allIt = @(); foreach ($c in $s.Clients) { $allIt += @{ Ops = (Get-ClientOps $c.F); Row = $c.Row; Expect = "$($c.F['name'])"; IsNew = $false } }
+$w3 = Save-ClientsToFile $allIt -OnlyBroken
+[void]$o.Append("W3 $(WRL $w3) fixed=$($script:SumFixed)`r`n")
+$ta = $script:Tramites | Where-Object { $_.Id -eq 'autonomo' }; $script:T = $ta
+$sa = Read-Store $ta; $da = Build-TramiteData $ta $sa; $script:Tariff = $da.Tariff
+[void]$o.Append("W4 $(WR (Save-ClientToFile (Get-ClientOps $sa.Clients[0].F) $sa.Clients[0].Row "$($sa.Clients[0].F['name'])"))`r`n")
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))
