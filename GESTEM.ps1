@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.3'
+$script:AppVersion = '1.6.4'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -439,6 +439,13 @@ $script:TextMore = @{
   cmExcel = 'Ver en el Excel'
   cmCopied = '✓ Copiado: {0}'
   docsTip = 'Ver los documentos de este cliente'
+  cmDone = '✓ {0}: {1}'
+  cmUndo = 'Deshacer'
+  cmUndone = 'Cambio deshecho'
+  cmUndoFail = 'No se pudo deshacer: el cliente ya no está en la lista.'
+  userHello = 'Hola, {0}'
+  userSwitch = '¿No eres tú?'
+  unsavedAsk = 'Hay cambios sin guardar en la ficha del cliente.{0}¿Cerrar GESTEM sin guardarlos?'
   exTitle = 'Clientes  ·  {0}'
   exFilters = 'Filtros'
   exNoFilter = 'Todos los clientes'
@@ -531,6 +538,13 @@ $script:TextMore = @{
   cmExcel = 'Show in Excel'
   cmCopied = '✓ Copied: {0}'
   docsTip = 'See this client''s documents'
+  cmDone = '✓ {0}: {1}'
+  cmUndo = 'Undo'
+  cmUndone = 'Change undone'
+  cmUndoFail = 'Could not undo: the client is no longer in the list.'
+  userHello = 'Hi, {0}'
+  userSwitch = 'Not you?'
+  unsavedAsk = 'The client form has unsaved changes.{0}Close GESTEM without saving them?'
   exTitle = 'Clients  ·  {0}'
   exFilters = 'Filters'
   exNoFilter = 'All clients'
@@ -623,6 +637,13 @@ $script:TextMore = @{
   cmExcel = 'Voir dans l''Excel'
   cmCopied = '✓ Copié : {0}'
   docsTip = 'Voir les documents de ce client'
+  cmDone = '✓ {0} : {1}'
+  cmUndo = 'Annuler'
+  cmUndone = 'Modification annulée'
+  cmUndoFail = 'Impossible d''annuler : le client n''est plus dans la liste.'
+  userHello = 'Bonjour, {0}'
+  userSwitch = 'Ce n''est pas vous ?'
+  unsavedAsk = 'La fiche du client a des modifications non enregistrées.{0}Fermer GESTEM sans les enregistrer ?'
   exTitle = 'Clients  ·  {0}'
   exFilters = 'Filtres'
   exNoFilter = 'Tous les clients'
@@ -715,6 +736,13 @@ $script:TextMore = @{
   cmExcel = 'عرض في Excel'
   cmCopied = '✓ تم النسخ: {0}'
   docsTip = 'عرض مستندات هذا العميل'
+  cmDone = '✓ {0}: {1}'
+  cmUndo = 'تراجع'
+  cmUndone = 'تم التراجع عن التغيير'
+  cmUndoFail = 'تعذّر التراجع: العميل لم يعد في القائمة.'
+  userHello = 'مرحبًا، {0}'
+  userSwitch = 'لست أنت؟'
+  unsavedAsk = 'في بطاقة العميل تغييرات غير محفوظة.{0}هل تريد إغلاق GESTEM دون حفظها؟'
   exTitle = 'العملاء  ·  {0}'
   exFilters = 'المرشحات'
   exNoFilter = 'كل العملاء'
@@ -2234,7 +2262,7 @@ function Check-Update([switch]$Manual) {
         $remote = "$remote".Trim()
         if (-not ($remote -match '^\d+(\.\d+){1,3}$')) { throw "version.txt no válido: $remote" }
         if ([version]$remote -le [version]$script:AppVersion) {
-            if ($Manual) { Show-Info ((L 'upToDate') -f $script:AppVersion) }
+            if ($Manual) { Show-Toast ((L 'upToDate') -f $script:AppVersion) }
             return
         }
         Set-Status ((L 'updating') -f $remote)
@@ -3543,6 +3571,14 @@ $xaml = @'
     </DockPanel>
     </Grid>
   </DockPanel>
+  <Border x:Name="Toast" Panel.ZIndex="60" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,24" Background="#1E1A1B" CornerRadius="10" Padding="16,11,10,11" Visibility="Collapsed" MaxWidth="460">
+    <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Opacity="0.3" Color="#000000"/></Border.Effect>
+    <StackPanel Orientation="Horizontal">
+      <TextBlock x:Name="ToastText" Foreground="White" FontSize="13" TextWrapping="Wrap" MaxWidth="320" VerticalAlignment="Center"/>
+      <Button x:Name="ToastBtn" Margin="14,0,0,0" Padding="10,4" Background="#9E1820" Foreground="White" BorderThickness="0" FontWeight="SemiBold" Cursor="Hand" VerticalAlignment="Center"/>
+      <Button x:Name="ToastClose" Content="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Margin="8,0,0,0" Padding="6,4" Background="Transparent" Foreground="#B9B0B2" BorderThickness="0" Cursor="Hand" VerticalAlignment="Center"/>
+    </StackPanel>
+  </Border>
   <Grid x:Name="PanelSession" Background="#E0141112" Visibility="Collapsed">
     <Border Background="White" CornerRadius="18" Padding="36,30" Width="540" HorizontalAlignment="Center" VerticalAlignment="Center">
       <Border.Effect><DropShadowEffect BlurRadius="40" ShadowDepth="8" Direction="270" Opacity="0.35" Color="#000000"/></Border.Effect>
@@ -4199,6 +4235,7 @@ function Reset-Form {
     $script:UI.ClearBtn.Content = (L 'btnClear')
     $script:UI.DupWarn.Visibility = 'Collapsed'
     Update-Preview
+    $script:FormDirty = $false
     $script:Ctl['name'].Focus() | Out-Null
 }
 
@@ -4208,6 +4245,7 @@ function Fill-FormForEdit($rowObj) {
     $script:PriceTouched = $true
     foreach ($f in $script:T.Fields) { Set-FieldValue $f $rowObj.Data[$f.Key] }
     $script:Filling = $false
+    $script:FormDirty = $false
     $script:UI.FormTitle.Text = ((L 'editTitle') -f $rowObj.Id)
     $script:UI.SaveBtn.Content = (L 'btnSaveEdit')
     $script:UI.ClearBtn.Content = (L 'btnCancel')
@@ -4217,6 +4255,7 @@ function Fill-FormForEdit($rowObj) {
 
 function On-FieldChanged($sender) {
     if ($script:Filling) { return }
+    $script:FormDirty = $true
     $key = "$($sender.Tag)"
     if ($key -eq 'price') { $script:PriceTouched = $true }
     if ($key -eq 'tipo' -and -not $script:PriceTouched) {
@@ -4358,29 +4397,74 @@ function Fill-CmMenu($sel) {
     $ui.CmCopyDoc.IsEnabled = [bool]"$($sel.Doc)".Trim()
     $ui.CmCopyTel.IsEnabled = [bool]"$($sel.Data['tel'])".Trim()
 }
-function Quick-SetField([string]$key, $value) {
+function Quick-SetField([string]$key, $value, [switch]$NoUndo) {
     # cambia un solo dato sin abrir la ficha: pasa por el guardado normal (GESTEM + Excel + registro)
     $sel = $script:UI.ClientsGrid.SelectedItem
     if (-not $sel) { return }
     $f = @($script:T.Fields | Where-Object { $_.Key -eq $key })[0]
     if (-not $f) { return }
+    $old = $sel.Data[$key]; $oldPaid = $sel.Data['paid']
+    $rowNo = [int]$sel.Row; $tid = $script:T.Id
+    $ok = $false
     try {
         Fill-FormForEdit $sel
         $script:Filling = $true
         try { Set-FieldValue $f $value } finally { $script:Filling = $false }
         Update-Preview
         Save-FromForm
+        $ok = -not $script:EditRow    # Save-FromForm limpia la ficha solo si guardó
     } catch {
         Write-Log "atajo ($key): $($_.Exception.Message)"
         Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
     } finally {
         if ($script:EditRow) { try { Reset-Form } catch { } }
     }
+    if ($ok -and -not $NoUndo) {
+        $label = Get-FieldLabel $f
+        # lo necesario para deshacer (sin cierres: el botón del aviso llama a Invoke-QuickUndo)
+        $script:UndoInfo = @{ Tramite = $tid; Row = $rowNo; Key = $key; Old = $old; OldPaid = $oldPaid }
+        Show-Toast ((L 'cmDone') -f $label, "$value") (L 'cmUndo') { Invoke-QuickUndo } 8
+    }
+}
+function Invoke-QuickUndo {
+    $u = $script:UndoInfo; $script:UndoInfo = $null
+    if (-not $u -or $script:T.Id -ne $u.Tramite) { return }
+    $r = @($script:Rows | Where-Object { [int]$_.Row -eq $u.Row })[0]
+    if (-not $r) { Show-Toast (L 'cmUndoFail'); return }
+    $script:UI.ClientsGrid.SelectedItem = $r
+    Quick-SetField $u.Key $u.Old -NoUndo
+    if ($u.Key -eq 'paystate' -and $null -ne $u.OldPaid) {
+        $r2 = @($script:Rows | Where-Object { [int]$_.Row -eq $u.Row })[0]
+        if ($r2) { $script:UI.ClientsGrid.SelectedItem = $r2; Quick-SetField 'paid' $u.OldPaid -NoUndo }
+    }
+    Show-Toast (L 'cmUndone')
 }
 function Copy-ClientText([string]$text) {
     $text = "$text".Trim()
     if (-not $text) { return }
     try { [Windows.Clipboard]::SetText($text); Set-Status ((L 'cmCopied') -f $text) } catch { Write-Log "copiar: $($_.Exception.Message)" }
+}
+
+# ---------- aviso pequeño abajo a la derecha (sin ventana que haya que cerrar) ----------
+function Show-Toast([string]$text, [string]$btnText = '', [scriptblock]$action = $null, [int]$seconds = 7) {
+    $ui = $script:UI
+    if (-not $ui -or -not $ui.Toast) { return }
+    $ui.ToastText.Text = $text
+    $script:ToastAction = $action
+    if ($btnText -and $action) { $ui.ToastBtn.Content = $btnText; $ui.ToastBtn.Visibility = 'Visible' } else { $ui.ToastBtn.Visibility = 'Collapsed' }
+    $ui.Toast.Visibility = 'Visible'
+    if (-not $script:ToastTimer) {
+        $script:ToastTimer = New-Object Windows.Threading.DispatcherTimer
+        $script:ToastTimer.Add_Tick({ Hide-Toast })
+    }
+    $script:ToastTimer.Stop()
+    $script:ToastTimer.Interval = [TimeSpan]::FromSeconds($seconds)
+    $script:ToastTimer.Start()
+}
+function Hide-Toast {
+    if ($script:ToastTimer) { $script:ToastTimer.Stop() }
+    $script:ToastAction = $null
+    if ($script:UI -and $script:UI.Toast) { $script:UI.Toast.Visibility = 'Collapsed' }
 }
 
 function Refresh-ClientGrid {
@@ -6214,7 +6298,7 @@ try {
 $script:UI = @{}
 foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings','NavAbout','StatusText','FileText',
                  'PanelForm','FormTitle','FormGrid','CardTag','CardId','CardName','CardSub','CardTipo','CardStatusB','CardStatus',
-                 'SumPriceL','SumPrice','SumIva','SumPaidL','SumPaid','SumPendL','SumPend','DupWarn','SaveBtn','ClearBtn',
+                 'Toast','ToastText','ToastBtn','ToastClose','SumPriceL','SumPrice','SumIva','SumPaidL','SumPaid','SumPendL','SumPend','DupWarn','SaveBtn','ClearBtn',
                  'PanelClients','RefreshBtn','OpenExcelBtn','EditBtn','SearchBox','SearchHint','FilterBox','OnlyDebt','ClientsGrid',
                  'PanelSettings','SetTitle','WelcomeText','SetFileL','ChangeFileBtn','FilePathBox','SetLangL','LangBox','SetNatL','NatBox',
                  'BackupChk','OpenAfterChk','SetNote','SaveSettingsBtn','BackupsBtn','UpdateBtn',
@@ -6462,8 +6546,26 @@ $script:Win.Add_KeyDown({
         if ($script:IsAdmin) { Open-AdminPanel } else { Show-AdminLogin }
         $_.Handled = $true; return
     }
-    if ($_.Key -eq 'S' -and [Windows.Input.Keyboard]::Modifiers -eq 'Control' -and $script:UI.PanelForm.Visibility -eq 'Visible') { Save-FromForm; $_.Handled = $true }
+    if ($script:UI.PanelSession.Visibility -eq 'Visible') { return }
+    $ctrl = ([Windows.Input.Keyboard]::Modifiers -eq 'Control')
+    $ui = $script:UI
+    if ($ctrl -and $_.Key -eq 'S' -and $ui.PanelForm.Visibility -eq 'Visible') { Save-FromForm; $_.Handled = $true; return }
+    if ($ctrl -and $_.Key -eq 'N') {
+        if (-not $script:EditRow) { $ui.NavNew.IsChecked = $true; $script:Ctl['name'].Focus() | Out-Null }
+        else { $ui.NavNew.IsChecked = $true }
+        $_.Handled = $true; return
+    }
+    if ($ctrl -and $_.Key -eq 'F') { $ui.NavClients.IsChecked = $true; $ui.SearchBox.Focus() | Out-Null; $ui.SearchBox.SelectAll(); $_.Handled = $true; return }
+    if ($_.Key -eq 'Escape') {
+        if ($ui.Toast.Visibility -eq 'Visible') { Hide-Toast }
+        if ($ui.PanelDocs.Visibility -eq 'Visible') { $ui.PanelDocs.Visibility = 'Collapsed'; $_.Handled = $true; return }
+        if ($ui.PanelForm.Visibility -eq 'Visible' -and $script:EditRow) { Reset-Form; $ui.NavClients.IsChecked = $true; $_.Handled = $true; return }
+    }
 })
+# Enter en la lista: abre el cliente seleccionado
+$ui.ClientsGrid.Add_PreviewKeyDown({ if ($_.Key -eq 'Return' -and $script:UI.ClientsGrid.SelectedItem) { Edit-Selected; $_.Handled = $true } })
+$ui.ToastBtn.Add_Click({ $a = $script:ToastAction; Hide-Toast; if ($a) { & $a } })
+$ui.ToastClose.Add_Click({ Hide-Toast })
 
 $script:Win.Dispatcher.Add_UnhandledException({
     $m = "$($_.Exception.Message)`r`n$($_.Exception.InnerException)"
@@ -6477,6 +6579,11 @@ Apply-Language
 # copia al cerrar
 $script:Win.Add_Closing({
     if ($script:Restarting) { return }
+    if ($script:FormDirty -and ($script:EditRow -or "$($script:Ctl['name'].Text)".Trim())) {
+        $nl = [Environment]::NewLine + [Environment]::NewLine
+        $ans = [Windows.MessageBox]::Show($script:Win, ((L 'unsavedAsk') -f $nl), $script:AppName, 'YesNo', 'Warning')
+        if ("$ans" -ne 'Yes') { $_.Cancel = $true; $script:UI.NavNew.IsChecked = $true; return }
+    }
     # errores silenciosos de la sesión (botones, eventos) al registro, para poder revisarlos
     try { foreach ($er in @($Error | Where-Object { "$($_.Exception.Message)" -notmatch 'GetActiveObject|MK_E_UNAVAILABLE' } | Select-Object -First 15)) { $pos = ''; if ($er.InvocationInfo) { $pos = " (línea $($er.InvocationInfo.ScriptLineNumber))" }; Write-Log ("DEBUG error: $($er.Exception.Message)$pos") } } catch { }
     if ($script:User) { Write-Log 'cerró GESTEM' }
@@ -6488,7 +6595,7 @@ $script:Win.Add_ContentRendered({
     if ($script:Restarting) { return }
     Check-Remote
     $flag = Join-Path $script:DataDir 'actualizado.txt'
-    if (Test-Path $flag) { $v = (Get-Content -Raw $flag).Trim(); Remove-Item $flag -Force; Show-Info ((L 'updated') -f $v) }
+    if (Test-Path $flag) { $v = (Get-Content -Raw $flag).Trim(); Remove-Item $flag -Force; $script:UpdatedMsg = ((L 'updated') -f $v) }
     if (-not (Test-ExcelInstalled)) { Show-Error (L 'errNoExcel') }
     if (-not $script:Cfg.ExcelPath -or -not (Test-Path -LiteralPath $script:Cfg.ExcelPath)) {
         Set-Status (L 'noFile')
@@ -6509,7 +6616,16 @@ $script:Win.Add_ContentRendered({
         if ($c) { $script:Cfg.ExtBackupDir = $c; Save-Config; Write-Log "copia externa configurada automáticamente: $c" }
     }
     if ($script:Cfg.ExtBackupDir) { [void](Backup-External -Quiet) }    # copia al abrir
-    Show-Session
+    # la última persona que usó este PC entra directamente; «¿No eres tú?» abre la lista de nombres
+    if ("$($script:Cfg.LastUser)".Trim()) {
+        Start-Session "$($script:Cfg.LastUser)"
+        $msg = (L 'userHello') -f "$($script:Cfg.LastUser)"
+        if ($script:UpdatedMsg) { $msg = "$($script:UpdatedMsg)`r`n$msg" }
+        Show-Toast $msg (L 'userSwitch') { Show-Session } 8
+    } else {
+        Show-Session
+        if ($script:UpdatedMsg) { Show-Toast $script:UpdatedMsg }
+    }
 })
 
 try {
