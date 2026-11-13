@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.10'
+$script:AppVersion = '1.6.11'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -2376,6 +2376,7 @@ function Start-UpdateCheckAsync {
             if ("$($t.Status)" -ne 'RanToCompletion') { Write-Log "actualización: no se pudo mirar ($($t.Exception.InnerException.Message))"; return }
             $remote = "$($t.Result)".Trim()
             if (-not ($remote -match '^\d+(\.\d+){1,3}$') -or [version]$remote -le [version]$script:AppVersion) { return }
+            Write-Log "actualización: hay versión $remote (esta: $($script:AppVersion))"
             if (-not (Test-FormHasWork)) { Check-Update }
             else { Write-Log "actualización $remote lista: espera (ficha a medias)"; Show-Toast ((L 'updReady') -f $remote) (L 'updNow') { Check-Update -Manual } 30 }
         })
