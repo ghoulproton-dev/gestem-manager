@@ -18,7 +18,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.3.1'
+$script:AppVersion = '1.3.2'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -180,7 +180,7 @@ $script:Text = @{
   search='Buscar (nombre, NIE, ID, localizador)'; filterAll='Todos los estados'; onlyDebt='Solo con pago pendiente'
   btnEdit='Editar cliente'; btnOpenExcel='Abrir Excel'; btnRefresh='Actualizar'
   colId='ID'; colName='Cliente'; colDoc='NIE / DNI'; colTipo='Tipo'; colStatus='Estado'; colPay='Pago'; colPend='Pendiente'; colDays='Días'
-  secExtT='Copia externa'; secExtD='Una copia completa del Excel fuera del programa: en un USB, OneDrive, Google Drive o una carpeta de red. Si algo va mal en este PC, los datos siguen a salvo.'; extDirL='Carpeta de la copia externa'; extChooseBtn='Elegir carpeta…'; extOneDrive='Usar OneDrive'; extNow='Hacer copia ahora'; extOpen='Abrir carpeta'; extLast='Última copia: {0}'; extNever='Todavía no se ha hecho ninguna copia'; extNone='Sin carpeta: elige una para proteger los datos'; extNote='GESTEM copia el Excel al abrirse y al cerrarse, y cuando pulsas «Hacer copia ahora». Guarda un archivo por día (60 días). Cada copia es un Excel normal que se abre sin GESTEM. Los ajustes del programa se guardan en «ajustes GESTEM».'; extChoose='Elige dónde guardar la copia externa del Excel'; extFail='No se pudo hacer la copia externa.'; extDone='Copia externa hecha.'
+  secExtT='Copia externa'; secExtD='Una copia completa del Excel fuera del programa: en un USB, OneDrive, Google Drive o una carpeta de red. Si algo va mal en este PC, los datos siguen a salvo.'; extDirL='Carpeta de la copia externa'; extChooseBtn='Elegir carpeta…'; extOneDrive='Usar la nube de la empresa'; extNoCloud='No se encontró OneDrive ni Google Drive en este PC. Instala la app de la nube de la empresa e inicia sesión, o elige la carpeta a mano.'; extNow='Hacer copia ahora'; extOpen='Abrir carpeta'; extLast='Última copia: {0}'; extNever='Todavía no se ha hecho ninguna copia'; extNone='Sin carpeta: elige una para proteger los datos'; extNote='GESTEM copia el Excel al abrirse y al cerrarse, y cuando pulsas «Hacer copia ahora». Guarda un archivo por día (60 días). Cada copia es un Excel normal que se abre sin GESTEM. Los ajustes del programa se guardan en «ajustes GESTEM».'; extChoose='Elige dónde guardar la copia externa del Excel'; extFail='No se pudo hacer la copia externa.'; extDone='Copia externa hecha.'
   stAll='Ver todos los trámites'
   scopeAll='Todos los trámites'; stStatus='Estado'; statsTableSt='Por estado · {0}'; statsSubOne='{0} · {1} expedientes · actualizado a las {2}'; stNoStatus='Sin estado'; stClickHint='Haz clic en un trámite para ver solo sus datos'
   setSub='Configura GESTEM para tu oficina. Los cambios se aplican al pulsar «Guardar ajustes».'; secFileT='Archivo de clientes'; secFileD='El Excel donde GESTEM escribe y lee los clientes.'; secCompT='Empresa'; secCompD='Nombre y logo que salen en el menú y en la pantalla de inicio.'; secTeamT='Equipo'; secTeamD='Las personas que usan GESTEM. Salen al iniciar sesión y como responsable.'; secPrefT='Preferencias'; secPrefD='Idioma del programa, valores por defecto y copias de seguridad.'; secHelpT='Ayuda y versión'; secHelpD='Manual de uso, actualizaciones y copias guardadas.'
@@ -220,7 +220,7 @@ $script:Text = @{
   search='Search (name, NIE, ID, reference)'; filterAll='All statuses'; onlyDebt='Outstanding payment only'
   btnEdit='Edit client'; btnOpenExcel='Open Excel'; btnRefresh='Refresh'
   colId='ID'; colName='Client'; colDoc='NIE / DNI'; colTipo='Type'; colStatus='Status'; colPay='Payment'; colPend='Outstanding'; colDays='Days'
-  secExtT='External backup'; secExtD='A full copy of the Excel file outside the program: on a USB drive, OneDrive, Google Drive or a network folder. If something goes wrong on this PC, the data is still safe.'; extDirL='External backup folder'; extChooseBtn='Choose folder…'; extOneDrive='Use OneDrive'; extNow='Back up now'; extOpen='Open folder'; extLast='Last backup: {0}'; extNever='No backup made yet'; extNone='No folder: choose one to protect the data'; extNote='GESTEM copies the Excel file when it opens and when it closes, and when you press «Back up now». It keeps one file per day (60 days). Each copy is a normal Excel file that opens without GESTEM. Program settings are saved in «ajustes GESTEM».'; extChoose='Choose where to keep the external backup'; extFail='The external backup could not be made.'; extDone='External backup done.'
+  secExtT='External backup'; secExtD='A full copy of the Excel file outside the program: on a USB drive, OneDrive, Google Drive or a network folder. If something goes wrong on this PC, the data is still safe.'; extDirL='External backup folder'; extChooseBtn='Choose folder…'; extOneDrive='Use the company cloud'; extNoCloud='No OneDrive or Google Drive found on this PC. Install the company's cloud app and sign in, or choose the folder manually.'; extNow='Back up now'; extOpen='Open folder'; extLast='Last backup: {0}'; extNever='No backup made yet'; extNone='No folder: choose one to protect the data'; extNote='GESTEM copies the Excel file when it opens and when it closes, and when you press «Back up now». It keeps one file per day (60 days). Each copy is a normal Excel file that opens without GESTEM. Program settings are saved in «ajustes GESTEM».'; extChoose='Choose where to keep the external backup'; extFail='The external backup could not be made.'; extDone='External backup done.'
   stAll='See all procedures'
   scopeAll='All procedures'; stStatus='Status'; statsTableSt='By status · {0}'; statsSubOne='{0} · {1} cases · updated at {2}'; stNoStatus='No status'; stClickHint='Click a procedure to see only its data'
   setSub='Set GESTEM up for your office. Changes apply when you press «Save settings».'; secFileT='Client file'; secFileD='The Excel file GESTEM reads and writes clients to.'; secCompT='Company'; secCompD='Name and logo shown in the menu and on the start screen.'; secTeamT='Team'; secTeamD='The people who use GESTEM. Shown at sign-in and as the person in charge.'; secPrefT='Preferences'; secPrefD='Language, defaults and backups.'; secHelpT='Help and version'; secHelpD='User manual, updates and saved backups.'
@@ -260,7 +260,7 @@ $script:Text = @{
   search='Rechercher (nom, NIE, ID, code)'; filterAll='Tous les états'; onlyDebt='Paiement en attente seulement'
   btnEdit='Modifier le client'; btnOpenExcel='Ouvrir Excel'; btnRefresh='Actualiser'
   colId='ID'; colName='Client'; colDoc='NIE / DNI'; colTipo='Type'; colStatus='État'; colPay='Paiement'; colPend='Reste'; colDays='Jours'
-  secExtT='Copie externe'; secExtD='Une copie complète de l''Excel hors du programme : sur une clé USB, OneDrive, Google Drive ou un dossier réseau. Si quelque chose arrive à ce PC, les données restent en sécurité.'; extDirL='Dossier de la copie externe'; extChooseBtn='Choisir un dossier…'; extOneDrive='Utiliser OneDrive'; extNow='Faire une copie maintenant'; extOpen='Ouvrir le dossier'; extLast='Dernière copie : {0}'; extNever='Aucune copie pour l''instant'; extNone='Aucun dossier : choisissez-en un pour protéger les données'; extNote='GESTEM copie l''Excel à l''ouverture et à la fermeture, et avec « Faire une copie maintenant ». Un fichier par jour (60 jours). Chaque copie est un Excel normal qui s''ouvre sans GESTEM.'; extChoose='Choisissez où garder la copie externe'; extFail='La copie externe n''a pas pu être faite.'; extDone='Copie externe faite.'
+  secExtT='Copie externe'; secExtD='Une copie complète de l''Excel hors du programme : sur une clé USB, OneDrive, Google Drive ou un dossier réseau. Si quelque chose arrive à ce PC, les données restent en sécurité.'; extDirL='Dossier de la copie externe'; extChooseBtn='Choisir un dossier…'; extOneDrive='Utiliser le cloud de l''entreprise'; extNoCloud='Aucun OneDrive ni Google Drive trouvé sur ce PC. Installez l''application cloud de l''entreprise et connectez-vous, ou choisissez le dossier à la main.'; extNow='Faire une copie maintenant'; extOpen='Ouvrir le dossier'; extLast='Dernière copie : {0}'; extNever='Aucune copie pour l''instant'; extNone='Aucun dossier : choisissez-en un pour protéger les données'; extNote='GESTEM copie l''Excel à l''ouverture et à la fermeture, et avec « Faire une copie maintenant ». Un fichier par jour (60 jours). Chaque copie est un Excel normal qui s''ouvre sans GESTEM.'; extChoose='Choisissez où garder la copie externe'; extFail='La copie externe n''a pas pu être faite.'; extDone='Copie externe faite.'
   stAll='Voir toutes les démarches'
   scopeAll='Toutes les démarches'; stStatus='État'; statsTableSt='Par état · {0}'; statsSubOne='{0} · {1} dossiers · mis à jour à {2}'; stNoStatus='Sans état'; stClickHint='Cliquez sur une démarche pour voir seulement ses données'
   setSub='Configurez GESTEM pour votre bureau. Les changements s''appliquent avec « Enregistrer les paramètres ».'; secFileT='Fichier des clients'; secFileD='Le fichier Excel où GESTEM lit et écrit les clients.'; secCompT='Entreprise'; secCompD='Nom et logo affichés dans le menu et sur l''écran d''accueil.'; secTeamT='Équipe'; secTeamD='Les personnes qui utilisent GESTEM. Affichées à la connexion et comme responsable.'; secPrefT='Préférences'; secPrefD='Langue, valeurs par défaut et copies de sécurité.'; secHelpT='Aide et version'; secHelpD='Mode d''emploi, mises à jour et copies enregistrées.'
@@ -300,7 +300,7 @@ $script:Text = @{
   search='بحث (الاسم، NIE، الرقم، الرمز)'; filterAll='كل الحالات'; onlyDebt='الدفع المتبقي فقط'
   btnEdit='تعديل العميل'; btnOpenExcel='فتح Excel'; btnRefresh='تحديث'
   colId='الرقم'; colName='العميل'; colDoc='NIE / DNI'; colTipo='النوع'; colStatus='الحالة'; colPay='الدفع'; colPend='المتبقي'; colDays='الأيام'
-  secExtT='نسخة خارجية'; secExtD='نسخة كاملة من ملف Excel خارج البرنامج: على USB أو OneDrive أو Google Drive أو مجلد شبكة. إذا حدث خطأ في هذا الحاسوب تبقى البيانات آمنة.'; extDirL='مجلد النسخة الخارجية'; extChooseBtn='اختيار مجلد…'; extOneDrive='استخدام OneDrive'; extNow='نسخ الآن'; extOpen='فتح المجلد'; extLast='آخر نسخة: {0}'; extNever='لم تُعمل أي نسخة بعد'; extNone='لا يوجد مجلد: اختر واحدًا لحماية البيانات'; extNote='ينسخ GESTEM ملف Excel عند الفتح وعند الإغلاق وعند الضغط على «نسخ الآن». ملف لكل يوم (60 يومًا). كل نسخة ملف Excel عادي يُفتح بدون GESTEM.'; extChoose='اختر مكان حفظ النسخة الخارجية'; extFail='تعذّر عمل النسخة الخارجية.'; extDone='تمت النسخة الخارجية.'
+  secExtT='نسخة خارجية'; secExtD='نسخة كاملة من ملف Excel خارج البرنامج: على USB أو OneDrive أو Google Drive أو مجلد شبكة. إذا حدث خطأ في هذا الحاسوب تبقى البيانات آمنة.'; extDirL='مجلد النسخة الخارجية'; extChooseBtn='اختيار مجلد…'; extOneDrive='استخدام سحابة الشركة'; extNoCloud='لم يُعثر على OneDrive أو Google Drive في هذا الحاسوب. ثبّت تطبيق سحابة الشركة وسجّل الدخول، أو اختر المجلد يدويًا.'; extNow='نسخ الآن'; extOpen='فتح المجلد'; extLast='آخر نسخة: {0}'; extNever='لم تُعمل أي نسخة بعد'; extNone='لا يوجد مجلد: اختر واحدًا لحماية البيانات'; extNote='ينسخ GESTEM ملف Excel عند الفتح وعند الإغلاق وعند الضغط على «نسخ الآن». ملف لكل يوم (60 يومًا). كل نسخة ملف Excel عادي يُفتح بدون GESTEM.'; extChoose='اختر مكان حفظ النسخة الخارجية'; extFail='تعذّر عمل النسخة الخارجية.'; extDone='تمت النسخة الخارجية.'
   stAll='عرض كل الإجراءات'
   scopeAll='كل الإجراءات'; stStatus='الحالة'; statsTableSt='حسب الحالة · {0}'; statsSubOne='{0} · {1} ملفات · آخر تحديث {2}'; stNoStatus='بدون حالة'; stClickHint='اضغط على إجراء لعرض بياناته فقط'
   setSub='اضبط GESTEM لمكتبك. تُطبَّق التغييرات عند الضغط على «حفظ الإعدادات».'; secFileT='ملف العملاء'; secFileD='ملف Excel الذي يقرأ منه GESTEM ويكتب فيه العملاء.'; secCompT='الشركة'; secCompD='الاسم والشعار في القائمة وشاشة البداية.'; secTeamT='الفريق'; secTeamD='الأشخاص الذين يستخدمون GESTEM. يظهرون عند الدخول وكمسؤولين.'; secPrefT='التفضيلات'; secPrefD='اللغة والقيم الافتراضية والنسخ الاحتياطية.'; secHelpT='المساعدة والإصدار'; secHelpD='دليل الاستخدام والتحديثات والنسخ المحفوظة.'
@@ -649,6 +649,21 @@ function Save-Client([hashtable]$vals, $row) {
     }
 }
 
+# nube de la empresa: primero OneDrive de empresa (Microsoft 365), luego Google Drive, luego OneDrive personal
+function Find-CompanyCloud {
+    $cands = @()
+    if ($env:OneDriveCommercial) { $cands += $env:OneDriveCommercial }
+    foreach ($d in [IO.DriveInfo]::GetDrives()) {
+        try {
+            if ($d.IsReady) { foreach ($n in 'Mi unidad', 'My Drive', 'Mon Drive') { $cands += (Join-Path $d.RootDirectory.FullName $n) } }
+        } catch { }
+    }
+    $cands += (Join-Path $env:USERPROFILE 'Google Drive\Mi unidad'); $cands += (Join-Path $env:USERPROFILE 'Google Drive')
+    if ($env:OneDrive) { $cands += $env:OneDrive }
+    if ($env:OneDriveConsumer) { $cands += $env:OneDriveConsumer }
+    foreach ($c in $cands) { if ($c -and (Test-Path -LiteralPath $c)) { return (Join-Path $c 'GESTEM copias') } }
+    return $null
+}
 function Backup-External([switch]$Quiet) {
     # copia completa del Excel en una carpeta externa (USB, OneDrive, Google Drive, red): un archivo por día, 60 días
     $dir = "$($script:Cfg.ExtBackupDir)".Trim()
@@ -3486,7 +3501,7 @@ $ui.StatsScope.Add_SelectionChanged({
 })
 $ui.ExtDirBtn.Add_Click({ Choose-ExtFolder })
 $ui.ExtClearBtn.Add_Click({ $script:UI.ExtDirBox.Text = ''; Update-ExtBackupInfo })
-$ui.ExtOneDriveBtn.Add_Click({ $od = "$env:OneDrive"; if (-not $od) { $od = "$env:OneDriveConsumer" }; $script:UI.ExtDirBox.Text = Join-Path $od 'GESTEM copias'; Update-ExtBackupInfo })
+$ui.ExtOneDriveBtn.Add_Click({ $c = Find-CompanyCloud; if ($c) { $script:UI.ExtDirBox.Text = $c; Update-ExtBackupInfo } else { Show-Error (L 'extNoCloud') } })
 $ui.ExtNowBtn.Add_Click({
     $old = $script:Cfg.ExtBackupDir; $script:Cfg.ExtBackupDir = "$($script:UI.ExtDirBox.Text)".Trim()
     $script:Win.Cursor = [Windows.Input.Cursors]::Wait
@@ -3624,6 +3639,11 @@ $script:Win.Add_ContentRendered({
     $script:Win.Cursor = [Windows.Input.Cursors]::Wait
     if (Load-Data -All) { Apply-Language }
     $script:Win.Cursor = $null
+    # primera vez sin carpeta externa: se usa sola la nube de la empresa si este PC la tiene
+    if (-not $script:Cfg.ExtBackupDir) {
+        $c = Find-CompanyCloud
+        if ($c) { $script:Cfg.ExtBackupDir = $c; Save-Config; Write-Log "copia externa configurada automáticamente: $c" }
+    }
     if ($script:Cfg.ExtBackupDir) { [void](Backup-External -Quiet) }    # copia al abrir
     Show-Session
 })
