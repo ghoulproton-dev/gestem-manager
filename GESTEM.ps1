@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.5'
+$script:AppVersion = '1.6.6'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -1952,13 +1952,96 @@ function Import-AllFromExcel {
     } finally { $script:Win.Cursor = $null }
 }
 
+function Read-XlsxValidationLists([string]$path) {
+    # listas desplegables de todas las pestañas leídas del archivo, sin abrir Excel
+    # devuelve @{ CLAVE_PESTAÑA = @{ 'F' = @('…','…') | '#RANGE' } } ('#RANGE' = la lista está en otras celdas: hace falta Excel)
+    try { Add-Type -AssemblyName System.IO.Compression -ErrorAction Stop } catch { }
+    $out = @{}
+    $fs = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+    try {
+        $zip = New-Object IO.Compression.ZipArchive($fs, [IO.Compression.ZipArchiveMode]::Read)
+        $ld = { param($n) $e = $zip.GetEntry($n); if (-not $e) { return $null }; $sr = New-Object IO.StreamReader($e.Open()); try { $x = New-Object Xml.XmlDocument; $x.LoadXml($sr.ReadToEnd()); return $x } finally { $sr.Dispose() } }
+        $wbx = & $ld 'xl/workbook.xml'; $rels = & $ld 'xl/_rels/workbook.xml.rels'
+        $target = @{}; foreach ($r in $rels.SelectNodes("//*[local-name()='Relationship']")) { $target[$r.GetAttribute('Id')] = $r.GetAttribute('Target') }
+        foreach ($sh in $wbx.SelectNodes("//*[local-name()='sheet']")) {
+            $rid = ($sh.Attributes | Where-Object { $_.LocalName -eq 'id' } | Select-Object -First 1).Value
+            $p = "$($target[$rid])".TrimStart('/'); if (-not $p.StartsWith('xl/')) { $p = 'xl/' + $p }
+            $e = $zip.GetEntry($p); if (-not $e) { continue }
+            $cols = @{}
+            $xr = [Xml.XmlReader]::Create($e.Open())
+            try {
+                $sq = $null; $isList = $false
+                while ($xr.Read()) {
+                    if ($xr.NodeType -ne [Xml.XmlNodeType]::Element) { continue }
+                    if ($xr.LocalName -eq 'dataValidation') { $sq = $xr.GetAttribute('sqref'); $isList = ($xr.GetAttribute('type') -eq 'list') }
+                    elseif ($xr.LocalName -eq 'formula1' -and $isList -and $sq) {
+                        $f = "$($xr.ReadInnerXml())".Trim()
+                        $val = '#RANGE'
+                        if ($f.StartsWith('&quot;')) { $f = [Net.WebUtility]::HtmlDecode($f) }
+                        if ($f.StartsWith('"') -and -not $f.Contains('<')) {
+                            # misma regla que Read-ValidationList: un trozo que empieza por espacio es parte de la opción anterior
+                            $items = New-Object System.Collections.Generic.List[string]
+                            foreach ($piece in $f.Trim('"').Split(@(',', ';'))) {
+                                $v = $piece.Trim().Trim('"').Trim()
+                                if (-not $v) { continue }
+                                if ($piece.StartsWith(' ') -and $items.Count) { $items[$items.Count - 1] = $items[$items.Count - 1] + ', ' + $v } else { $items.Add($v) }
+                            }
+                            $val = $items.ToArray()
+                        }
+                        foreach ($rg in $sq.Split(' ')) { if ($rg -match '^\$?([A-Z]+)') { if (-not $cols.ContainsKey($Matches[1])) { $cols[$Matches[1]] = $val } } }
+                        $isList = $false
+                    }
+                }
+            } finally { $xr.Dispose() }
+            $out[(ConvertTo-SheetKey $sh.GetAttribute('name'))] = @{ Name = $sh.GetAttribute('name'); Cols = $cols }
+        }
+        $zip.Dispose()
+    } finally { $fs.Dispose() }
+    return $out
+}
+function Update-ListsFromFile($t, $dv) {
+    # devuelve 'ok' (listas puestas al día sin Excel), 'skip' (no hay pestaña con listas) o 'excel' (hace falta Excel)
+    $need = @($t.Fields | Where-Object { "$($_.List)" -like 'excel:*' } | ForEach-Object { $_.List.Substring(6) } | Select-Object -Unique)
+    if (-not $need.Count) { return 'skip' }
+    $names = @($dv.Values | ForEach-Object { $_.Name })
+    $cands = @($t.Sheet); if (Test-GenTramite $t) { $cands = @(Get-TabCandidates $names $t) }
+    $range = $false
+    foreach ($c in $cands) {
+        $k = ConvertTo-SheetKey $c
+        if (-not $dv.ContainsKey($k)) { continue }
+        $cols = $dv[$k].Cols
+        $hits = @($need | Where-Object { $cols.ContainsKey($_) })
+        if (@($hits | Where-Object { $cols[$_] -is [string] }).Count) { $range = $true; continue }
+        if ($hits.Count -lt $need.Count) { continue }
+        $lk = Enter-StoreLock
+        try {
+            $s = Read-Store $t
+            if (-not $s) { return 'skip' }
+            foreach ($n in $need) { $s.Meta.Lists["excel:$n"] = @($cols[$n]) }
+            Write-Store $t $s
+        } finally { Exit-StoreLock $lk }
+        return 'ok'
+    }
+    if ($range) { return 'excel' }
+    return 'skip'
+}
 function Refresh-FromExcel {
-    # «Actualizar»: listas y precios desde AJUSTES del Excel + envía al Excel lo pendiente
+    # «Actualizar»: listas desplegables leídas del archivo (rápido, sin abrir Excel);
+    # Excel solo se abre para los trámites cuyas listas o precios están en otras celdas (pestaña AJUSTES)
     $h = $null; $cur = $script:T
     try {
-        if (Test-ExcelInstalled) {
+        $viaExcel = @($script:Tramites)
+        try {
+            $dv = Read-XlsxValidationLists $script:Cfg.ExcelPath
+            $viaExcel = @(foreach ($t in $script:Tramites) {
+                $res = 'excel'
+                try { $res = Update-ListsFromFile $t $dv } catch { Write-Log "listas sin Excel ($($t.Sheet)): $($_.Exception.Message)" }
+                if ($res -eq 'excel') { $t }
+            })
+        } catch { Write-Log "listas sin Excel: $($_.Exception.Message)" }
+        if ($viaExcel.Count -and (Test-ExcelInstalled)) {
             $h = Invoke-Excel { Open-Book }
-            foreach ($t in $script:Tramites) {
+            foreach ($t in $viaExcel) {
                 $script:T = $t
                 try { Update-StoreMeta $h $t } catch { Write-Log "listas ($($t.Sheet)): $($_.Exception.Message)" }
             }
