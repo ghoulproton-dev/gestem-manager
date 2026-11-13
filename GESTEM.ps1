@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.11'
+$script:AppVersion = '1.7'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -442,6 +442,10 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'Deshacer'
   cmUndone = 'Cambio deshecho'
+  cmResp = 'Asignar responsable'
+  cmRespN = 'Asignar responsable ({0} clientes)'
+  respAsk = '¿Poner a {1} como responsable de {0} clientes?'
+  respDone = '✓ {0} cliente(s) con responsable {1}'
   updReady = 'Hay una versión nueva de GESTEM ({0}).'
   updNow = 'Actualizar ahora'
   cmUndoFail = 'No se pudo deshacer: el cliente ya no está en la lista.'
@@ -543,6 +547,10 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'Undo'
   cmUndone = 'Change undone'
+  cmResp = 'Assign handler'
+  cmRespN = 'Assign handler ({0} clients)'
+  respAsk = 'Set {1} as the handler of {0} clients?'
+  respDone = '✓ {0} client(s) now handled by {1}'
   updReady = 'A new version of GESTEM is available ({0}).'
   updNow = 'Update now'
   cmUndoFail = 'Could not undo: the client is no longer in the list.'
@@ -644,6 +652,10 @@ $script:TextMore = @{
   cmDone = '✓ {0} : {1}'
   cmUndo = 'Annuler'
   cmUndone = 'Modification annulée'
+  cmResp = 'Attribuer un responsable'
+  cmRespN = 'Attribuer un responsable ({0} clients)'
+  respAsk = 'Mettre {1} comme responsable de {0} clients ?'
+  respDone = '✓ {0} client(s) attribué(s) à {1}'
   updReady = 'Une nouvelle version de GESTEM est disponible ({0}).'
   updNow = 'Mettre à jour'
   cmUndoFail = 'Impossible d''annuler : le client n''est plus dans la liste.'
@@ -745,6 +757,10 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'تراجع'
   cmUndone = 'تم التراجع عن التغيير'
+  cmResp = 'تعيين المسؤول'
+  cmRespN = 'تعيين المسؤول ({0} عملاء)'
+  respAsk = 'تعيين {1} مسؤولًا عن {0} عملاء؟'
+  respDone = '✓ {0} عميل(عملاء) أصبح مسؤولهم {1}'
   updReady = 'يتوفر إصدار جديد من GESTEM ({0}).'
   updNow = 'حدّث الآن'
   cmUndoFail = 'تعذّر التراجع: العميل لم يعد في القائمة.'
@@ -1488,9 +1504,225 @@ function Set-CellValue($ws, [string]$addr, $value, [string]$type) {
     }
 }
 
-function Save-Client([hashtable]$vals, $row, [string]$ExpectName, [switch]$IsNew, $Handle) {
-    # escribe un cliente en su fila del Excel (con -Handle usa un Excel ya abierto)
+# ---------- escribir el cliente directamente en el .xlsx (sin abrir Excel) ----------
+# Solo cambia las celdas de ese cliente; fórmulas, formatos y el resto de pestañas no se tocan.
+# Devuelve $null si no puede hacerlo con seguridad (archivo abierto en Excel, pestaña que hay que crear,
+# fórmula compartida, columna de fecha sin formato…): entonces se usa Excel como siempre.
+function Get-ClientOps([hashtable]$vals) {
     $T = $script:T
+    $tipo = "$($vals['tipo'])"
+    $ops = New-Object System.Collections.Generic.List[object]
+    foreach ($f in $T.Fields) {
+        $v = $vals[$f.Key]
+        $op = @{ Col = $f.Col; Kind = 'value'; Value = $null; Type = 'Text' }
+        switch ($f.Role) {
+            'nationality' {
+                if (-not "$v" -or "$v" -ieq $T.DefaultNationality) { $op.Kind = 'formula'; $op.Value = $T.DefaultNationality } else { $op.Value = "$v" }
+            }
+            'price' {
+                $tar = $null; $pv = ConvertTo-CellNumber $v
+                if ($tipo -and $script:Tariff.ContainsKey($tipo)) { $tar = [double]$script:Tariff[$tipo] }
+                if ($null -eq $pv -or ($null -ne $tar -and $pv -eq $tar)) { $op.Kind = 'formula'; $op.Value = $(if ($null -ne $pv) { $pv } else { $tar }); $op.Type = 'Money' } else { $op.Value = $pv; $op.Type = 'Money' }
+            }
+            'paid' {
+                $pv = ConvertTo-CellNumber $v
+                if ("$($vals['paystate'])" -eq 'Parcial' -and $null -ne $pv) { $op.Value = $pv; $op.Type = 'Money' } else { $op.Kind = 'formula'; $op.Value = $pv; $op.Type = 'Money' }
+            }
+            default {
+                if ($f.Type -eq 'Date') { $op.Value = ConvertTo-CellDate $v; $op.Type = 'Date' }
+                elseif ($f.Type -eq 'Money') { $op.Value = ConvertTo-CellNumber $v; $op.Type = 'Money' }
+                elseif ($null -ne $v -and "$v" -ne '') { $op.Value = "$v" }
+            }
+        }
+        $ops.Add($op)
+    }
+    return ,$ops
+}
+function Save-ClientToFile($ops, $row, [string]$ExpectName, [switch]$IsNew) {
+    $T = $script:T
+    $path = "$($script:Cfg.ExcelPath)"
+    if (-not $path -or -not (Test-Path -LiteralPath $path)) { return $null }
+    # abierto en Excel (aquí o en otro PC): Excel tiene el archivo bloqueado -> se usa Excel
+    try { $probe = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None); $probe.Dispose() } catch { return $null }
+    try { Add-Type -AssemblyName System.IO.Compression -ErrorAction Stop } catch { }
+    try { Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop } catch { }
+    $ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
+    $nsR = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+    $tmp = Join-Path $env:TEMP ("GESTEM_escritura_{0}.xlsx" -f [guid]::NewGuid().ToString('N'))
+    Copy-Item -LiteralPath $path -Destination $tmp -Force
+    $result = $null
+    try {
+        $zip = [IO.Compression.ZipFile]::Open($tmp, [IO.Compression.ZipArchiveMode]::Update)
+        try {
+            $readXml = {
+                param($name)
+                $e = $zip.GetEntry($name); if (-not $e) { return $null }
+                $sr = New-Object IO.StreamReader($e.Open())
+                try { $x = New-Object Xml.XmlDocument; $x.PreserveWhitespace = $true; $x.LoadXml($sr.ReadToEnd()); return $x } finally { $sr.Dispose() }
+            }
+            $writeXml = {
+                param($name, $x)
+                $old = $zip.GetEntry($name); if ($old) { $old.Delete() }
+                $e = $zip.CreateEntry($name, [IO.Compression.CompressionLevel]::Optimal)
+                $sw = New-Object IO.StreamWriter($e.Open(), (New-Object Text.UTF8Encoding($false)))
+                try { $x.Save($sw) } finally { $sw.Dispose() }
+            }
+            # textos compartidos (para leer nombres e IDs)
+            $shared = New-Object System.Collections.Generic.List[string]
+            $sst = & $readXml 'xl/sharedStrings.xml'
+            if ($sst) { foreach ($si in $sst.DocumentElement.ChildNodes) { if ($si.LocalName -eq 'si') { $shared.Add($si.InnerText) } } }
+            # pestañas
+            $wbx = & $readXml 'xl/workbook.xml'; $rels = & $readXml 'xl/_rels/workbook.xml.rels'
+            $targets = @{}
+            foreach ($r in $rels.DocumentElement.ChildNodes) { if ($r.LocalName -eq 'Relationship') { $targets[$r.GetAttribute('Id')] = $r.GetAttribute('Target') } }
+            $sheets = @()
+            foreach ($s in $wbx.GetElementsByTagName('sheet', $ns)) {
+                $p = "$($targets[$s.GetAttribute('id', $nsR)])".TrimStart('/'); if (-not $p.StartsWith('xl/')) { $p = 'xl/' + $p }
+                $sheets += [pscustomobject]@{ Name = $s.GetAttribute('name'); Path = $p }
+            }
+            $names = @($sheets | ForEach-Object { $_.Name })
+            if (Test-GenTramite $T) { $cands = @(Get-TabCandidates $names $T) }
+            else { $cands = @($names | Where-Object { (ConvertTo-SheetKey $_) -eq (ConvertTo-SheetKey $T.Sheet) }) }
+            # celdas
+            $cellText = {
+                param($c)
+                if (-not $c) { return '' }
+                $tt = $c.GetAttribute('t')
+                foreach ($ch in $c.ChildNodes) {
+                    if ($ch.LocalName -eq 'is') { return $ch.InnerText }
+                    if ($ch.LocalName -eq 'v') { if ($tt -eq 's') { $i = [int]$ch.InnerText; if ($i -lt $shared.Count) { return $shared[$i] }; return '' }; return $ch.InnerText }
+                }
+                return ''
+            }
+            $doc = $null; $sheetPath = $null; $rows = $null; $sd = $null
+            foreach ($cand in $cands) {
+                $sh = $sheets | Where-Object { $_.Name -eq $cand } | Select-Object -First 1
+                if (-not $sh) { continue }
+                $x = & $readXml $sh.Path
+                if (-not $x) { continue }
+                $sdn = $x.GetElementsByTagName('sheetData', $ns) | Select-Object -First 1
+                if (-not $sdn) { continue }
+                $rmap = @{}
+                foreach ($rw in $sdn.ChildNodes) { if ($rw.LocalName -eq 'row') { $rmap[[int]$rw.GetAttribute('r')] = $rw } }
+                if (Test-GenTramite $T) {
+                    # solo una pestaña con el formato de GESTEM (cabecera «Cliente»/«Nombre…» encima de la primera fila)
+                    $hr = $rmap[[int]($T.FirstRow - 1)]; $hc = $null
+                    if ($hr) { foreach ($c in $hr.ChildNodes) { if ($c.LocalName -eq 'c' -and $c.GetAttribute('r') -eq "$($T.NameCol)$($T.FirstRow - 1)") { $hc = $c } } }
+                    $hk = ConvertTo-SheetKey (& $cellText $hc)
+                    if (-not ($hk.StartsWith('CLIENTE') -or $hk.StartsWith('NOMBRE'))) { continue }
+                }
+                $doc = $x; $sheetPath = $sh.Path; $rows = $rmap; $sd = $sdn; break
+            }
+            if (-not $doc) { return $null }    # hay que crear la pestaña: eso lo hace Excel
+            $getCell = {
+                param([int]$r, [string]$col, [bool]$create)
+                $rw = $rows[$r]
+                if (-not $rw) {
+                    if (-not $create) { return $null }
+                    $rw = $doc.CreateElement('row', $ns); $rw.SetAttribute('r', "$r")
+                    $after = $null; foreach ($k in $rows.Keys) { if ($k -lt $r -and ($null -eq $after -or $k -gt [int]$after.GetAttribute('r'))) { $after = $rows[$k] } }
+                    if ($after) { [void]$sd.InsertAfter($rw, $after) } else { [void]$sd.PrependChild($rw) }
+                    $rows[$r] = $rw
+                }
+                $ref = "$col$r"; $n = ColNum $col; $before = $null
+                foreach ($c in $rw.ChildNodes) {
+                    if ($c.LocalName -ne 'c') { continue }
+                    $cr = $c.GetAttribute('r')
+                    if ($cr -eq $ref) { return $c }
+                    if (-not $before -and $cr -match '^([A-Z]+)' -and (ColNum $Matches[1]) -gt $n) { $before = $c }
+                }
+                if (-not $create) { return $null }
+                $c = $doc.CreateElement('c', $ns); $c.SetAttribute('r', $ref)
+                if ($before) { [void]$rw.InsertBefore($c, $before) } else { [void]$rw.AppendChild($c) }
+                return $c
+            }
+            $colStyle = {
+                # formato de esa columna en otra fila (para fechas en celdas nuevas)
+                param([string]$col)
+                foreach ($k in ($rows.Keys | Sort-Object)) {
+                    if ($k -lt $T.FirstRow) { continue }
+                    foreach ($c in $rows[$k].ChildNodes) { if ($c.LocalName -eq 'c' -and $c.GetAttribute('r') -eq "$col$k" -and $c.GetAttribute('s')) { return $c.GetAttribute('s') } }
+                }
+                return $null
+            }
+            $colHasFormula = {
+                # ¿esa columna tiene fórmulas en otras filas de clientes?
+                param([string]$col, [int]$skip)
+                foreach ($k in $rows.Keys) {
+                    if ($k -lt $T.FirstRow -or $k -gt $T.LastRow -or $k -eq $skip) { continue }
+                    foreach ($c in $rows[$k].ChildNodes) {
+                        if ($c.LocalName -eq 'c' -and $c.GetAttribute('r') -eq "$col$k") { foreach ($ch in $c.ChildNodes) { if ($ch.LocalName -eq 'f') { return $true } } }
+                    }
+                }
+                return $false
+            }
+            # fila: la guardada, salvo que en el Excel ya haya otro cliente escrito a mano
+            if ($row -and $IsNew) {
+                $cur = (& $cellText (& $getCell ([int]$row) $T.NameCol $false)).Trim()
+                if ($cur -and $cur -ne "$ExpectName".Trim()) { $row = $null }
+            }
+            if (-not $row) {
+                for ($r = $T.FirstRow; $r -le $T.LastRow; $r++) { if (-not (& $cellText (& $getCell $r $T.NameCol $false)).Trim()) { $row = $r; break } }
+                if (-not $row) { throw (L 'errFull') }
+            }
+            $row = [int]$row
+            foreach ($op in $ops) {
+                $c = & $getCell $row $op.Col $false
+                $empty = ($null -eq $op.Value -or "$($op.Value)" -eq '')
+                if (-not $c -and $empty) { continue }
+                $fx = $null; if ($c) { foreach ($ch in $c.ChildNodes) { if ($ch.LocalName -eq 'f') { $fx = $ch } } }
+                if ($op.Kind -eq 'formula' -and $fx) { continue }                                   # la fórmula del Excel se queda
+                if ($op.Kind -eq 'formula' -and (& $colHasFormula $op.Col $row)) { return $null }   # Excel copia la fórmula de la columna a esta fila
+                if ($fx -and $fx.GetAttribute('t') -eq 'shared' -and $fx.GetAttribute('ref')) { return $null }   # fórmula compartida: mejor Excel
+                if (-not $c) { $c = & $getCell $row $op.Col $true }
+                if ($op.Type -eq 'Date' -and -not $empty -and -not $c.GetAttribute('s')) {
+                    $st = & $colStyle $op.Col
+                    if (-not $st) { return $null }    # sin formato de fecha la celda saldría como un número
+                    $c.SetAttribute('s', $st)
+                }
+                foreach ($ch in @($c.ChildNodes)) { if ($ch.LocalName -in 'f', 'v', 'is') { [void]$c.RemoveChild($ch) } }
+                $c.RemoveAttribute('t')
+                if ($empty) { continue }
+                if ($op.Type -in 'Date', 'Money') {
+                    $v = $doc.CreateElement('v', $ns); $v.InnerText = ([double]$op.Value).ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+                    [void]$c.AppendChild($v)
+                } else {
+                    $c.SetAttribute('t', 'inlineStr')
+                    $is = $doc.CreateElement('is', $ns); $tx = $doc.CreateElement('t', $ns)
+                    $tx.InnerText = "$($op.Value)"
+                    if ("$($op.Value)" -ne "$($op.Value)".Trim()) { [void]$tx.SetAttribute('space', 'http://www.w3.org/XML/1998/namespace', 'preserve') }
+                    [void]$is.AppendChild($tx); [void]$c.AppendChild($is)
+                }
+            }
+            $id = (& $cellText (& $getCell $row $T.IdCol $false)).Trim()
+            & $writeXml $sheetPath $doc
+            # que Excel vuelva a calcular los totales al abrir
+            $calc = $wbx.GetElementsByTagName('calcPr', $ns) | Select-Object -First 1
+            if ($calc) { $calc.SetAttribute('fullCalcOnLoad', '1'); & $writeXml 'xl/workbook.xml' $wbx }
+            $result = @{ Id = $id; Row = $row }
+        } finally { $zip.Dispose() }
+        if (-not $result) { return $null }
+        # comprobación: el archivo nuevo se abre y la pestaña se lee bien
+        $chk = [IO.Compression.ZipFile]::OpenRead($tmp)
+        try { $e = $chk.GetEntry($sheetPath); $sr = New-Object IO.StreamReader($e.Open()); try { $xx = New-Object Xml.XmlDocument; $xx.LoadXml($sr.ReadToEnd()) } finally { $sr.Dispose() } } finally { $chk.Dispose() }
+        if ($script:Cfg.Backup) { Backup-Excel }
+        [IO.File]::Copy($tmp, $path, $true)    # si Excel lo acaba de abrir, falla aquí y se usa Excel
+        Write-Log ("Excel (directo): fila {0} ({1})" -f $result.Row, $result.Id)
+        return $result
+    } finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+}
+function Save-Client([hashtable]$vals, $row, [string]$ExpectName, [switch]$IsNew, $Handle, [switch]$FileOnly) {
+    # escribe un cliente en su fila del Excel: primero directamente en el archivo (rápido, sin abrir Excel);
+    # si no se puede con seguridad, con Excel como siempre (con -Handle usa un Excel ya abierto)
+    $T = $script:T
+    # 1) se preparan y comprueban TODOS los valores antes de tocar el Excel (nunca queda una fila a medias)
+    $ops = Get-ClientOps $vals
+    if (-not $Handle) {
+        $fr = $null
+        try { $fr = Save-ClientToFile $ops $row $ExpectName -IsNew:$IsNew } catch { Write-Log "Excel directo no posible: $($_.Exception.Message)" }
+        if ($fr) { return $fr }
+        if ($FileOnly) { return $null }
+    }
     $h = $Handle; $own = -not $Handle
     try {
         if ($own) { $h = Invoke-Excel { Open-Book -ForWrite } }
@@ -1506,33 +1738,6 @@ function Save-Client([hashtable]$vals, $row, [string]$ExpectName, [switch]$IsNew
             $n = $T.LastRow - $T.FirstRow + 1
             for ($i = 1; $i -le $n; $i++) { if (-not "$($col[$i, 1])".Trim()) { $row = $T.FirstRow + $i - 1; break } }
             if (-not $row) { throw (L 'errFull') }
-        }
-        $tipo = "$($vals['tipo'])"
-        # 1) se preparan y comprueban TODOS los valores antes de tocar el Excel (nunca queda una fila a medias)
-        $ops = New-Object System.Collections.Generic.List[object]
-        foreach ($f in $T.Fields) {
-            $v = $vals[$f.Key]
-            $op = @{ Col = $f.Col; Kind = 'value'; Value = $null; Type = 'Text' }
-            switch ($f.Role) {
-                'nationality' {
-                    if (-not "$v" -or "$v" -ieq $T.DefaultNationality) { $op.Kind = 'formula'; $op.Value = $T.DefaultNationality } else { $op.Value = "$v" }
-                }
-                'price' {
-                    $tar = $null; $pv = ConvertTo-CellNumber $v
-                    if ($tipo -and $script:Tariff.ContainsKey($tipo)) { $tar = [double]$script:Tariff[$tipo] }
-                    if ($null -eq $pv -or ($null -ne $tar -and $pv -eq $tar)) { $op.Kind = 'formula'; $op.Value = $(if ($null -ne $pv) { $pv } else { $tar }); $op.Type = 'Money' } else { $op.Value = $pv; $op.Type = 'Money' }
-                }
-                'paid' {
-                    $pv = ConvertTo-CellNumber $v
-                    if ("$($vals['paystate'])" -eq 'Parcial' -and $null -ne $pv) { $op.Value = $pv; $op.Type = 'Money' } else { $op.Kind = 'formula'; $op.Value = $pv; $op.Type = 'Money' }
-                }
-                default {
-                    if ($f.Type -eq 'Date') { $op.Value = ConvertTo-CellDate $v; $op.Type = 'Date' }
-                    elseif ($f.Type -eq 'Money') { $op.Value = ConvertTo-CellNumber $v; $op.Type = 'Money' }
-                    elseif ($null -ne $v -and "$v" -ne '') { $op.Value = "$v" }
-                }
-            }
-            $ops.Add($op)
         }
         # 2) se escribe la fila
         Invoke-Excel {
@@ -1867,7 +2072,7 @@ function Save-ClientStore([hashtable]$vals, $editRow) {
     $synced = Sync-RecordToExcel $t $rec
     return @{ Id = $rec.Id; Synced = $synced }
 }
-function Sync-RecordToExcel($t, $rec, $h) {
+function Sync-RecordToExcel($t, $rec, $h, [switch]$FileOnly) {
     $prevT = $script:T; $prevTar = $script:Tariff
     try {
         $script:T = $t
@@ -1876,7 +2081,8 @@ function Sync-RecordToExcel($t, $rec, $h) {
         $vals = @{}
         foreach ($k in $rec.F.Keys) { $vals[$k] = $rec.F[$k] }
         # campos con fórmula en el Excel: se dejan a la fórmula cuando coinciden
-        $r = Save-Client $vals $rec.Row -ExpectName "$($rec.F['name'])" -IsNew:([bool]$rec.New) -Handle $h
+        $r = Save-Client $vals $rec.Row -ExpectName "$($rec.F['name'])" -IsNew:([bool]$rec.New) -Handle $h -FileOnly:$FileOnly
+        if (-not $r) { return $false }    # -FileOnly: no se pudo en el archivo, lo hará Excel después
         $lk = Enter-StoreLock
         try {
             $s = Read-Store $t
@@ -1904,10 +2110,14 @@ function Sync-PendingToExcel {
     }
     if (-not $todo.Count) { return 0 }
     $h = $null; $n = 0
+    # primero directamente en el archivo; Excel solo para lo que no se pueda así
+    $left = @()
+    foreach ($x in $todo) { if (Sync-RecordToExcel $x[0] $x[1] -FileOnly) { $n++ } else { $left += ,$x } }
+    if (-not $left.Count) { if ($n) { Write-Log ("Excel actualizado con {0} cliente(s) pendiente(s)" -f $n) }; return $n }
     try {
         $h = Invoke-Excel { Open-Book -ForWrite }
         if ($script:Cfg.Backup) { Backup-Excel }
-        foreach ($x in $todo) { if (Sync-RecordToExcel $x[0] $x[1] -h $h) { $n++ } }
+        foreach ($x in $left) { if (Sync-RecordToExcel $x[0] $x[1] -h $h) { $n++ } }
         Invoke-Excel { Close-Book $h $true }; $h = $null
     } catch {
         Write-Log "sincronizar con el Excel: $($_.Exception.Message)"
@@ -3282,7 +3492,7 @@ $xaml = @'
               <CheckBox x:Name="OnlyMine" Margin="16,0,0,0"/>
             </WrapPanel>
           </DockPanel>
-          <DataGrid x:Name="ClientsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+          <DataGrid x:Name="ClientsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
                     HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEF0F3"
                     RowHeight="40" Background="White" BorderThickness="0" CanUserAddRows="False" CanUserResizeRows="False"
                     AlternatingRowBackground="#FAFBFC" Foreground="#17202E">
@@ -4509,6 +4719,7 @@ function Set-CmHeaders {
     $ui = $script:UI
     if (-not $ui.CmFolder) { return }
     $ui.CmFolder.Header = L 'cmFolder'; $ui.CmStatus.Header = L 'cmStatus'; $ui.CmPaid.Header = L 'cmPaid'
+    $ui.CmResp.Header = L 'cmResp'
     $ui.CmCopyName.Header = L 'cmCopyName'; $ui.CmCopyDoc.Header = L 'cmCopyDoc'; $ui.CmCopyTel.Header = L 'cmCopyTel'; $ui.CmExcel.Header = L 'cmExcel'
 }
 function Fill-CmMenu($sel) {
@@ -4527,6 +4738,19 @@ function Fill-CmMenu($sel) {
         }
     }
     $m.IsEnabled = ($m.Items.Count -gt 0)
+    # asignar responsable: a todos los clientes seleccionados (Ctrl+A, Mayús o Ctrl + clic)
+    $nSel = @($ui.ClientsGrid.SelectedItems).Count
+    $ui.CmResp.Header = $(if ($nSel -gt 1) { (L 'cmRespN') -f $nSel } else { L 'cmResp' })
+    $ui.CmResp.Items.Clear()
+    $people = @(@($script:Cfg.Colleagues) + @($script:Lists['colleagues']) | ForEach-Object { "$_".Trim().ToUpper() } | Where-Object { $_ } | Select-Object -Unique)
+    foreach ($p in $people) {
+        $it = New-Object Windows.Controls.MenuItem
+        $it.Header = ($p -replace '_', '__'); $it.Tag = $p
+        if ($nSel -eq 1 -and "$($sel.Resp)".Trim() -ieq $p) { $it.IsChecked = $true; $it.FontWeight = 'SemiBold' }
+        $it.Add_Click({ Set-RespBulk "$($this.Tag)" })
+        [void]$ui.CmResp.Items.Add($it)
+    }
+    $ui.CmResp.IsEnabled = ($people.Count -gt 0 -and [bool]@($script:T.Fields | Where-Object { $_.Key -eq 'resp' }).Count)
     $ui.CmPaid.IsEnabled = ([bool]@($script:T.Fields | Where-Object { $_.Key -eq 'paystate' }).Count -and "$($sel.Pay)" -ne 'Pagado')
     $ui.CmCopyDoc.IsEnabled = [bool]"$($sel.Doc)".Trim()
     $ui.CmCopyTel.IsEnabled = [bool]"$($sel.Data['tel'])".Trim()
@@ -4559,6 +4783,50 @@ function Quick-SetField([string]$key, $value, [switch]$NoUndo) {
         $script:UndoInfo = @{ Tramite = $tid; Row = $rowNo; Key = $key; Old = $old; OldPaid = $oldPaid }
         Show-Toast ((L 'cmDone') -f $label, "$value") (L 'cmUndo') { Invoke-QuickUndo } 8
     }
+}
+function Set-RespBulk([string]$who) {
+    # pone el mismo responsable a todos los clientes seleccionados, de una vez
+    $ui = $script:UI
+    $sel = @($ui.ClientsGrid.SelectedItems)
+    if (-not $sel.Count -or -not "$who".Trim()) { return }
+    if (-not @($script:T.Fields | Where-Object { $_.Key -eq 'resp' }).Count) { return }
+    if ($sel.Count -gt 1) {
+        $ans = [Windows.MessageBox]::Show($script:Win, ((L 'respAsk') -f $sel.Count, $who), $script:AppName, 'YesNo', 'Question')
+        if ("$ans" -ne 'Yes') { return }
+    }
+    $t = $script:T; $n = 0
+    $script:Busy = $true; $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    Set-Status (L 'savingMsg')
+    try {
+        $norm = @($sel | Where-Object { [int]$_.Row -lt $script:HandRowBase })
+        $hand = @($sel | Where-Object { [int]$_.Row -ge $script:HandRowBase })
+        if ($norm.Count) {
+            $lk = Enter-StoreLock
+            try {
+                $s = Read-Store $t
+                foreach ($r in $norm) {
+                    $c = $s.Clients | Where-Object { [int]$_.Row -eq [int]$r.Row } | Select-Object -First 1
+                    if (-not $c) { continue }
+                    $c.F['resp'] = $who; $c.Sync = $false; $c.Updated = (Get-Date).ToString('s')
+                    $c.By = $(if ($script:User) { $script:User } else { 'ADMIN' }); $n++
+                }
+                Write-Store $t $s
+            } finally { Exit-StoreLock $lk }
+        }
+        # clientes de una pestaña hecha a mano: pasan a GESTEM con el responsable puesto
+        foreach ($r in $hand) {
+            $vals = @{}; foreach ($k in $r.Data.Keys) { $vals[$k] = $r.Data[$k] }
+            $vals['resp'] = $who
+            [void](Save-ClientStore $vals $r.Row); $n++
+        }
+        [void](Sync-PendingToExcel)
+        Write-Log ("asignó {0} cliente(s) a {1} · {2}" -f $n, $who, $t.Title['es'])
+        [void](Load-Data)
+        Show-Toast ((L 'respDone') -f $n, $who)
+    } catch {
+        Write-Log "asignar responsable: $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    } finally { $script:Busy = $false; $script:Win.Cursor = $null; Set-Status '' }
 }
 function Invoke-QuickUndo {
     $u = $script:UndoInfo; $script:UndoInfo = $null
@@ -6476,7 +6744,8 @@ $script:UI.CmCopyName = New-CmItem 0xE8C8
 $script:UI.CmCopyDoc = New-CmItem 0xE8C8
 $script:UI.CmCopyTel = New-CmItem 0xE717
 $script:UI.CmExcel = New-CmItem 0xE8A7
-foreach ($it in @($script:UI.CmFolder, (New-Object Windows.Controls.Separator), $script:UI.CmStatus, $script:UI.CmPaid, (New-Object Windows.Controls.Separator),
+$script:UI.CmResp = New-CmItem 0xE77B
+foreach ($it in @($script:UI.CmFolder, (New-Object Windows.Controls.Separator), $script:UI.CmStatus, $script:UI.CmPaid, $script:UI.CmResp, (New-Object Windows.Controls.Separator),
                   $script:UI.CmCopyName, $script:UI.CmCopyDoc, $script:UI.CmCopyTel, (New-Object Windows.Controls.Separator), $script:UI.CmExcel)) { [void]$cmMenu.Items.Add($it) }
 $script:UI.AboutImg.Source = $script:AppLogo
 $script:PendingLogo = ''
@@ -6603,7 +6872,7 @@ $ui.ClientsGrid.Add_PreviewMouseLeftButtonUp({
 $ui.ClientsGrid.Add_PreviewMouseRightButtonDown({
     $o = $_.OriginalSource
     while ($o -and -not ($o -is [Windows.Controls.DataGridRow])) { $o = [Windows.Media.VisualTreeHelper]::GetParent($o) }
-    if ($o) { $o.IsSelected = $true }
+    if ($o -and -not $o.IsSelected) { $script:UI.ClientsGrid.SelectedItems.Clear(); $o.IsSelected = $true }    # si ya estaba entre los seleccionados, se mantiene la selección
 })
 $ui.DocsClose.Add_Click({ $script:UI.PanelDocs.Visibility = 'Collapsed' })
 $ui.DocsAddBtn.Add_Click({ Add-DocsFromDialog })
