@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.11'
+$script:AppVersion = '1.5.12'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -190,7 +190,7 @@ $script:Text = @{
   secclient='Datos del cliente'; secproc='Trámite'; secpay='Pago'; secnotes='Notas'
   newTitle='Nuevo cliente'; editTitle='Editar cliente {0}'
   btnSave='Guardar cliente'; btnSaveEdit='Guardar cambios'; btnClear='Vaciar formulario'; btnCancel='Cancelar'
-  sumPrice='Precio'; sumPaid='Pagado'; sumPend='Pendiente'; cardEmpty='Nombre del cliente'; cardNew='Nuevo'
+  sumPrice='Precio'; sumIva='Base {0}  ·  IVA 21 % {1}'; sumPaid='Pagado'; sumPend='Pendiente'; cardEmpty='Nombre del cliente'; cardNew='Nuevo'
   dupWarn='Atención: este documento ya está en {0} ({1}).'
   dupAsk='Este documento ya está en {0} ({1}).{2}¿Guardar igualmente?'
   reqName='Escribe el nombre del cliente.'
@@ -230,7 +230,7 @@ $script:Text = @{
   secclient='Client details'; secproc='Procedure'; secpay='Payment'; secnotes='Notes'
   newTitle='New client'; editTitle='Edit client {0}'
   btnSave='Save client'; btnSaveEdit='Save changes'; btnClear='Clear form'; btnCancel='Cancel'
-  sumPrice='Price'; sumPaid='Paid'; sumPend='Outstanding'; cardEmpty='Client name'; cardNew='New'
+  sumPrice='Price'; sumIva='Base {0}  ·  VAT (IVA) 21 % {1}'; sumPaid='Paid'; sumPend='Outstanding'; cardEmpty='Client name'; cardNew='New'
   dupWarn='Note: this document is already in {0} ({1}).'
   dupAsk='This document is already in {0} ({1}).{2}Save anyway?'
   reqName="Enter the client's name."
@@ -270,7 +270,7 @@ $script:Text = @{
   secclient='Informations du client'; secproc='Démarche'; secpay='Paiement'; secnotes='Notes'
   newTitle='Nouveau client'; editTitle='Modifier le client {0}'
   btnSave='Enregistrer le client'; btnSaveEdit='Enregistrer les modifications'; btnClear='Vider le formulaire'; btnCancel='Annuler'
-  sumPrice='Prix'; sumPaid='Payé'; sumPend='Reste à payer'; cardEmpty='Nom du client'; cardNew='Nouveau'
+  sumPrice='Prix'; sumIva='HT {0}  ·  IVA 21 % {1}'; sumPaid='Payé'; sumPend='Reste à payer'; cardEmpty='Nom du client'; cardNew='Nouveau'
   dupWarn='Attention : ce document est déjà dans {0} ({1}).'
   dupAsk='Ce document est déjà dans {0} ({1}).{2}Enregistrer quand même ?'
   reqName='Saisissez le nom du client.'
@@ -310,7 +310,7 @@ $script:Text = @{
   secclient='بيانات العميل'; secproc='الإجراء'; secpay='الدفع'; secnotes='ملاحظات'
   newTitle='عميل جديد'; editTitle='تعديل العميل {0}'
   btnSave='حفظ العميل'; btnSaveEdit='حفظ التغييرات'; btnClear='مسح النموذج'; btnCancel='إلغاء'
-  sumPrice='السعر'; sumPaid='المدفوع'; sumPend='المتبقي'; cardEmpty='اسم العميل'; cardNew='جديد'
+  sumPrice='السعر'; sumIva='الأساس {0}  ·  IVA ‏21 % {1}'; sumPaid='المدفوع'; sumPend='المتبقي'; cardEmpty='اسم العميل'; cardNew='جديد'
   dupWarn='تنبيه: هذه الوثيقة موجودة في {0} ({1}).'
   dupAsk='هذه الوثيقة موجودة في {0} ({1}).{2}هل تريد الحفظ رغم ذلك؟'
   reqName='اكتب اسم العميل.'
@@ -399,6 +399,9 @@ $script:TextMore = @{
   rcApplied = 'Solicitud'
   rcStatusP = 'Estado'
   rcPrice = 'Importe del trámite'
+  rcBase = 'Base imponible'
+  rcIva = 'IVA (21 %)'
+  rcTotal = 'Total (IVA incluido)'
   rcPaid = 'Pagado'
   rcPend = 'Pendiente'
   rcMethod = 'Forma de pago'
@@ -467,6 +470,9 @@ $script:TextMore = @{
   rcApplied = 'Applied'
   rcStatusP = 'Status'
   rcPrice = 'Procedure amount'
+  rcBase = 'Taxable base'
+  rcIva = 'VAT / IVA (21 %)'
+  rcTotal = 'Total (VAT included)'
   rcPaid = 'Paid'
   rcPend = 'Outstanding'
   rcMethod = 'Payment method'
@@ -535,6 +541,9 @@ $script:TextMore = @{
   rcApplied = 'Demande'
   rcStatusP = 'État'
   rcPrice = 'Montant de la démarche'
+  rcBase = 'Base HT'
+  rcIva = 'IVA (21 %)'
+  rcTotal = 'Total TTC (IVA inclus)'
   rcPaid = 'Payé'
   rcPend = 'Reste à payer'
   rcMethod = 'Mode de paiement'
@@ -603,6 +612,9 @@ $script:TextMore = @{
   rcApplied = 'الطلب'
   rcStatusP = 'الحالة'
   rcPrice = 'مبلغ الإجراء'
+  rcBase = 'المبلغ قبل الضريبة'
+  rcIva = 'ضريبة IVA ‏(21 %)'
+  rcTotal = 'المجموع (شامل الضريبة)'
   rcPaid = 'المدفوع'
   rcPend = 'المتبقي'
   rcMethod = 'طريقة الدفع'
@@ -2131,6 +2143,13 @@ function Check-Update([switch]$Manual) {
 # =====================================================================
 #  UTILIDADES
 # =====================================================================
+$script:IvaRate = 0.21    # los precios llevan el IVA incluido
+function Split-Iva($total) {
+    # total con IVA -> base e IVA (redondeados al céntimo)
+    $t = [double]$total
+    $base = [math]::Round($t / (1 + $script:IvaRate), 2, [MidpointRounding]::AwayFromZero)
+    return @{ Base = $base; Iva = [math]::Round($t - $base, 2, [MidpointRounding]::AwayFromZero) }
+}
 function Format-Money($v) { if ($null -eq $v -or "$v" -eq '') { return '-' }; return ([double]$v).ToString('N2', $script:ES) + ' €' }
 function Parse-Money([string]$s) {
     $s = "$s".Replace('€', '').Replace(' ', '').Trim()
@@ -2930,13 +2949,14 @@ $xaml = @'
               <Border BorderBrush="#EEF0F3" BorderThickness="0,1,0,0" Padding="18,12,18,16">
                 <Grid>
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                   <TextBlock x:Name="SumPriceL" Foreground="#667085" Margin="0,4"/>
                   <TextBlock x:Name="SumPrice" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" Margin="0,4"/>
-                  <TextBlock x:Name="SumPaidL" Grid.Row="1" Foreground="#667085" Margin="0,4"/>
-                  <TextBlock x:Name="SumPaid" Grid.Row="1" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" Margin="0,4"/>
-                  <TextBlock x:Name="SumPendL" Grid.Row="2" FontWeight="SemiBold" Margin="0,8,0,0" VerticalAlignment="Center"/>
-                  <TextBlock x:Name="SumPend" Grid.Row="2" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="20" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                  <TextBlock x:Name="SumIva" Grid.Row="1" Grid.ColumnSpan="2" Foreground="#98A2B3" FontSize="12" Margin="0,0,0,4" Visibility="Collapsed"/>
+                  <TextBlock x:Name="SumPaidL" Grid.Row="2" Foreground="#667085" Margin="0,4"/>
+                  <TextBlock x:Name="SumPaid" Grid.Row="2" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" Margin="0,4"/>
+                  <TextBlock x:Name="SumPendL" Grid.Row="3" FontWeight="SemiBold" Margin="0,8,0,0" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="SumPend" Grid.Row="3" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="20" FontWeight="SemiBold" Margin="0,8,0,0"/>
                 </Grid>
               </Border>
             </StackPanel>
@@ -4100,6 +4120,10 @@ function Update-Preview {
     $pend = $null
     if ($null -ne $price) { $pend = [Math]::Max(0, [double]$price - [double]$(if ($null -ne $paid) { $paid } else { 0 })) }
     $ui.SumPrice.Text = Format-Money $price
+    if ($null -ne $price -and [double]$price -gt 0) {
+        $sp = Split-Iva $price
+        $ui.SumIva.Text = (L 'sumIva') -f (Format-Money $sp.Base), (Format-Money $sp.Iva); $ui.SumIva.Visibility = 'Visible'
+    } else { $ui.SumIva.Visibility = 'Collapsed' }
     $ui.SumPaid.Text = Format-Money $(if ($null -ne $price) { $(if ($null -ne $paid) { $paid } else { 0 }) } else { $null })
     $ui.SumPend.Text = Format-Money $pend
     $ui.SumPend.Foreground = $(if ($pend -gt 0) { Brush '#B42318' } else { Brush '#1E7B34' })
@@ -4484,23 +4508,29 @@ function Draw-Receipt($g, $page) {
         PdfText $g $right[$i][0] 110 $yy 32 8.5 'Regular' '#8A7F81'
         PdfText $g $(if ("$($right[$i][1])".Trim()) { $right[$i][1] } else { '—' }) 142 $yy 50 9 'Semibold' '#2B2526'
     }
-    # importes
+    # importes (el precio lleva el IVA incluido)
     $by = 100
-    PdfRect $g $LE $by $W 52 '#F7F5F5' 3
-    PdfText $g (L 'rcPrice') ($LE + 8) ($by + 8) 100 10 'Regular' '#4B4345'
-    PdfText $g (Format-Money $d.Price) 110 ($by + 8) ($RE - 118) 10 'Semibold' '#1E1A1B' 'Far'
-    PdfText $g (L 'rcPaid') ($LE + 8) ($by + 17) 100 10 'Regular' '#4B4345'
-    PdfText $g (Format-Money $d.Paid) 110 ($by + 17) ($RE - 118) 10 'Semibold' '#1F7A45' 'Far'
-    PdfLine $g ($LE + 8) ($by + 27) ($RE - 8) ($by + 27) '#DDD6D7' 0.3
-    PdfText $g (L 'rcPend') ($LE + 8) ($by + 32) 100 12 'Semibold' '#1E1A1B'
-    PdfText $g (Format-Money $d.Pend) 100 ($by + 31) ($RE - 108) 16 'Semibold' $(if ($d.Pend -gt 0) { '#B42318' } else { '#1F7A45' }) 'Far'
-    if ("$($d.Forma)".Trim()) { PdfText $g ((L 'rcMethod') + ': ' + $d.Forma) ($LE + 8) ($by + 43) 120 8.5 'Regular' '#6E6466' }
+    $sp = Split-Iva $d.Price
+    PdfRect $g $LE $by $W 70 '#F7F5F5' 3
+    PdfText $g (L 'rcBase') ($LE + 8) ($by + 8) 100 9.5 'Regular' '#6E6466'
+    PdfText $g (Format-Money $sp.Base) 110 ($by + 8) ($RE - 118) 9.5 'Regular' '#4B4345' 'Far'
+    PdfText $g (L 'rcIva') ($LE + 8) ($by + 15.5) 100 9.5 'Regular' '#6E6466'
+    PdfText $g (Format-Money $sp.Iva) 110 ($by + 15.5) ($RE - 118) 9.5 'Regular' '#4B4345' 'Far'
+    PdfText $g (L 'rcTotal') ($LE + 8) ($by + 24) 100 10 'Semibold' '#1E1A1B'
+    PdfText $g (Format-Money $d.Price) 110 ($by + 24) ($RE - 118) 10 'Semibold' '#1E1A1B' 'Far'
+    PdfLine $g ($LE + 8) ($by + 32) ($RE - 8) ($by + 32) '#DDD6D7' 0.3
+    PdfText $g (L 'rcPaid') ($LE + 8) ($by + 36) 100 10 'Regular' '#4B4345'
+    PdfText $g (Format-Money $d.Paid) 110 ($by + 36) ($RE - 118) 10 'Semibold' '#1F7A45' 'Far'
+    PdfLine $g ($LE + 8) ($by + 45) ($RE - 8) ($by + 45) '#DDD6D7' 0.3
+    PdfText $g (L 'rcPend') ($LE + 8) ($by + 50) 100 12 'Semibold' '#1E1A1B'
+    PdfText $g (Format-Money $d.Pend) 100 ($by + 49) ($RE - 108) 16 'Semibold' $(if ($d.Pend -gt 0) { '#B42318' } else { '#1F7A45' }) 'Far'
+    if ("$($d.Forma)".Trim()) { PdfText $g ((L 'rcMethod') + ': ' + $d.Forma) ($LE + 8) ($by + 61) 120 8.5 'Regular' '#6E6466' }
     # sello de estado
     $stamp = $(if ($d.Pend -le 0 -and $d.Price -gt 0) { (L 'rcPaidFull') } elseif ($d.Paid -gt 0) { (L 'rcPartial') } else { '' })
     if ($stamp) {
         $sc = $(if ($d.Pend -le 0) { '#1F7A45' } else { '#B7791F' })
-        PdfRect $g ($RE - 52) 160 52 10 $(if ($d.Pend -le 0) { '#E7F4EC' } else { '#FDF3E1' }) 5
-        PdfText $g $stamp.ToUpper() ($RE - 52) 162.3 52 9 'Semibold' $sc 'Center'
+        PdfRect $g ($RE - 52) 178 52 10 $(if ($d.Pend -le 0) { '#E7F4EC' } else { '#FDF3E1' }) 5
+        PdfText $g $stamp.ToUpper() ($RE - 52) 180.3 52 9 'Semibold' $sc 'Center'
     }
     # firma
     PdfLine $g $LE 215 ($LE + 70) 215 '#B9B0B2' 0.3
@@ -5783,7 +5813,7 @@ try {
 $script:UI = @{}
 foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings','NavAbout','StatusText','FileText',
                  'PanelForm','FormTitle','FormGrid','CardTag','CardId','CardName','CardSub','CardTipo','CardStatusB','CardStatus',
-                 'SumPriceL','SumPrice','SumPaidL','SumPaid','SumPendL','SumPend','DupWarn','SaveBtn','ClearBtn',
+                 'SumPriceL','SumPrice','SumIva','SumPaidL','SumPaid','SumPendL','SumPend','DupWarn','SaveBtn','ClearBtn',
                  'PanelClients','RefreshBtn','OpenExcelBtn','EditBtn','SearchBox','SearchHint','FilterBox','OnlyDebt','ClientsGrid',
                  'PanelSettings','SetTitle','WelcomeText','SetFileL','ChangeFileBtn','FilePathBox','SetLangL','LangBox','SetNatL','NatBox',
                  'BackupChk','OpenAfterChk','SetNote','SaveSettingsBtn','BackupsBtn','UpdateBtn',
