@@ -13,6 +13,11 @@ namespace Gestem
         {
             string dir = AppDomain.CurrentDomain.BaseDirectory;
             string log = Path.Combine(dir, "smoke.log");
+            if (args.Length > 1 && args[0] == "--selftest")
+            {
+                try { return SelfTest.Run(args[1]); }
+                catch (Exception ex) { File.WriteAllText(Path.Combine(args[1], "cs_error.txt"), ex.ToString()); return 2; }
+            }
             try
             {
                 Application app = new Application();
