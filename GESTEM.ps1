@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.6'
+$script:AppVersion = '1.5.7'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -633,7 +633,7 @@ function Get-FieldLabel($field) { $l = $field.Label[$script:Cfg.Language]; if (-
 #  AJUSTES DEL PROGRAMA (config.json)
 # =====================================================================
 function Load-Config {
-    $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = '' }
+    $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; RecheckedTabs = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = '' }
     if (Test-Path $script:CfgPath) {
         try {
             $j = Get-Content -Raw -Path $script:CfgPath -Encoding UTF8 | ConvertFrom-Json
@@ -720,6 +720,28 @@ function Test-ExcelBusyError($e) {
     $x = $e; while ($x) { if ($x.HResult -eq -2147418111 -or $x.HResult -eq -2147417846) { return $true }; $x = $x.InnerException }
     return $false
 }
+# otros nombres con los que la gestoría tiene las pestañas en su Excel
+$script:SheetAliases = @{
+    nacionalidad = @('NACIONALIDAD ESPAÑOLA'); autonomo = @('AUTÓNOMOS'); certificado = @('CERT DIG', 'CERTIFICADO')
+    dispensa = @('DISPENSA'); visado = @('VISADO'); extranjeria = @('EXTRANJERÍA'); homologacion = @('HOMOLOGACION')
+}
+function Find-TramiteSheet($wb, $t) {
+    # 1) nombre de GESTEM o uno de sus alias (sin tildes/mayúsculas/espacios)
+    $ws = Find-Sheet $wb $t.Sheet
+    if ($ws) { return $ws }
+    if ($script:SheetAliases -and $script:SheetAliases.ContainsKey($t.Id)) {
+        foreach ($a in @($script:SheetAliases[$t.Id])) { if ($a) { $ws = Find-Sheet $wb $a; if ($ws) { return $ws } } }
+    }
+    # 2) una sola pestaña que empiece igual: «AUTÓNOMOS» = «AUTÓNOMO», «NACIONALIDAD ESPAÑOLA» = «NACIONALIDAD»
+    $key = ConvertTo-SheetKey $t.Sheet
+    $hits = @()
+    foreach ($w in $wb.Worksheets) {
+        $k = ConvertTo-SheetKey "$($w.Name)"
+        if ($k.StartsWith($key)) { $rest = $k.Substring($key.Length); if ($rest -eq 'S' -or $rest -eq 'ES' -or $rest.StartsWith(' ')) { $hits += $w } }
+    }
+    if ($hits.Count -eq 1) { return $hits[0] }
+    return $null
+}
 function Find-Sheet($wb, [string]$name) {
     # busca la pestaña aunque tenga otra tilde, mayúsculas o espacios; $null si de verdad no está
     # (si Excel está ocupado se lanza el error de «ocupado», nunca «no tiene la pestaña»)
@@ -732,7 +754,7 @@ function Test-GenTramite($t) { return ($t.Id -ne 'canje') }
 function Get-Sheet($h, [switch]$Create) {
     # con -Create (solo al escribir un cliente): si al Excel le falta la pestaña del trámite, GESTEM la crea
     $T = $script:T
-    $ws = Invoke-Excel { Find-Sheet $h.Wb $T.Sheet }
+    $ws = Invoke-Excel { Find-TramiteSheet $h.Wb $T }
     if ($ws) { return $ws }
     if ($Create -and (Test-GenTramite $T)) { return (Invoke-Excel { New-TramiteSheet $h $T }) }
     $names = @(); try { $names = @($h.Wb.Worksheets | ForEach-Object { "«$($_.Name)»" }) } catch { }
@@ -1251,7 +1273,7 @@ function Read-ExcelMeta($h, $t, $d) {
     return @{ Lists = $lists; Tariff = $d.Tariff; TariffNet = $net; DefaultPrice = $d.DefaultPrice; IdPrefix = $prefix; IdWidth = $width }
 }
 function Import-TramiteFromExcel($h, $t) {
-    if ((Test-GenTramite $t) -and -not (Invoke-Excel { Find-Sheet $h.Wb $t.Sheet })) {
+    if ((Test-GenTramite $t) -and -not (Invoke-Excel { Find-TramiteSheet $h.Wb $t })) {
         # el Excel no tiene esta pestaña: se empieza vacío (sin aviso) y la pestaña se crea al guardar el primer cliente
         $store = New-EmptyStore $t $h
         Write-Store $t $store
@@ -1437,6 +1459,17 @@ function Load-Data([switch]$All, [switch]$Quiet) {
             $script:T = $t
             try {
                 $s = Read-Store $t
+                if ($s -and -not $Quiet -and (Test-GenTramite $t) -and $s.Clients.Count -eq 0 -and (@($script:Cfg.RecheckedTabs) -notcontains $t.Id)) {
+                    # trámite vacío: se mira una sola vez si el Excel tiene su pestaña con otro nombre y se importa
+                    try {
+                        if (-not $h) { $h = Invoke-Excel { Open-Book } }
+                        if (Invoke-Excel { Find-TramiteSheet $h.Wb $t }) {
+                            $lk = Enter-StoreLock
+                            try { $s2 = Read-Store $t; if ($s2 -and $s2.Clients.Count -eq 0) { $s = Import-TramiteFromExcel $h $t } } finally { Exit-StoreLock $lk }
+                        }
+                    } catch { Write-Log "pestaña no leída ($($t.Sheet)): $($_.Exception.Message)" }
+                    finally { $script:Cfg.RecheckedTabs = @(@($script:Cfg.RecheckedTabs) + $t.Id | Where-Object { $_ } | Select-Object -Unique); Save-Config }
+                }
                 if (-not $s -and $Quiet) { if ($script:Cache -and $script:Cache.ContainsKey($t.Id)) { $newCache[$t.Id] = $script:Cache[$t.Id] }; continue }
                 if (-not $s -and (Test-TabKnownMissing $t)) {
                     if ($t.Id -ne $cur.Id) { continue }
@@ -1663,7 +1696,7 @@ function Open-ExcelWindow([int]$row = 0) {
             foreach ($w in $xl.Workbooks) {
                 if ("$($w.FullName)" -ieq [IO.Path]::GetFullPath($path)) {
                     $xl.Visible = $true; $w.Activate()
-                    $tab = Find-Sheet $w $script:T.Sheet
+                    $tab = Find-TramiteSheet $w $script:T
                     if ($row -gt 0 -and $tab) { $tab.Activate(); $xl.Goto($tab.Range("B$row")) }
                     return
                 }
