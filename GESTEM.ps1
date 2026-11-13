@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.7'
+$script:AppVersion = '1.5.8'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -633,7 +633,7 @@ function Get-FieldLabel($field) { $l = $field.Label[$script:Cfg.Language]; if (-
 #  AJUSTES DEL PROGRAMA (config.json)
 # =====================================================================
 function Load-Config {
-    $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; RecheckedTabs = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = '' }
+    $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = '' }
     if (Test-Path $script:CfgPath) {
         try {
             $j = Get-Content -Raw -Path $script:CfgPath -Encoding UTF8 | ConvertFrom-Json
@@ -725,21 +725,28 @@ $script:SheetAliases = @{
     nacionalidad = @('NACIONALIDAD ESPAÑOLA'); autonomo = @('AUTÓNOMOS'); certificado = @('CERT DIG', 'CERTIFICADO')
     dispensa = @('DISPENSA'); visado = @('VISADO'); extranjeria = @('EXTRANJERÍA'); homologacion = @('HOMOLOGACION')
 }
+function Test-GestemLayout($ws, $t) {
+    # ¿la pestaña tiene el formato de GESTEM? (cabecera «Cliente»/«Nombre…» en la columna del nombre, fila 10)
+    # las pestañas hechas a mano (nombres en la columna A desde la fila 2…) NO se leen ni se escriben nunca
+    if (-not (Test-GenTramite $t)) { return $true }
+    $hdr = ''
+    try { $hdr = ConvertTo-SheetKey "$($ws.Range("$($t.NameCol)$($t.FirstRow - 1)").Value2)" } catch { if (Test-ExcelBusyError $_.Exception) { throw }; return $false }
+    return ($hdr.StartsWith('CLIENTE') -or $hdr.StartsWith('NOMBRE'))
+}
 function Find-TramiteSheet($wb, $t) {
-    # 1) nombre de GESTEM o uno de sus alias (sin tildes/mayúsculas/espacios)
-    $ws = Find-Sheet $wb $t.Sheet
-    if ($ws) { return $ws }
+    # candidatas: nombre de GESTEM, sus alias y pestañas que empiecen igual («AUTÓNOMOS», «SIS GESTEM»…)
+    # solo vale la primera que tenga el formato de GESTEM
+    $cands = New-Object System.Collections.Generic.List[object]
+    $ws = Find-Sheet $wb $t.Sheet; if ($ws) { $cands.Add($ws) }
     if ($script:SheetAliases -and $script:SheetAliases.ContainsKey($t.Id)) {
-        foreach ($a in @($script:SheetAliases[$t.Id])) { if ($a) { $ws = Find-Sheet $wb $a; if ($ws) { return $ws } } }
+        foreach ($a in @($script:SheetAliases[$t.Id])) { if ($a) { $ws = Find-Sheet $wb $a; if ($ws) { $cands.Add($ws) } } }
     }
-    # 2) una sola pestaña que empiece igual: «AUTÓNOMOS» = «AUTÓNOMO», «NACIONALIDAD ESPAÑOLA» = «NACIONALIDAD»
     $key = ConvertTo-SheetKey $t.Sheet
-    $hits = @()
     foreach ($w in $wb.Worksheets) {
         $k = ConvertTo-SheetKey "$($w.Name)"
-        if ($k.StartsWith($key)) { $rest = $k.Substring($key.Length); if ($rest -eq 'S' -or $rest -eq 'ES' -or $rest.StartsWith(' ')) { $hits += $w } }
+        if ($k.StartsWith($key)) { $rest = $k.Substring($key.Length); if ($rest -eq 'S' -or $rest -eq 'ES' -or $rest.StartsWith(' ')) { $cands.Add($w) } }
     }
-    if ($hits.Count -eq 1) { return $hits[0] }
+    foreach ($c in $cands) { if (Test-GestemLayout $c $t) { return $c } }
     return $null
 }
 function Find-Sheet($wb, [string]$name) {
@@ -780,13 +787,17 @@ function New-EmptyStore($t, $h) {
 function New-TramiteSheet($h, $t) {
     # crea en el Excel la pestaña del trámite (cabeceras, nº de expediente y fórmulas básicas)
     $wb = $h.Wb
+    # si ya hay una pestaña suya con ese nombre (hecha a mano), la de GESTEM se llama «… GESTEM» y la suya no se toca
+    $name = $t.Sheet
+    $taken = @(foreach ($w in $wb.Worksheets) { ConvertTo-SheetKey "$($w.Name)" })
+    if ($taken -contains (ConvertTo-SheetKey $name)) { $name = "$($t.Sheet) GESTEM" }
     $ws = $wb.Worksheets.Add([Type]::Missing, $wb.Worksheets.Item($wb.Worksheets.Count))
-    $ws.Name = $t.Sheet
+    $ws.Name = $name
     $ws.Range('A1').Value2 = "$($t.Title['es'])".ToUpper()
     $ws.Range('A1').Font.Bold = $true; $ws.Range('A1').Font.Size = 14
     $ws.Range('A2').Value2 = 'Pestaña creada por GESTEM MANAGER'
     $hr = $t.FirstRow - 1
-    $heads = @{ A = 'Nº'; L = 'Pendiente (€)'; T = 'Días'; W = 'Neto (€)' }
+    $heads = @{ A = 'ID Expediente'; L = 'Pendiente (€)'; T = 'Días'; W = 'Neto (€)' }
     foreach ($f in $t.Fields) { $heads[$f.Col] = "$($f.Label['es'])" }
     foreach ($k in $heads.Keys) { $ws.Range("$k$hr").Value2 = $heads[$k] }
     $hdr = $ws.Range("A$($hr):$($t.LastCol)$hr"); $hdr.Font.Bold = $true; $hdr.Interior.Color = 14277081
@@ -1459,16 +1470,31 @@ function Load-Data([switch]$All, [switch]$Quiet) {
             $script:T = $t
             try {
                 $s = Read-Store $t
-                if ($s -and -not $Quiet -and (Test-GenTramite $t) -and $s.Clients.Count -eq 0 -and (@($script:Cfg.RecheckedTabs) -notcontains $t.Id)) {
-                    # trámite vacío: se mira una sola vez si el Excel tiene su pestaña con otro nombre y se importa
+                if ($s -and -not $Quiet -and (Test-GenTramite $t) -and (@($script:Cfg.TabsChecked) -notcontains $t.Id)) {
+                    # una sola vez por trámite: ¿el Excel tiene una pestaña con el formato de GESTEM?
+                    #  - sí y GESTEM está vacío -> se importa
+                    #  - no -> se quitan los clientes que versiones anteriores leyeron de una pestaña hecha a mano (datos sin sentido)
+                    $done = $false
                     try {
                         if (-not $h) { $h = Invoke-Excel { Open-Book } }
-                        if (Invoke-Excel { Find-TramiteSheet $h.Wb $t }) {
-                            $lk = Enter-StoreLock
-                            try { $s2 = Read-Store $t; if ($s2 -and $s2.Clients.Count -eq 0) { $s = Import-TramiteFromExcel $h $t } } finally { Exit-StoreLock $lk }
-                        }
+                        $tab = Invoke-Excel { Find-TramiteSheet $h.Wb $t }
+                        $lk = Enter-StoreLock
+                        try {
+                            $s2 = Read-Store $t
+                            if ($s2 -and $tab -and $s2.Clients.Count -eq 0) { $s = Import-TramiteFromExcel $h $t }
+                            elseif ($s2 -and -not $tab) {
+                                $keep = New-Object System.Collections.Generic.List[object]
+                                foreach ($c in $s2.Clients) { if ("$($c.By)" -ne 'Excel') { $keep.Add($c) } }
+                                if ($keep.Count -ne $s2.Clients.Count) {
+                                    Write-Log ("{0}: {1} cliente(s) leídos de una pestaña que no es de GESTEM, quitados" -f $t.Sheet, ($s2.Clients.Count - $keep.Count))
+                                    $s2.Clients = $keep; $s2.Meta = (New-EmptyStore $t $h).Meta
+                                    Write-Store $t $s2; $s = Read-Store $t
+                                }
+                            }
+                        } finally { Exit-StoreLock $lk }
+                        $done = $true
                     } catch { Write-Log "pestaña no leída ($($t.Sheet)): $($_.Exception.Message)" }
-                    finally { $script:Cfg.RecheckedTabs = @(@($script:Cfg.RecheckedTabs) + $t.Id | Where-Object { $_ } | Select-Object -Unique); Save-Config }
+                    finally { if ($done) { $script:Cfg.TabsChecked = @(@($script:Cfg.TabsChecked) + $t.Id | Where-Object { $_ } | Select-Object -Unique); Save-Config } }
                 }
                 if (-not $s -and $Quiet) { if ($script:Cache -and $script:Cache.ContainsKey($t.Id)) { $newCache[$t.Id] = $script:Cache[$t.Id] }; continue }
                 if (-not $s -and (Test-TabKnownMissing $t)) {
