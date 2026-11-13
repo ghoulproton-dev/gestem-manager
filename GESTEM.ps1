@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.7'
+$script:AppVersion = '1.7.1'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -1543,7 +1543,7 @@ function Save-ClientToFile($ops, $row, [string]$ExpectName, [switch]$IsNew) {
     $path = "$($script:Cfg.ExcelPath)"
     if (-not $path -or -not (Test-Path -LiteralPath $path)) { return $null }
     # abierto en Excel (aquí o en otro PC): Excel tiene el archivo bloqueado -> se usa Excel
-    try { $probe = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None); $probe.Dispose() } catch { return $null }
+    try { $probe = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None); $probe.Dispose() } catch { Write-Log 'Excel directo: el archivo está abierto en otro programa'; return $null }
     try { Add-Type -AssemblyName System.IO.Compression -ErrorAction Stop } catch { }
     try { Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop } catch { }
     $ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
@@ -1613,7 +1613,7 @@ function Save-ClientToFile($ops, $row, [string]$ExpectName, [switch]$IsNew) {
                 }
                 $doc = $x; $sheetPath = $sh.Path; $rows = $rmap; $sd = $sdn; break
             }
-            if (-not $doc) { return $null }    # hay que crear la pestaña: eso lo hace Excel
+            if (-not $doc) { Write-Log "Excel directo: no hay pestaña de GESTEM para $($T.Sheet)"; return $null }    # hay que crear la pestaña: eso lo hace Excel
             $getCell = {
                 param([int]$r, [string]$col, [bool]$create)
                 $rw = $rows[$r]
@@ -1672,12 +1672,12 @@ function Save-ClientToFile($ops, $row, [string]$ExpectName, [switch]$IsNew) {
                 if (-not $c -and $empty) { continue }
                 $fx = $null; if ($c) { foreach ($ch in $c.ChildNodes) { if ($ch.LocalName -eq 'f') { $fx = $ch } } }
                 if ($op.Kind -eq 'formula' -and $fx) { continue }                                   # la fórmula del Excel se queda
-                if ($op.Kind -eq 'formula' -and (& $colHasFormula $op.Col $row)) { return $null }   # Excel copia la fórmula de la columna a esta fila
-                if ($fx -and $fx.GetAttribute('t') -eq 'shared' -and $fx.GetAttribute('ref')) { return $null }   # fórmula compartida: mejor Excel
+                if ($op.Kind -eq 'formula' -and (& $colHasFormula $op.Col $row)) { Write-Log "Excel directo: la columna $($op.Col) tiene fórmula"; return $null }   # Excel copia la fórmula de la columna a esta fila
+                if ($fx -and $fx.GetAttribute('t') -eq 'shared' -and $fx.GetAttribute('ref')) { Write-Log "Excel directo: fórmula compartida en $($op.Col)$row"; return $null }   # fórmula compartida: mejor Excel
                 if (-not $c) { $c = & $getCell $row $op.Col $true }
                 if ($op.Type -eq 'Date' -and -not $empty -and -not $c.GetAttribute('s')) {
                     $st = & $colStyle $op.Col
-                    if (-not $st) { return $null }    # sin formato de fecha la celda saldría como un número
+                    if (-not $st) { Write-Log "Excel directo: la columna $($op.Col) no tiene formato de fecha"; return $null }    # sin formato de fecha la celda saldría como un número
                     $c.SetAttribute('s', $st)
                 }
                 foreach ($ch in @($c.ChildNodes)) { if ($ch.LocalName -in 'f', 'v', 'is') { [void]$c.RemoveChild($ch) } }
