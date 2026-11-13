@@ -1,0 +1,1711 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="GESTEM MANAGER" Width="1320" Height="840" MinWidth="1100" MinHeight="660"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized" Background="#F7F5F5" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13" Foreground="#17202E"
+        UseLayoutRounding="True">
+  <Window.Resources>
+    <!-- GESTEM · paleta roja y blanca: rojo #C4161C, rojo oscuro #A3171F, fondo #F7F5F5 -->
+    <Style x:Key="ThumbS" TargetType="Thumb">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Thumb">
+            <Border x:Name="t" CornerRadius="4" Background="#C9CFD8"/>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="t" Property="Background" Value="#9AA4B2"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="TrackBtn" TargetType="RepeatButton">
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="ScrollBar">
+      <Setter Property="Width" Value="12"/>
+      <Setter Property="MinWidth" Value="12"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ScrollBar">
+            <Grid Background="Transparent">
+              <Track x:Name="PART_Track" IsDirectionReversed="True" Margin="3,2">
+                <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource TrackBtn}" Command="ScrollBar.PageUpCommand"/></Track.DecreaseRepeatButton>
+                <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource TrackBtn}" Command="ScrollBar.PageDownCommand"/></Track.IncreaseRepeatButton>
+                <Track.Thumb><Thumb Style="{StaticResource ThumbS}"/></Track.Thumb>
+              </Track>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="Orientation" Value="Horizontal">
+          <Setter Property="Width" Value="Auto"/>
+          <Setter Property="MinWidth" Value="0"/>
+          <Setter Property="Height" Value="12"/>
+          <Setter Property="MinHeight" Value="12"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ScrollBar">
+                <Grid Background="Transparent">
+                  <Track x:Name="PART_Track" IsDirectionReversed="False" Margin="2,3">
+                    <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource TrackBtn}" Command="ScrollBar.PageLeftCommand"/></Track.DecreaseRepeatButton>
+                    <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource TrackBtn}" Command="ScrollBar.PageRightCommand"/></Track.IncreaseRepeatButton>
+                    <Track.Thumb><Thumb Style="{StaticResource ThumbS}"/></Track.Thumb>
+                  </Track>
+                </Grid>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <Style TargetType="TextBox">
+      <Setter Property="Height" Value="36"/>
+      <Setter Property="Padding" Value="10,0"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="BorderBrush" Value="#D3D8E0"/>
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#17202E"/>
+      <Setter Property="CaretBrush" Value="#C4161C"/>
+      <Setter Property="SelectionBrush" Value="#F4A7AB"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="8">
+              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#9AA4B2"/></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#C4161C"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="bd" Property="Opacity" Value="0.55"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <ControlTemplate x:Key="ComboToggle" TargetType="ToggleButton">
+      <Border x:Name="bd" Background="White" BorderBrush="#D3D8E0" BorderThickness="1" CornerRadius="8">
+        <Path x:Name="arrow" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,13,0"
+              Data="M0,0 L4.5,4.5 L9,0" Stroke="#667085" StrokeThickness="1.6"/>
+      </Border>
+      <ControlTemplate.Triggers>
+        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#9AA4B2"/></Trigger>
+        <Trigger Property="IsChecked" Value="True">
+          <Setter TargetName="bd" Property="BorderBrush" Value="#C4161C"/>
+          <Setter TargetName="arrow" Property="Stroke" Value="#C4161C"/>
+        </Trigger>
+      </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <Style TargetType="ComboBox">
+      <Setter Property="Height" Value="36"/>
+      <Setter Property="Foreground" Value="#17202E"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="MaxDropDownHeight" Value="320"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Grid>
+              <ToggleButton x:Name="tg" Template="{StaticResource ComboToggle}" Focusable="False" ClickMode="Press"
+                            IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+              <ContentPresenter x:Name="cp" IsHitTestVisible="False" Margin="11,0,32,0" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+              <TextBox x:Name="PART_EditableTextBox" Style="{x:Null}" Visibility="Hidden" Margin="4,1,32,1" Padding="6,0"
+                       Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" Foreground="#17202E"
+                       CaretBrush="#C4161C" IsReadOnly="{TemplateBinding IsReadOnly}"/>
+              <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                <Border Margin="0,4,10,12" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                        Background="White" BorderBrush="#E1E5EB" BorderThickness="1" CornerRadius="10">
+                  <Border.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.16" Color="#3A0A0D"/></Border.Effect>
+                  <ScrollViewer Margin="4" SnapsToDevicePixels="True">
+                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                  </ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsEditable" Value="True">
+                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="cp" Property="Visibility" Value="Hidden"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Foreground" Value="#17202E"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBoxItem">
+            <Border x:Name="bd" CornerRadius="6" Padding="10,7" MinHeight="32" Background="Transparent">
+              <ContentPresenter VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="bd" Property="Background" Value="#F4F1F1"/></Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="#C4161C"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalDay" TargetType="CalendarDayButton">
+      <Setter Property="MinWidth" Value="40"/>
+      <Setter Property="MinHeight" Value="38"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Foreground" Value="#2B2526"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CalendarDayButton">
+            <Grid Background="Transparent">
+              <Ellipse x:Name="hov" Width="34" Height="34" Fill="#FBEDEE" Visibility="Collapsed"/>
+              <Ellipse x:Name="today" Width="34" Height="34" Stroke="#C4161C" StrokeThickness="1.4" Visibility="Collapsed"/>
+              <Ellipse x:Name="sel" Width="34" Height="34" Visibility="Collapsed">
+                <Ellipse.Fill>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#D42A31" Offset="0"/>
+                    <GradientStop Color="#9E1820" Offset="1"/>
+                  </LinearGradientBrush>
+                </Ellipse.Fill>
+                <Ellipse.Effect><DropShadowEffect BlurRadius="8" ShadowDepth="2" Direction="270" Opacity="0.3" Color="#9E1820"/></Ellipse.Effect>
+              </Ellipse>
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="hov" Property="Visibility" Value="Visible"/>
+                <Setter Property="Foreground" Value="#9E1820"/>
+              </Trigger>
+              <Trigger Property="IsInactive" Value="True"><Setter Property="Foreground" Value="#C9C1C3"/></Trigger>
+              <Trigger Property="IsToday" Value="True">
+                <Setter TargetName="today" Property="Visibility" Value="Visible"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="#9E1820"/>
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="sel" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="today" Property="Visibility" Value="Collapsed"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+              </Trigger>
+              <Trigger Property="IsBlackedOut" Value="True"><Setter Property="Opacity" Value="0.3"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalBtn" TargetType="CalendarButton">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Foreground" Value="#2B2526"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CalendarButton">
+            <Border x:Name="b" Width="62" Height="44" Margin="4" CornerRadius="10" Background="Transparent">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#FBEDEE"/>
+                <Setter Property="Foreground" Value="#9E1820"/>
+              </Trigger>
+              <Trigger Property="HasSelectedDays" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#C4161C"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+              </Trigger>
+              <Trigger Property="IsInactive" Value="True"><Setter Property="Foreground" Value="#C9C1C3"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalNav" TargetType="Button">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Width="30" Height="30" CornerRadius="15" Background="#1FFFFFFF">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#40FFFFFF"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.35"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalHead" TargetType="Button">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" CornerRadius="8" Padding="10,4" Background="Transparent" HorizontalAlignment="Center">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#26FFFFFF"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalItem" TargetType="CalendarItem">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CalendarItem">
+            <ControlTemplate.Resources>
+              <DataTemplate x:Key="{x:Static CalendarItem.DayTitleTemplateResourceKey}">
+                <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A69C9E" HorizontalAlignment="Center" Margin="0,10,0,4">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="Text" Value="{Binding}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding}" Value="X"><Setter Property="Text" Value="Mi"/></DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+              </DataTemplate>
+            </ControlTemplate.Resources>
+            <Grid x:Name="PART_Root">
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+              <Border CornerRadius="11,11,0,0" Padding="10,10">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#9E1820" Offset="0"/>
+                    <GradientStop Color="#6E0E14" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <Button x:Name="PART_PreviousButton" Style="{StaticResource CalNav}">
+                    <TextBlock Text="&#xE76B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="White"/>
+                  </Button>
+                  <Button x:Name="PART_HeaderButton" Grid.Column="1" Style="{StaticResource CalHead}"/>
+                  <Button x:Name="PART_NextButton" Grid.Column="2" Style="{StaticResource CalNav}">
+                    <TextBlock Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="White"/>
+                  </Button>
+                </Grid>
+              </Border>
+              <Grid x:Name="PART_MonthView" Grid.Row="1" Margin="10,0,10,6" Visibility="Visible">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+              </Grid>
+              <Grid x:Name="PART_YearView" Grid.Row="1" Margin="10,10,10,10" Visibility="Hidden" HorizontalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              </Grid>
+              <Rectangle x:Name="PART_DisabledVisual" Grid.RowSpan="2" Fill="#80FFFFFF" Visibility="Collapsed" RadiusX="12" RadiusY="12"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="PART_DisabledVisual" Property="Visibility" Value="Visible"/></Trigger>
+              <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Calendar}}}" Value="Year">
+                <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden"/>
+                <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible"/>
+              </DataTrigger>
+              <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Calendar}}}" Value="Decade">
+                <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden"/>
+                <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible"/>
+              </DataTrigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CalToday" TargetType="Button">
+      <Setter Property="Foreground" Value="#9E1820"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" CornerRadius="16" Padding="16,6" Background="#FBEDEE" HorizontalAlignment="Center">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE8D1;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                <ContentPresenter VerticalAlignment="Center"/>
+              </StackPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#C4161C"/>
+                <Setter Property="Foreground" Value="White"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Cal" TargetType="Calendar">
+      <Setter Property="CalendarDayButtonStyle" Value="{StaticResource CalDay}"/>
+      <Setter Property="CalendarButtonStyle" Value="{StaticResource CalBtn}"/>
+      <Setter Property="CalendarItemStyle" Value="{StaticResource CalItem}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Calendar">
+            <Border Margin="0,6,16,18" Background="White" BorderBrush="#E4DFE0" BorderThickness="1" CornerRadius="12">
+              <Border.Effect><DropShadowEffect BlurRadius="26" ShadowDepth="6" Direction="270" Opacity="0.22" Color="#3A0A0D"/></Border.Effect>
+              <StackPanel>
+                <CalendarItem x:Name="PART_CalendarItem" Style="{TemplateBinding CalendarItemStyle}" Background="White" BorderBrush="White" BorderThickness="0"/>
+                <Border BorderBrush="#F1EDED" BorderThickness="0,1,0,0" Padding="0,10,0,12">
+                  <Button x:Name="TodayBtn" Style="{StaticResource CalToday}" Content="Hoy"/>
+                </Border>
+              </StackPanel>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="DateText" TargetType="DatePickerTextBox">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#17202E"/>
+      <Setter Property="CaretBrush" Value="#C4161C"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="DatePickerTextBox">
+            <ScrollViewer x:Name="PART_ContentHost" Margin="10,0,4,0" VerticalAlignment="Center" Focusable="False"
+                          HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="DateBtn" TargetType="Button">
+      <Setter Property="Foreground" Value="#8A7F81"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Width="36" Background="Transparent" CornerRadius="0,8,8,0">
+              <TextBlock Text="&#xE787;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" Foreground="{TemplateBinding Foreground}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="#C4161C"/>
+                <Setter TargetName="b" Property="Background" Value="#F7F3F3"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="DatePicker">
+      <Setter Property="Height" Value="36"/>
+      <Setter Property="IsTodayHighlighted" Value="True"/>
+      <Setter Property="CalendarStyle" Value="{StaticResource Cal}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="DatePicker">
+            <Border x:Name="bd" Background="White" BorderBrush="#D9D4D5" BorderThickness="1" CornerRadius="8">
+              <Grid x:Name="PART_Root">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <DatePickerTextBox x:Name="PART_TextBox" Style="{StaticResource DateText}"/>
+                <TextBlock x:Name="ph" Text="dd/mm/aaaa" Foreground="#B0A8AA" Margin="11,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed"/>
+                <Button x:Name="PART_Button" Grid.Column="1" Style="{StaticResource DateBtn}" Focusable="False" Cursor="Hand"/>
+                <Popup x:Name="PART_Popup" PlacementTarget="{Binding ElementName=bd}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#A69C9E"/></Trigger>
+              <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#C4161C"/></Trigger>
+              <MultiTrigger>
+                <MultiTrigger.Conditions>
+                  <Condition Property="SelectedDate" Value="{x:Null}"/>
+                  <Condition Property="IsKeyboardFocusWithin" Value="False"/>
+                </MultiTrigger.Conditions>
+                <Setter TargetName="ph" Property="Visibility" Value="Visible"/>
+              </MultiTrigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="bd" Property="Opacity" Value="0.55"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="CheckBox">
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Foreground" Value="#344054"/>
+      <Setter Property="Margin" Value="0,6"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style x:Key="FieldLabel" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="#4B5565"/>
+      <Setter Property="Margin" Value="1,0,0,6"/>
+    </Style>
+    <Style x:Key="SectionTitle" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#1E1A1B"/>
+      <Setter Property="Margin" Value="0,0,0,0"/>
+    </Style>
+    <Style x:Key="Heading" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
+      <Setter Property="FontSize" Value="23"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#1E1A1B"/>
+    </Style>
+    <Style x:Key="Card" TargetType="Border">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="BorderBrush" Value="#E4E7EC"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="Nav" TargetType="RadioButton">
+      <Setter Property="Foreground" Value="#F3D6D8"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Margin" Value="0,2"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Grid>
+              <Border x:Name="b" CornerRadius="9" Padding="14,11" Background="Transparent">
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <TextBlock x:Name="ic" Text="{TemplateBinding Tag}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
+                             VerticalAlignment="Center" Foreground="#E3A9AE"/>
+                  <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
+                </Grid>
+              </Border>
+              <Border x:Name="bar" Width="3" CornerRadius="2" Margin="0,10" HorizontalAlignment="Left" Background="White" Visibility="Hidden"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#14FFFFFF"/>
+                <Setter Property="Foreground" Value="White"/>
+              </Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#26FFFFFF"/>
+                <Setter TargetName="bar" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="ic" Property="Foreground" Value="White"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="UserChip" TargetType="Button">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Background="#33000000" CornerRadius="12" Padding="10,10" BorderBrush="#24FFFFFF" BorderThickness="1">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Border Width="32" Height="32" CornerRadius="16" Background="White">
+                  <TextBlock Text="&#xE77B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <ContentPresenter Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="&#xE8AB;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="#E3A9AE" VerticalAlignment="Center"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#4D000000"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Pill" TargetType="RadioButton">
+      <Setter Property="Margin" Value="0,0,8,8"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#2B2526"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="b" CornerRadius="17" Padding="12,7,15,7" Background="White" BorderBrush="#DCD6D7" BorderThickness="1">
+              <StackPanel Orientation="Horizontal">
+                <Ellipse x:Name="dot" Width="9" Height="9" Margin="0,0,8,0" VerticalAlignment="Center" Fill="{TemplateBinding Background}" Stroke="#33000000" StrokeThickness="0.6"/>
+                <TextBlock x:Name="chk" Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Margin="0,1,7,0" VerticalAlignment="Center" Visibility="Collapsed"/>
+                <ContentPresenter VerticalAlignment="Center"/>
+              </StackPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="Uid" Value="plain"><Setter TargetName="dot" Property="Visibility" Value="Collapsed"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="#A69C9E"/></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="#C4161C"/></Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="b" Property="Background" Value="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"/>
+                <Setter TargetName="b" Property="BorderBrush" Value="#2B2526"/>
+                <Setter TargetName="b" Property="BorderThickness" Value="1.5"/>
+                <Setter TargetName="dot" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="chk" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="b" Property="Effect">
+                  <Setter.Value><DropShadowEffect BlurRadius="10" ShadowDepth="2" Direction="270" Opacity="0.18" Color="#000000"/></Setter.Value>
+                </Setter>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+              </Trigger>
+              <MultiTrigger>
+                <MultiTrigger.Conditions>
+                  <Condition Property="IsChecked" Value="True"/>
+                  <Condition Property="Uid" Value="plain"/>
+                </MultiTrigger.Conditions>
+                <Setter TargetName="b" Property="Background" Value="#221E1F"/>
+                <Setter TargetName="b" Property="BorderBrush" Value="#221E1F"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter TargetName="chk" Property="Foreground" Value="#FF5A62"/>
+              </MultiTrigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Seg" TargetType="RadioButton">
+      <Setter Property="Foreground" Value="#6E6466"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="b" CornerRadius="8" Padding="16,6" Background="Transparent">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="#1E1A1B"/></Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="b" Property="Background" Value="White"/>
+                <Setter TargetName="b" Property="Effect">
+                  <Setter.Value><DropShadowEffect BlurRadius="8" ShadowDepth="1" Direction="270" Opacity="0.15" Color="#000000"/></Setter.Value>
+                </Setter>
+                <Setter Property="Foreground" Value="#9E1820"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Primary" TargetType="Button">
+      <Setter Property="Background">
+        <Setter.Value>
+          <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#CC1B21" Offset="0"/>
+            <GradientStop Color="#9A1218" Offset="1"/>
+          </LinearGradientBrush>
+        </Setter.Value>
+      </Setter>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Height" Value="50"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#A3171F"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="b" Property="Background" Value="#7A0F15"/></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="b" Property="Background" Value="#A3171F"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="b" Property="Opacity" Value="0.55"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Btn" TargetType="Button">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#17202E"/>
+      <Setter Property="Height" Value="38"/>
+      <Setter Property="Padding" Value="16,0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="9" BorderBrush="#D3D8E0" BorderThickness="1" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#F3F5F9"/>
+                <Setter TargetName="b" Property="BorderBrush" Value="#9AA4B2"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="#C4161C"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+
+  <Grid>
+  <DockPanel>
+    <!-- MENÚ LATERAL -->
+    <Border DockPanel.Dock="Left" Width="240">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0.3,1">
+          <GradientStop Color="#9E1820" Offset="0"/>
+          <GradientStop Color="#7E1118" Offset="0.45"/>
+          <GradientStop Color="#560A0F" Offset="1"/>
+        </LinearGradientBrush>
+      </Border.Background>
+      <DockPanel Margin="16,26,16,18">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,26">
+          <Grid Width="92" Height="92" HorizontalAlignment="Center">
+            <Grid.Effect><DropShadowEffect BlurRadius="26" ShadowDepth="5" Direction="270" Opacity="0.5" Color="#2A0306"/></Grid.Effect>
+            <Ellipse Fill="White"/>
+            <Ellipse x:Name="SideLogo" Margin="4"/>
+          </Grid>
+          <TextBlock x:Name="SideCompany" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" FontWeight="Bold" Foreground="White"
+                     HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,16,0,0"/>
+          <Border Height="1" Width="40" Background="#80FFFFFF" Margin="0,12,0,10"/>
+          <TextBlock HorizontalAlignment="Center" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="12" Foreground="#E9B9BD"><Run Text="GESTEM" FontWeight="SemiBold" Foreground="White"/><Run Text=" Manager"/></TextBlock>
+        </StackPanel>
+        <Button x:Name="UserBtn" DockPanel.Dock="Bottom" Style="{StaticResource UserChip}"/>
+        <TextBlock x:Name="FileText" DockPanel.Dock="Bottom" Foreground="#D99FA4" FontSize="11" Margin="8,0,8,10" TextTrimming="CharacterEllipsis"/>
+        <StackPanel>
+          <RadioButton x:Name="NavNew" Style="{StaticResource Nav}" GroupName="nav" IsChecked="True" Tag="&#xE8FA;"/>
+          <RadioButton x:Name="NavClients" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE716;"/>
+          <RadioButton x:Name="NavStats" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE9D2;"/>
+          <RadioButton x:Name="NavSettings" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE713;"/>
+          <RadioButton x:Name="NavAbout" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE946;"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- CONTENIDO: ancho máximo para que no se separe todo en pantalla completa -->
+    <Grid MaxWidth="1440">
+    <DockPanel>
+    <!-- BARRA SUPERIOR: trámite -->
+    <Border x:Name="TopBar" DockPanel.Dock="Top" Padding="28,20,28,0">
+      <DockPanel>
+        <TextBlock x:Name="StatusText" DockPanel.Dock="Right" Foreground="#667085" FontSize="12" VerticalAlignment="Center" Margin="16,0,0,0"/>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock x:Name="TramiteLabel" Foreground="#667085" VerticalAlignment="Center" Margin="0,0,12,0"/>
+          <ComboBox x:Name="TramiteBox" Width="300" Height="40" FontSize="14" FontWeight="SemiBold" MaxDropDownHeight="640"/>
+          <ComboBox x:Name="StatsScope" Width="300" Height="40" FontSize="14" FontWeight="SemiBold" Visibility="Collapsed" MaxDropDownHeight="640"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid Margin="28,16,28,22">
+
+      <!-- NUEVO / EDITAR CLIENTE -->
+      <Grid x:Name="PanelForm">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="320"/>
+        </Grid.ColumnDefinitions>
+        <Border Style="{StaticResource Card}">
+          <DockPanel>
+            <TextBlock x:Name="FormTitle" DockPanel.Dock="Top" Style="{StaticResource Heading}" Margin="28,22,28,0"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,6,0" Margin="0,0,0,8">
+              <Grid x:Name="FormGrid" Margin="28,4,12,22">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+              </Grid>
+            </ScrollViewer>
+          </DockPanel>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="18,0,0,0">
+          <Border CornerRadius="14" Background="White" BorderBrush="#E4E7EC" BorderThickness="1">
+            <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="3" Direction="270" Opacity="0.07" Color="#3A0A0D"/></Border.Effect>
+            <StackPanel>
+              <Border CornerRadius="13,13,0,0" Padding="18,12,18,10" BorderBrush="#D8202A" BorderThickness="0,0,0,3">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#221E1F" Offset="0"/>
+                    <GradientStop Color="#363031" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+                <DockPanel>
+                  <TextBlock x:Name="CardTag" DockPanel.Dock="Right" Foreground="#A69C9E" FontSize="12" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="CardId" Foreground="White" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" FontWeight="SemiBold"/>
+                </DockPanel>
+              </Border>
+              <StackPanel Margin="18,14,18,18">
+                <TextBlock x:Name="CardName" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <TextBlock x:Name="CardSub" Foreground="#667085" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                <TextBlock x:Name="CardTipo" Foreground="#667085" Margin="0,2,0,0"/>
+                <Border x:Name="CardStatusB" CornerRadius="12" Padding="12,4" Margin="0,12,0,0" HorizontalAlignment="Left">
+                  <TextBlock x:Name="CardStatus" FontWeight="SemiBold" Foreground="#2A2A2A"/>
+                </Border>
+              </StackPanel>
+              <Border BorderBrush="#EEF0F3" BorderThickness="0,1,0,0" Padding="18,12,18,16">
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                  <TextBlock x:Name="SumPriceL" Foreground="#667085" Margin="0,4"/>
+                  <TextBlock x:Name="SumPrice" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" Margin="0,4"/>
+                  <TextBlock x:Name="SumIva" Grid.Row="1" Grid.ColumnSpan="2" Foreground="#98A2B3" FontSize="12" Margin="0,0,0,4" Visibility="Collapsed"/>
+                  <TextBlock x:Name="SumPaidL" Grid.Row="2" Foreground="#667085" Margin="0,4"/>
+                  <TextBlock x:Name="SumPaid" Grid.Row="2" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" Margin="0,4"/>
+                  <TextBlock x:Name="SumPendL" Grid.Row="3" FontWeight="SemiBold" Margin="0,8,0,0" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="SumPend" Grid.Row="3" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="20" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                </Grid>
+              </Border>
+            </StackPanel>
+          </Border>
+          <TextBlock x:Name="DupWarn" Foreground="#B42318" TextWrapping="Wrap" Margin="2,12,2,0" Visibility="Collapsed"/>
+          <Button x:Name="SaveBtn" Style="{StaticResource Primary}" Margin="0,16,0,0"/>
+          <Button x:Name="ClearBtn" Style="{StaticResource Btn}" Margin="0,8,0,0"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- CLIENTES -->
+      <Border x:Name="PanelClients" Visibility="Collapsed" Style="{StaticResource Card}" Padding="20,18">
+        <DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+              <Button x:Name="DocsBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="ReceiptBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="ExportBtn" Style="{StaticResource Btn}" Margin="8,0,0,0">
+                <Button.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem x:Name="ExpPdf"/>
+                    <MenuItem x:Name="ExpCsv"/>
+                  </ContextMenu>
+                </Button.ContextMenu>
+              </Button>
+              <Button x:Name="RefreshBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="OpenExcelBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="EditBtn" Style="{StaticResource Primary}" Margin="8,0,0,0" Height="38" FontSize="13" Padding="18,0"/>
+            </StackPanel>
+            <WrapPanel>
+              <Grid Width="250">
+                <TextBox x:Name="SearchBox" Padding="32,0,10,0"/>
+                <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="#98A2B3" IsHitTestVisible="False" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="SearchHint" IsHitTestVisible="False" Foreground="#98A2B3" Margin="34,0,0,0" VerticalAlignment="Center"/>
+              </Grid>
+              <ComboBox x:Name="FilterBox" Width="170" Margin="10,0,0,0"/>
+              <CheckBox x:Name="OnlyDebt" Margin="16,0,0,0"/>
+              <CheckBox x:Name="OnlyMine" Margin="16,0,0,0"/>
+            </WrapPanel>
+          </DockPanel>
+          <DataGrid x:Name="ClientsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
+                    HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEF0F3"
+                    RowHeight="40" Background="White" BorderThickness="0" CanUserAddRows="False" CanUserResizeRows="False"
+                    AlternatingRowBackground="#FAFBFC" Foreground="#17202E">
+            <DataGrid.ContextMenu>
+              <ContextMenu>
+                <MenuItem x:Name="CmEdit"/>
+                <MenuItem x:Name="CmReceipt"/>
+                <MenuItem x:Name="CmDocs"/>
+              </ContextMenu>
+            </DataGrid.ContextMenu>
+            <DataGrid.ColumnHeaderStyle>
+              <Style TargetType="DataGridColumnHeader">
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="Foreground" Value="#667085"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Padding" Value="8,10"/>
+                <Setter Property="BorderBrush" Value="#E4E7EC"/>
+                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+              </Style>
+            </DataGrid.ColumnHeaderStyle>
+            <DataGrid.RowStyle>
+              <Style TargetType="DataGridRow">
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#F7F5F5"/></Trigger>
+                </Style.Triggers>
+              </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.CellStyle>
+              <Style TargetType="DataGridCell">
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="6,0"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                      <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                  <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#FBE3E4"/>
+                    <Setter Property="Foreground" Value="#7A0F15"/>
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </DataGrid.CellStyle>
+            <DataGrid.Columns>
+              <DataGridTextColumn Binding="{Binding Id}" Width="112"/>
+              <DataGridTextColumn Binding="{Binding Name}" Width="2*" MinWidth="200"/>
+              <DataGridTextColumn Binding="{Binding Doc}" Width="*" MinWidth="100"/>
+              <DataGridTextColumn Binding="{Binding Tipo}" Width="*" MinWidth="100"/>
+              <DataGridTemplateColumn Width="150">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <Border Background="{Binding Color}" CornerRadius="11" Padding="10,2" Margin="0,6" HorizontalAlignment="Left">
+                      <TextBlock Text="{Binding Status}" Foreground="#2A2A2A" FontSize="12"/>
+                    </Border>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Binding="{Binding Pay}" Width="85"/>
+              <DataGridTextColumn Binding="{Binding PendingText}" Width="95">
+                <DataGridTextColumn.ElementStyle>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="#B42318"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                  </Style>
+                </DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
+              <DataGridTextColumn Binding="{Binding Days}" Width="50"/>
+              <DataGridTextColumn Binding="{Binding Resp}" Width="100"/>
+              <DataGridTemplateColumn x:Name="DocsCol" Width="64">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding DocsVis}" Cursor="Hand" Background="Transparent">
+                      <TextBlock Text="&#xE723;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="#9E1820" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding DocsN}" Margin="5,0,0,0" FontWeight="SemiBold" Foreground="#4B4345" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+
+      <!-- RESUMEN ECONÓMICO -->
+      <ScrollViewer x:Name="PanelStats" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+      <StackPanel>
+        <DockPanel Margin="0,0,0,18">
+          <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+            <ComboBox x:Name="StatsWho" Width="180"/>
+            <ComboBox x:Name="StatsPeriod" Width="170" Margin="10,0,0,0"/>
+            <Button x:Name="StatsRefresh" Style="{StaticResource Btn}" Margin="10,0,0,0" Padding="12,0" ToolTip="Actualizar">
+              <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"/>
+            </Button>
+          </StackPanel>
+          <StackPanel>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="StatsTitle" Style="{StaticResource Heading}" VerticalAlignment="Center"/>
+              <Button x:Name="StatsAllBtn" Margin="14,2,0,0" VerticalAlignment="Center" Cursor="Hand" Visibility="Collapsed">
+                <Button.Template>
+                  <ControlTemplate TargetType="Button">
+                    <Border x:Name="b" CornerRadius="15" Padding="12,5" Background="#FBEDEE" BorderBrush="#F2C4C7" BorderThickness="1">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="#9E1820" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                        <ContentPresenter VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#F7DADC"/></Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </Button.Template>
+                <TextBlock x:Name="StatsAllTxt" Foreground="#9E1820" FontWeight="SemiBold" FontSize="13"/>
+              </Button>
+            </StackPanel>
+            <TextBlock x:Name="StatsSub" Foreground="#8A7F81" Margin="0,4,0,0"/>
+          </StackPanel>
+        </DockPanel>
+        <UniformGrid Columns="4" Margin="-8,0,-8,18">
+          <Border Style="{StaticResource Card}" Margin="8,0" Padding="22,18">
+            <StackPanel>
+              <TextBlock x:Name="KpiBillL" Foreground="#6E6466" FontSize="14" FontWeight="SemiBold"/>
+              <TextBlock x:Name="KpiBill" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="34" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,8,0,0"/>
+              <TextBlock x:Name="KpiBillF" Foreground="#6E6466" FontSize="13" Margin="0,6,0,0"/>
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource Card}" Margin="8,0" Padding="22,18">
+            <StackPanel>
+              <TextBlock x:Name="KpiPaidL" Foreground="#6E6466" FontSize="14" FontWeight="SemiBold"/>
+              <TextBlock x:Name="KpiPaid" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="34" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,8,0,0"/>
+              <Grid x:Name="KpiPaidTrack" Height="6" Margin="0,10,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="1*"/></Grid.ColumnDefinitions>
+                <Border Grid.ColumnSpan="2" Background="#F1EDED" CornerRadius="3"/>
+                <Border Background="#3E8E41" CornerRadius="3"/>
+              </Grid>
+              <TextBlock x:Name="KpiPaidF" Foreground="#6E6466" FontSize="13" Margin="0,6,0,0"/>
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource Card}" Margin="8,0" Padding="22,18">
+            <StackPanel>
+              <TextBlock x:Name="KpiPendL" Foreground="#6E6466" FontSize="14" FontWeight="SemiBold"/>
+              <TextBlock x:Name="KpiPend" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="34" FontWeight="Bold" Foreground="#B42318" Margin="0,8,0,0"/>
+              <TextBlock x:Name="KpiPendF" Foreground="#6E6466" FontSize="13" Margin="0,6,0,0"/>
+            </StackPanel>
+          </Border>
+          <Border Margin="8,0" Padding="22,18" CornerRadius="14">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#9E1820" Offset="0"/>
+                <GradientStop Color="#560A0F" Offset="1"/>
+              </LinearGradientBrush>
+            </Border.Background>
+            <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="5" Direction="270" Opacity="0.22" Color="#560A0F"/></Border.Effect>
+            <StackPanel>
+              <TextBlock x:Name="KpiNetL" Foreground="#F3D6D8" FontSize="14" FontWeight="SemiBold"/>
+              <TextBlock x:Name="KpiNet" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="34" FontWeight="Bold" Foreground="White" Margin="0,8,0,0"/>
+              <TextBlock x:Name="KpiNetF" Foreground="#F3D6D8" FontSize="13" Margin="0,6,0,0"/>
+            </StackPanel>
+          </Border>
+        </UniformGrid>
+        <!-- ANALÍTICA: día / semana / mes -->
+        <Border Style="{StaticResource Card}" Padding="24,20" Margin="0,0,0,18">
+          <StackPanel>
+            <DockPanel Margin="0,0,0,6">
+              <Border DockPanel.Dock="Right" Background="#F3EFEF" CornerRadius="10" Padding="3" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                  <RadioButton x:Name="ChartDay" Style="{StaticResource Seg}" GroupName="chart"/>
+                  <RadioButton x:Name="ChartWeek" Style="{StaticResource Seg}" GroupName="chart"/>
+                  <RadioButton x:Name="ChartMonth" Style="{StaticResource Seg}" GroupName="chart" IsChecked="True"/>
+                </StackPanel>
+              </Border>
+              <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock x:Name="ChartTitle" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="17" FontWeight="SemiBold" Foreground="#1E1A1B" VerticalAlignment="Center"/>
+                  <Border x:Name="ChartDeltaB" CornerRadius="11" Padding="9,3" Margin="12,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock x:Name="ChartDelta" FontSize="12.5" FontWeight="SemiBold"/>
+                  </Border>
+                </StackPanel>
+                <TextBlock x:Name="ChartSub" Foreground="#6E6466" FontSize="13" Margin="0,3,0,0"/>
+              </StackPanel>
+            </DockPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,10">
+              <Border Width="18" Height="3" CornerRadius="1.5" Background="#1F9D55" VerticalAlignment="Center"/>
+              <TextBlock x:Name="ChartLegPaid" Foreground="#3B3536" Margin="7,0,18,0" VerticalAlignment="Center"/>
+              <Border Width="18" Height="3" CornerRadius="1.5" Background="#D8202A" VerticalAlignment="Center"/>
+              <TextBlock x:Name="ChartLegPend" Foreground="#3B3536" Margin="7,0,18,0" VerticalAlignment="Center"/>
+              <TextBlock Text="€" Foreground="#8A7F81" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <TextBlock x:Name="ChartLegMoney" Foreground="#3B3536" Margin="6,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <Grid x:Name="ChartGrid">
+              <Grid.RowDefinitions><RowDefinition Height="210"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              <Canvas x:Name="ChartCanvas" ClipToBounds="False" Background="Transparent"/>
+              <Grid x:Name="ChartLabels" Grid.Row="1" Margin="0,6,0,0"/>
+            </Grid>
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource Card}" Padding="24,20">
+          <DockPanel>
+            <TextBlock x:Name="StatsTable" DockPanel.Dock="Top" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="17" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,0,0,12"/>
+            <Grid x:Name="StatsGrid"/>
+          </DockPanel>
+        </Border>
+      </StackPanel>
+      </ScrollViewer>
+
+      <!-- AJUSTES -->
+      <ScrollViewer x:Name="PanelSettings" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" Padding="0,10,8,0">
+        <StackPanel MaxWidth="1040" HorizontalAlignment="Stretch">
+          <DockPanel Margin="0,0,0,18">
+            <Button x:Name="SaveSettingsBtn" Style="{StaticResource Primary}" DockPanel.Dock="Right" Height="42" Padding="24,0" FontSize="14" VerticalAlignment="Center"/>
+            <StackPanel>
+              <TextBlock x:Name="SetTitle" Style="{StaticResource Heading}"/>
+              <TextBlock x:Name="SetSub" Foreground="#7A7072" Margin="0,4,0,0"/>
+            </StackPanel>
+          </DockPanel>
+          <TextBlock x:Name="WelcomeText" Foreground="#C4161C" FontWeight="SemiBold" Margin="0,0,0,12" TextWrapping="Wrap" Visibility="Collapsed"/>
+          <Border Style="{StaticResource Card}">
+            <StackPanel>
+            <Border x:Name="SecFileBox" Padding="28,22" BorderBrush="#F1EDED" BorderThickness="0,0,0,1">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="270"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,28,0">
+                  <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="15" Background="#FBEDEE">
+                      <TextBlock Text="&#xE8A5;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock x:Name="SecFileT" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15.5" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock x:Name="SecFileD" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" LineHeight="19" Margin="40,6,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <TextBlock x:Name="SetFileL" Style="{StaticResource FieldLabel}"/>
+                  <DockPanel>
+                    <Button x:Name="ChangeFileBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                    <TextBox x:Name="FilePathBox" IsReadOnly="True" Background="#F8F6F6"/>
+                  </DockPanel>
+                  <DockPanel Margin="0,10,0,0">
+                    <Button x:Name="ImportXlBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                    <TextBlock x:Name="DataNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                  </DockPanel>
+                  <TextBlock x:Name="SetNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" Margin="1,10,0,0"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border x:Name="SecExtBox" Padding="28,22" BorderBrush="#F1EDED" BorderThickness="0,0,0,1">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="270"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,28,0">
+                  <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="15" Background="#FBEDEE">
+                      <TextBlock Text="&#xE753;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock x:Name="SecExtT" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15.5" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock x:Name="SecExtD" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" LineHeight="19" Margin="40,6,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <TextBlock x:Name="ExtDirL" Style="{StaticResource FieldLabel}"/>
+                  <DockPanel>
+                    <Button x:Name="ExtClearBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="12,0"/>
+                    <Button x:Name="ExtDirBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                    <TextBox x:Name="ExtDirBox" IsReadOnly="True" Background="#F8F6F6"/>
+                  </DockPanel>
+                  <WrapPanel Margin="0,8,0,0">
+                    <Button x:Name="ExtOneDriveBtn" Style="{StaticResource Btn}" Margin="0,0,8,8" Visibility="Collapsed"/>
+                    <Button x:Name="ExtNowBtn" Style="{StaticResource Btn}" Margin="0,0,8,8"/>
+                    <Button x:Name="ExtOpenBtn" Style="{StaticResource Btn}" Margin="0,0,8,8"/>
+                  </WrapPanel>
+                  <StackPanel Orientation="Horizontal" Margin="1,2,0,0">
+                    <TextBlock Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="#1B7F45" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="ExtLastTxt" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock x:Name="ExtNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" Margin="1,10,0,0"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border x:Name="SecCompBox" Padding="28,22" BorderBrush="#F1EDED" BorderThickness="0,0,0,1">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="270"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,28,0">
+                  <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="15" Background="#FBEDEE">
+                      <TextBlock Text="&#xE80F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock x:Name="SecCompT" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15.5" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock x:Name="SecCompD" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" LineHeight="19" Margin="40,6,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <TextBlock x:Name="SetCompanyL" Style="{StaticResource FieldLabel}"/>
+                  <TextBox x:Name="CompanyBox"/>
+                  <TextBlock x:Name="SetLogoL" Style="{StaticResource FieldLabel}" Margin="1,16,0,6"/>
+                  <StackPanel Orientation="Horizontal">
+                    <Grid Width="52" Height="52">
+                      <Ellipse Fill="White" Stroke="#E4DFE0" StrokeThickness="1"/>
+                      <Ellipse x:Name="LogoPreview" Margin="3"/>
+                    </Grid>
+                    <Button x:Name="LogoBtn" Style="{StaticResource Btn}" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                    <Button x:Name="LogoClearBtn" Style="{StaticResource Btn}" Margin="8,0,0,0" Padding="12,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock x:Name="InvSecL" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="1,22,0,2"/>
+                  <TextBlock x:Name="InvHintL" Foreground="#7A7072" FontSize="12" TextWrapping="Wrap" Margin="1,0,0,4"/>
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                    <StackPanel><TextBlock x:Name="InvNameL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvNameBox"/></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock x:Name="InvActL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvActBox"/></StackPanel>
+                    <StackPanel Grid.Row="1"><TextBlock x:Name="InvNifL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvNifBox"/></StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock x:Name="InvIbanL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvIbanBox"/></StackPanel>
+                    <StackPanel Grid.Row="2"><TextBlock x:Name="InvDomL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvDomBox"/></StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock x:Name="InvPobL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvPobBox"/></StackPanel>
+                    <StackPanel Grid.Row="3"><TextBlock x:Name="InvNextL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvNextBox"/></StackPanel>
+                  </Grid>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border x:Name="SecTeamBox" Padding="28,22" BorderBrush="#F1EDED" BorderThickness="0,0,0,1">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="270"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,28,0">
+                  <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="15" Background="#FBEDEE">
+                      <TextBlock Text="&#xE716;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock x:Name="SecTeamT" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15.5" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock x:Name="SecTeamD" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" LineHeight="19" Margin="40,6,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <TextBlock x:Name="SetCollL" Style="{StaticResource FieldLabel}"/>
+                  <TextBox x:Name="ColleaguesBox"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border x:Name="SecPrefBox" Padding="28,22" BorderBrush="#F1EDED" BorderThickness="0,0,0,1">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="270"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,28,0">
+                  <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="15" Background="#FBEDEE">
+                      <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock x:Name="SecPrefT" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15.5" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock x:Name="SecPrefD" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" LineHeight="19" Margin="40,6,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="16"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock x:Name="SetLangL" Style="{StaticResource FieldLabel}"/>
+                      <ComboBox x:Name="LangBox"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                      <TextBlock x:Name="SetNatL" Style="{StaticResource FieldLabel}"/>
+                      <ComboBox x:Name="NatBox" IsEditable="True"/>
+                    </StackPanel>
+                  </Grid>
+                  <CheckBox x:Name="BackupChk" Margin="0,18,0,4"/>
+                  <CheckBox x:Name="OpenAfterChk"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border x:Name="SecHelpBox" Padding="28,22">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="270"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,28,0">
+                  <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="15" Background="#FBEDEE">
+                      <TextBlock Text="&#xE897;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock x:Name="SecHelpT" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15.5" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock x:Name="SecHelpD" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" LineHeight="19" Margin="40,6,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <WrapPanel>
+                    <Button x:Name="HelpBtn" Style="{StaticResource Btn}" Margin="0,0,8,8" Height="40"/>
+                    <Button x:Name="UpdateBtn" Style="{StaticResource Btn}" Margin="0,0,8,8" Height="40"/>
+                    <Button x:Name="BackupsBtn" Style="{StaticResource Btn}" Margin="0,0,8,8" Height="40"/>
+                  </WrapPanel>
+                </StackPanel>
+              </Grid>
+            </Border>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- ACERCA DE -->
+      <Border x:Name="PanelAbout" Visibility="Collapsed" Style="{StaticResource Card}" Padding="38,32" HorizontalAlignment="Center" Width="620" VerticalAlignment="Top" Margin="0,30,0,0">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <Border x:Name="AboutLogo" Width="72" Height="72" Background="Transparent" Cursor="Hand">
+              <Image x:Name="AboutImg" RenderOptions.BitmapScalingMode="HighQuality"/>
+            </Border>
+            <StackPanel Margin="18,0,0,0" VerticalAlignment="Center">
+              <TextBlock Text="GESTEM MANAGER" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="SemiBold" Foreground="#1E1A1B"/>
+              <TextBlock x:Name="AboutVer" Foreground="#667085"/>
+              <TextBlock x:Name="AboutCompany" Foreground="#C4161C" FontWeight="SemiBold" Margin="0,2,0,0"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock x:Name="AboutText" TextWrapping="Wrap" Margin="0,24,0,0" FontSize="14" LineHeight="22" Foreground="#344054"/>
+          <TextBlock x:Name="AboutBy" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#C4161C" Margin="0,20,0,0"/>
+          <TextBlock Text="© 2026 Yano · Todos los derechos reservados" Foreground="#6E6466" FontWeight="SemiBold" Margin="0,4,0,0"/>
+          <TextBlock Text="Programa con licencia de uso para la empresa titular. Prohibida su copia, modificación, distribución o reventa sin permiso escrito del autor." Foreground="#98A2B3" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
+          <TextBlock x:Name="EasterEgg" Text="Por Safae de Yan ♥" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="20" Foreground="#C2185B" Margin="0,22,0,0" Visibility="Collapsed"/>
+        </StackPanel>
+      </Border>
+
+    </Grid>
+    </DockPanel>
+    </Grid>
+  </DockPanel>
+  <Border x:Name="Toast" Panel.ZIndex="60" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,24" Background="#1E1A1B" CornerRadius="10" Padding="16,11,10,11" Visibility="Collapsed" MaxWidth="460">
+    <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Opacity="0.3" Color="#000000"/></Border.Effect>
+    <StackPanel Orientation="Horizontal">
+      <TextBlock x:Name="ToastText" Foreground="White" FontSize="13" TextWrapping="Wrap" MaxWidth="320" VerticalAlignment="Center"/>
+      <Button x:Name="ToastBtn" Margin="14,0,0,0" Padding="10,4" Background="#9E1820" Foreground="White" BorderThickness="0" FontWeight="SemiBold" Cursor="Hand" VerticalAlignment="Center"/>
+      <Button x:Name="ToastClose" Content="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Margin="8,0,0,0" Padding="6,4" Background="Transparent" Foreground="#B9B0B2" BorderThickness="0" Cursor="Hand" VerticalAlignment="Center"/>
+    </StackPanel>
+  </Border>
+  <Grid x:Name="PanelSession" Background="#E0141112" Visibility="Collapsed">
+    <Border Background="White" CornerRadius="18" Padding="36,30" Width="540" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Border.Effect><DropShadowEffect BlurRadius="40" ShadowDepth="8" Direction="270" Opacity="0.35" Color="#000000"/></Border.Effect>
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <Ellipse x:Name="SessLogo" Width="58" Height="58"/>
+          <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+            <TextBlock x:Name="SessCompany" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="17" FontWeight="Bold" Foreground="#1E1A1B"/>
+            <TextBlock FontSize="12" Foreground="#667085" Margin="0,2,0,0"><Run Text="GESTEM" FontWeight="SemiBold" Foreground="#C4161C"/><Run Text=" Manager"/></TextBlock>
+          </StackPanel>
+        </StackPanel>
+        <TextBlock x:Name="SessTitle" Style="{StaticResource Heading}" FontSize="22" Margin="0,26,0,6"/>
+        <TextBlock x:Name="SessHint" Foreground="#667085" TextWrapping="Wrap"/>
+        <WrapPanel x:Name="SessNames" Margin="0,18,0,6"/>
+        <DockPanel Margin="0,8,0,0">
+          <Button x:Name="SessGo" Style="{StaticResource Primary}" DockPanel.Dock="Right" Height="38" MinWidth="100" FontSize="13" Margin="8,0,0,0"/>
+          <Grid>
+            <TextBox x:Name="SessNew" CharacterCasing="Upper" Height="38"/>
+            <TextBlock x:Name="SessNewHint" IsHitTestVisible="False" Foreground="#98A2B3" Margin="11,0,0,0" VerticalAlignment="Center"/>
+          </Grid>
+        </DockPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+  <Grid x:Name="PanelHelp" Background="#C0141112" Visibility="Collapsed">
+    <Border Background="White" CornerRadius="18" Width="780" Margin="0,40" HorizontalAlignment="Center" VerticalAlignment="Stretch">
+      <Border.Effect><DropShadowEffect BlurRadius="40" ShadowDepth="8" Direction="270" Opacity="0.35" Color="#000000"/></Border.Effect>
+      <DockPanel>
+        <Border DockPanel.Dock="Top" CornerRadius="18,18,0,0" Padding="34,24,24,20">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+              <GradientStop Color="#9E1820" Offset="0"/>
+              <GradientStop Color="#560A0F" Offset="1"/>
+            </LinearGradientBrush>
+          </Border.Background>
+          <DockPanel>
+            <Button x:Name="HelpClose" DockPanel.Dock="Right" VerticalAlignment="Top" Cursor="Hand" ToolTip="Cerrar">
+              <Button.Template>
+                <ControlTemplate TargetType="Button">
+                  <Border x:Name="b" Width="34" Height="34" CornerRadius="17" Background="#26FFFFFF">
+                    <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#4DFFFFFF"/></Trigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </Button.Template>
+            </Button>
+            <StackPanel>
+              <TextBlock Text="Manual de uso" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="24" FontWeight="SemiBold" Foreground="White"/>
+              <TextBlock Text="GESTEM Manager · todo lo que necesitas para trabajar con el programa" Foreground="#F3D6D8" Margin="0,4,0,0"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
+          <StackPanel Margin="34,26,30,10">
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE77B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="1. Empezar" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Al abrir GESTEM, elige tu nombre en «¿Quién está usando GESTEM?». Si no estás en la lista, escríbelo en «Otro nombre…» y pulsa «Entrar»." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Tu nombre sale abajo a la izquierda. Haz clic en él para cambiar de compañera sin cerrar el programa." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Arriba, en «Trámite», elige con qué trabajas: Canje DGT, Homologación, Extranjería, Autónomo… Cada trámite tiene su pestaña en el Excel." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE8FA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="2. Añadir un cliente nuevo" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Menú «Nuevo cliente». Rellena los datos de arriba abajo: nombre, documento, teléfono, datos del trámite, estado y pago." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="La nacionalidad (MARROQUI), la fecha de hoy y el responsable (tu nombre) se ponen solos. Puedes cambiarlos." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Si el NIE o pasaporte ya existe, sale un aviso en rojo para no repetir clientes." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Pulsa «Guardar cliente» (o Ctrl + S). El cliente se escribe en el Excel al momento, con su número de expediente." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE8C7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="3. Pagos" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Precio total: lo que paga el cliente. En el canje DGT se pone solo según el tipo de permiso." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Estado de pago: «Pagado» (lo ha pagado todo), «Parcial» (escribe cuánto ha pagado en «Ha pagado») o «Pendiente» (no ha pagado nada)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Gastos: lo que pagáis vosotras (tasa, traducción…). El beneficio NETO = precio − gastos se calcula solo en el Excel." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Lo que falta por cobrar se calcula solo y sale en rojo." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE716;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="4. Buscar y cambiar clientes" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Menú «Clientes». Busca por nombre, NIE, número de expediente o localizador." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Filtra por estado, marca «Solo con pago pendiente» para ver quién debe dinero, o «Solo mis clientes» para ver solo los tuyos." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Doble clic en un cliente (o «Editar cliente») para cambiar su estado, su pago o sus datos. Pulsa «Guardar cliente» al terminar." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="«Abrir Excel» abre el archivo; «Actualizar» vuelve a leerlo si alguien lo ha cambiado a mano." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE723;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="5. Documentos y recibos" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="En «Clientes», elige un cliente y pulsa «Documentos» (o clic derecho sobre él). Arrastra los escaneos (NIE, permiso, formularios, fotos…) o pulsa «Añadir archivos»." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Los documentos se guardan en la carpeta «GESTEM documentos», junto al Excel, una carpeta por expediente. El clip de la lista indica cuántos tiene cada cliente." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="«Recibo PDF» crea un recibo de pago con el logo de la empresa, lo guarda en los documentos del cliente y lo abre para imprimirlo o enviarlo." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="El recibo justifica lo pagado; no es una factura." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xEDE1;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="6. Exportar la lista" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="En «Clientes», pulsa «Exportar»: «Lista en PDF» (informe para imprimir, con totales) o «Lista en CSV» (se abre en Excel con todas las columnas)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Se exporta lo que ves: si has buscado o filtrado, solo salen esos clientes." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE9D2;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="7. Resumen económico" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Menú «Resumen». Arriba ves lo facturado, lo cobrado, lo pendiente de cobro y el beneficio neto." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Arriba puedes elegir «Todos los trámites» o uno solo; las cifras y la gráfica cambian con él." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="La gráfica muestra la evolución por día, semana o mes: verde cuando sube, rojo cuando baja." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Filtra por compañera y por periodo: este mes, el mes anterior o este año (según la fecha de solicitud)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE8A5;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="8. El Excel y las copias" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="GESTEM guarda los clientes en su propia carpeta «GESTEM datos», junto al Excel, y actualiza vuestro Excel en cada guardado. Si el Excel no se puede abrir en ese momento, se actualiza solo más tarde." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Antes de cada guardado se hace una copia de seguridad del Excel (Ajustes → «Abrir carpeta de copias»)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Copia externa: al abrir y al cerrar GESTEM se guarda una copia completa (Excel, ajustes y documentos) en la nube de la empresa (OneDrive o Google Drive) o en la carpeta elegida en Ajustes." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="9. Ajustes" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Archivo de clientes: «Cambiar…» para elegir otro Excel." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Copia externa: «Usar la nube de la empresa» la configura sola; también puedes elegir un USB o una carpeta." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Empresa: nombre y logo. Equipo: los nombres de las compañeras. Preferencias: idioma (español, inglés, francés o árabe) y nacionalidad por defecto." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Pulsa «Guardar ajustes» para aplicar los cambios." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE72E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="10. Privacidad y registro" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Por seguridad, GESTEM anota quién añade o cambia cada cliente, quién crea recibos y cuándo se abre y se cierra el programa." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Una copia de ese registro, sin nombres de clientes, se guarda junto a la copia externa. Los datos de los clientes nunca salen de vuestro PC ni de la nube de la empresa." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          <Grid Margin="0,0,0,22">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Width="38" Height="38" CornerRadius="19" Background="#FBEDEE" VerticalAlignment="Top">
+              <TextBlock Text="&#xE946;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="11. Actualizaciones y ayuda" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="GESTEM se actualiza solo al abrirse cuando hay una versión nueva. También puedes pulsar «Buscar actualizaciones»." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Si algo no funciona, cierra GESTEM y vuelve a abrirlo. Si sigue igual, avisa a Yano." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="GESTEM MANAGER © 2026 Yano. Todos los derechos reservados. Uso bajo licencia (ver LICENCIA.txt)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+            </StackPanel>
+          </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+  <Grid x:Name="PanelDocs" Background="#C0141112" Visibility="Collapsed" AllowDrop="True">
+    <Border x:Name="DocsCard" Background="White" CornerRadius="18" Width="720" Margin="0,50" HorizontalAlignment="Center" VerticalAlignment="Stretch" AllowDrop="True">
+      <Border.Effect><DropShadowEffect BlurRadius="40" ShadowDepth="8" Direction="270" Opacity="0.35" Color="#000000"/></Border.Effect>
+      <DockPanel>
+        <Border DockPanel.Dock="Top" CornerRadius="18,18,0,0" Padding="30,22,22,18">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+              <GradientStop Color="#9E1820" Offset="0"/>
+              <GradientStop Color="#560A0F" Offset="1"/>
+            </LinearGradientBrush>
+          </Border.Background>
+          <DockPanel>
+            <Button x:Name="DocsClose" DockPanel.Dock="Right" VerticalAlignment="Top" Cursor="Hand" ToolTip="Cerrar">
+              <Button.Template>
+                <ControlTemplate TargetType="Button">
+                  <Border x:Name="b" Width="34" Height="34" CornerRadius="17" Background="#26FFFFFF">
+                    <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#4DFFFFFF"/></Trigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </Button.Template>
+            </Button>
+            <StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE723;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock x:Name="DocsTitle" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="22" FontWeight="SemiBold" Foreground="White"/>
+              </StackPanel>
+              <TextBlock x:Name="DocsSub" Foreground="#F3D5D7" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Border DockPanel.Dock="Bottom" BorderBrush="#EEE9EA" BorderThickness="0,1,0,0" Padding="24,14">
+          <DockPanel>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+              <Button x:Name="DocsOpenBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="DocsRemoveBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="DocsFolderBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="DocsAddBtn" Style="{StaticResource Primary}" Height="38" Padding="18,0" FontSize="13" Margin="8,0,0,0"/>
+            </StackPanel>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock x:Name="DocsCount" Foreground="#6E6466" FontWeight="SemiBold"/>
+              <TextBlock x:Name="DocsMsg" Foreground="#1B7F45" FontWeight="SemiBold"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Grid Margin="24,16,24,10">
+          <ListBox x:Name="DocsList" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemContainerStyle>
+              <Style TargetType="ListBoxItem">
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Margin" Value="0,0,0,6"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                      <Border x:Name="bd" Background="#FAF8F8" BorderBrush="#EEE9EA" BorderThickness="1" CornerRadius="10" Padding="14,10">
+                        <ContentPresenter/>
+                      </Border>
+                      <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#F5EFF0"/></Trigger>
+                        <Trigger Property="IsSelected" Value="True"><Setter TargetName="bd" Property="Background" Value="#FBEDEE"/><Setter TargetName="bd" Property="BorderBrush" Value="#D8A7AB"/></Trigger>
+                      </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+              </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <DockPanel>
+                  <Border Width="36" Height="36" CornerRadius="8" Background="#FBEDEE" Margin="0,0,12,0">
+                    <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#1E1A1B" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Info}" Foreground="#8A7F81" FontSize="12" Margin="0,2,0,0"/>
+                  </StackPanel>
+                </DockPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel x:Name="DocsEmpty" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
+            <Border Width="64" Height="64" CornerRadius="32" Background="#FBEDEE" HorizontalAlignment="Center">
+              <TextBlock Text="&#xE898;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="24" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <TextBlock x:Name="DocsEmptyT" Foreground="#6E6466" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420" Margin="0,14,0,0" LineHeight="20"/>
+          </StackPanel>
+          <Border x:Name="DocsDrop" CornerRadius="12" BorderBrush="#9E1820" BorderThickness="2" Background="#E6FFFFFF" Visibility="Collapsed" IsHitTestVisible="False">
+            <TextBlock x:Name="DocsDropT" Foreground="#9E1820" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+        </Grid>
+      </DockPanel>
+    </Border>
+  </Grid>
+  <Grid x:Name="PanelPaused" Background="#F2141112" Visibility="Collapsed">
+    <Border Background="White" CornerRadius="18" Padding="40,34" Width="520" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel>
+        <Border Width="56" Height="56" CornerRadius="28" Background="#FBEDEE" HorizontalAlignment="Left">
+          <TextBlock Text="&#xE769;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="22" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+        <TextBlock Text="GESTEM está en pausa" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="22" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,18,0,8"/>
+        <TextBlock x:Name="PausedText" Foreground="#4B4345" FontSize="14" TextWrapping="Wrap" LineHeight="21"/>
+        <TextBlock Text="Contacta con Yano." Foreground="#8A7F81" Margin="0,14,0,0"/>
+      </StackPanel>
+    </Border>
+  </Grid>
+  <Grid x:Name="PanelAdminLogin" Background="#E6141112" Visibility="Collapsed">
+    <Border Background="White" CornerRadius="18" Padding="36,30" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Border.Effect><DropShadowEffect BlurRadius="40" ShadowDepth="8" Direction="270" Opacity="0.35" Color="#000000"/></Border.Effect>
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <Border Width="40" Height="40" CornerRadius="20" Background="#221E1F">
+            <TextBlock Text="&#xE72E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <TextBlock Text="Administrador" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="20" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="12,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+        <TextBlock x:Name="AdmLoginHint" Foreground="#6E6466" TextWrapping="Wrap" Margin="0,16,0,12"/>
+        <PasswordBox x:Name="AdmPw" Height="38" Padding="10,0" VerticalContentAlignment="Center" BorderBrush="#D9D4D5"/>
+        <PasswordBox x:Name="AdmPw2" Height="38" Padding="10,0" VerticalContentAlignment="Center" BorderBrush="#D9D4D5" Margin="0,8,0,0" Visibility="Collapsed"/>
+        <TextBlock x:Name="AdmKeyHint" Foreground="#8A7F81" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap"/>
+        <TextBlock x:Name="AdmLoginMsg" Foreground="#B42318" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+          <Button x:Name="AdmLoginCancel" Style="{StaticResource Btn}" Content="Cancelar"/>
+          <Button x:Name="AdmLoginBtn" Style="{StaticResource Primary}" Height="38" Padding="22,0" FontSize="13" Margin="8,0,0,0" Content="Entrar"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+  <Grid x:Name="PanelAdmin" Background="#C0141112" Visibility="Collapsed">
+    <Border Background="#F7F5F5" CornerRadius="18" Width="900" Margin="0,40" HorizontalAlignment="Center" VerticalAlignment="Stretch">
+      <Border.Effect><DropShadowEffect BlurRadius="40" ShadowDepth="8" Direction="270" Opacity="0.35" Color="#000000"/></Border.Effect>
+      <DockPanel>
+        <Border DockPanel.Dock="Top" CornerRadius="18,18,0,0" Padding="30,22,24,18">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+              <GradientStop Color="#2A2526" Offset="0"/>
+              <GradientStop Color="#141112" Offset="1"/>
+            </LinearGradientBrush>
+          </Border.Background>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+              <Button x:Name="AdmLogout" Style="{StaticResource Btn}" Content="Salir del modo admin" Height="34" Margin="0,0,8,0"/>
+              <Button x:Name="AdmClose" Cursor="Hand" ToolTip="Cerrar">
+                <Button.Template>
+                  <ControlTemplate TargetType="Button">
+                    <Border x:Name="b" Width="34" Height="34" CornerRadius="17" Background="#26FFFFFF">
+                      <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#4DFFFFFF"/></Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </Button.Template>
+              </Button>
+            </StackPanel>
+            <StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE72E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" Foreground="#E0262E" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Text="Modo administrador" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="22" FontWeight="SemiBold" Foreground="White"/>
+              </StackPanel>
+              <TextBlock Text="Solo visible para Yano · © 2026 todos los derechos reservados" Foreground="#A69C9E" Margin="0,4,0,0"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Border DockPanel.Dock="Top" Padding="30,16,30,0">
+          <Border Background="#ECE7E8" CornerRadius="10" Padding="3" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal">
+              <RadioButton x:Name="AdmTabLocks" Style="{StaticResource Seg}" GroupName="adm" IsChecked="True" Content="Bloqueos"/>
+              <RadioButton x:Name="AdmTabLog" Style="{StaticResource Seg}" GroupName="adm" Content="Actividad"/>
+              <RadioButton x:Name="AdmTabTools" Style="{StaticResource Seg}" GroupName="adm" Content="Herramientas"/>
+            </StackPanel>
+          </Border>
+        </Border>
+        <Grid Margin="30,16,30,26">
+          <!-- BLOQUEOS -->
+          <Border x:Name="AdmPageLocks" Style="{StaticResource Card}" Padding="26,22" VerticalAlignment="Top">
+            <StackPanel>
+              <TextBlock Text="Oculta partes de Ajustes a las compañeras" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B"/>
+              <TextBlock Text="Lo que bloquees desaparece de Ajustes para ellas (no lo ven ni lo pueden cambiar). Tú lo sigues viendo mientras estés en modo admin." Foreground="#6E6466" TextWrapping="Wrap" Margin="0,4,0,14"/>
+              <CheckBox x:Name="AdmLockFile" Content="Archivo de clientes (Excel)"/>
+              <CheckBox x:Name="AdmLockExt" Content="Copia externa"/>
+              <CheckBox x:Name="AdmLockComp" Content="Empresa (nombre y logo)"/>
+              <CheckBox x:Name="AdmLockTeam" Content="Equipo (compañeras)"/>
+              <CheckBox x:Name="AdmLockPref" Content="Preferencias (idioma, nacionalidad, copias)"/>
+              <CheckBox x:Name="AdmLockHelp" Content="Ayuda y versión (actualizaciones)"/>
+              <Border Height="1" Background="#EEE9EA" Margin="0,10"/>
+              <CheckBox x:Name="AdmLockAll" Content="Ocultar Ajustes por completo"/>
+              <CheckBox x:Name="AdmIgnorePause" Content="Ignorar la pausa remota en este PC"/>
+              <CheckBox x:Name="AdmOwnerPC" Content="Este PC es mío: todo lo que se haga aquí cuenta como admin"/>
+              <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                <Button x:Name="AdmSaveLocks" Style="{StaticResource Primary}" Height="40" Padding="22,0" FontSize="14" Content="Guardar bloqueos"/>
+                <TextBlock x:Name="AdmLocksMsg" Foreground="#1B7F45" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+          <!-- ACTIVIDAD -->
+          <Border x:Name="AdmPageLog" Style="{StaticResource Card}" Padding="22,18" Visibility="Collapsed">
+            <DockPanel>
+              <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <Button x:Name="AdmLogRefresh" Style="{StaticResource Btn}" DockPanel.Dock="Right" Content="Actualizar" Height="34"/>
+                <Border DockPanel.Dock="Right" Background="#ECE7E8" CornerRadius="10" Padding="3" Margin="0,0,10,0" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="AdmLogAll" Style="{StaticResource Seg}" GroupName="admlog" IsChecked="True" Content="Todo"/>
+                    <RadioButton x:Name="AdmLogTeam" Style="{StaticResource Seg}" GroupName="admlog" Content="Equipo"/>
+                    <RadioButton x:Name="AdmLogAdmin" Style="{StaticResource Seg}" GroupName="admlog" Content="Admin"/>
+                    <RadioButton x:Name="AdmLogErr" Style="{StaticResource Seg}" GroupName="admlog" Content="Errores"/>
+                  </StackPanel>
+                </Border>
+                <TextBlock x:Name="AdmLogTitle" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" VerticalAlignment="Center"/>
+              </DockPanel>
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="AdmLog">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border BorderBrush="#F1EDED" BorderThickness="0,0,0,1" Padding="4,9">
+                        <Grid>
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                          <TextBlock Text="{Binding Time}" Foreground="#8A7F81" FontSize="12.5" VerticalAlignment="Center"/>
+                          <Border Grid.Column="1" Background="{Binding UserBg}" CornerRadius="10" Padding="9,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding User}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding UserFg}"/>
+                          </Border>
+                          <TextBlock Grid.Column="2" Text="{Binding Text}" Foreground="{Binding Fg}" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </DockPanel>
+          </Border>
+          <!-- HERRAMIENTAS -->
+          <ScrollViewer x:Name="AdmPageTools" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <Border Style="{StaticResource Card}" Padding="26,22" Margin="0,0,0,14">
+                <StackPanel>
+                  <TextBlock Text="Control remoto (GitHub)" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B"/>
+                  <TextBlock x:Name="AdmRemoteTxt" Foreground="#4B4345" TextWrapping="Wrap" Margin="0,6,0,0" LineHeight="20"/>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource Card}" Padding="26,22" Margin="0,0,0,14">
+                <StackPanel>
+                  <TextBlock Text="Herramientas" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,0,0,12"/>
+                  <WrapPanel>
+                    <Button x:Name="AdmUpdate" Style="{StaticResource Btn}" Content="Buscar actualización ahora" Margin="0,0,8,8"/>
+                    <Button x:Name="AdmOpenData" Style="{StaticResource Btn}" Content="Abrir carpeta de datos" Margin="0,0,8,8"/>
+                    <Button x:Name="AdmOpenApp" Style="{StaticResource Btn}" Content="Abrir carpeta del programa" Margin="0,0,8,8"/>
+                    <Button x:Name="AdmShowAll" Style="{StaticResource Btn}" Content="Ver Ajustes completos" Margin="0,0,8,8"/>
+                  </WrapPanel>
+                  <TextBlock x:Name="AdmInfo" Foreground="#8A7F81" FontSize="12.5" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource Card}" Padding="26,22">
+                <StackPanel>
+                  <TextBlock Text="Cambiar contraseña de administrador" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,0,0,12"/>
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="10"/><ColumnDefinition/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <PasswordBox x:Name="AdmNewPw" Height="38" Padding="10,0" VerticalContentAlignment="Center" BorderBrush="#D9D4D5"/>
+                    <PasswordBox x:Name="AdmNewPw2" Grid.Column="2" Height="38" Padding="10,0" VerticalContentAlignment="Center" BorderBrush="#D9D4D5"/>
+                    <Button x:Name="AdmChangePw" Grid.Column="4" Style="{StaticResource Btn}" Content="Cambiar" Height="38"/>
+                  </Grid>
+                  <TextBlock x:Name="AdmPwMsg" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </DockPanel>
+    </Border>
+  </Grid>
+  </Grid>
+</Window>
