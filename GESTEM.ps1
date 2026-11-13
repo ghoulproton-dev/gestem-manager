@@ -31,7 +31,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security, System.Drawing
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.4.5'
+$script:AppVersion = '1.5'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -344,6 +344,16 @@ $script:Text = @{
 # textos de documentos, recibos y exportar
 $script:TextMore = @{
  es = @{
+  loading = 'Cargando los datos…'
+  savingMsg = 'Guardando…'
+  errStoreBusy = 'Otro PC está guardando en este momento. Vuelve a intentarlo en unos segundos.'
+  errNoStore = 'No se encuentran los datos de GESTEM. Pulsa «Actualizar» en Clientes.'
+  errPendingSync = 'Hay clientes guardados en GESTEM que todavía no están en el Excel. Abre el Excel en este PC y pulsa «Actualizar» antes de volver a importar.'
+  importAsk = 'Esto vuelve a leer TODOS los clientes desde el Excel y reemplaza los datos de GESTEM por los del Excel. Úsalo solo si el Excel se ha cambiado a mano. ¿Continuar?'
+  importDone = '✓ Datos importados de nuevo desde el Excel'
+  savedNoExcel = '✓ Guardado en GESTEM (exp. {0}). El Excel se actualizará en cuanto se pueda abrir.'
+  btnImport = 'Volver a importar del Excel'
+  dataNote = 'GESTEM guarda los clientes en su propia carpeta «GESTEM datos», junto al Excel, y actualiza el Excel en cada guardado.'
   calToday = 'Hoy'
   btnDocs = 'Documentos'
   btnReceipt = 'Recibo PDF'
@@ -399,6 +409,16 @@ $script:TextMore = @{
   exDone = '✓ Exportado: {0}'
  }
  en = @{
+  loading = 'Loading data…'
+  savingMsg = 'Saving…'
+  errStoreBusy = 'Another PC is saving right now. Try again in a few seconds.'
+  errNoStore = 'GESTEM data not found. Press «Refresh» in Clients.'
+  errPendingSync = 'Some clients saved in GESTEM are not in the Excel file yet. Open Excel on this PC and press «Refresh» before importing again.'
+  importAsk = 'This reads ALL clients from the Excel file again and replaces GESTEM''s data with the Excel''s. Only use it if the Excel file was changed by hand. Continue?'
+  importDone = '✓ Data imported again from the Excel file'
+  savedNoExcel = '✓ Saved in GESTEM (case {0}). The Excel file will be updated as soon as it can be opened.'
+  btnImport = 'Import again from Excel'
+  dataNote = 'GESTEM keeps clients in its own «GESTEM datos» folder next to the Excel file, and updates the Excel on every save.'
   calToday = 'Today'
   btnDocs = 'Documents'
   btnReceipt = 'PDF receipt'
@@ -444,7 +464,7 @@ $script:TextMore = @{
   rcSign = 'Signature and stamp'
   rcNote = 'This document confirms the payment received for the procedure shown. It is not an invoice.'
   rcFooter = 'Created with GESTEM MANAGER'
-  rcDone = '✓ Receipt {0} saved in the clients documents'
+  rcDone = '✓ Receipt {0} saved in the client''s documents'
   exTitle = 'Clients  ·  {0}'
   exFilters = 'Filters'
   exNoFilter = 'All clients'
@@ -454,6 +474,16 @@ $script:TextMore = @{
   exDone = '✓ Exported: {0}'
  }
  fr = @{
+  loading = 'Chargement des données…'
+  savingMsg = 'Enregistrement…'
+  errStoreBusy = 'Un autre PC enregistre en ce moment. Réessayez dans quelques secondes.'
+  errNoStore = 'Données de GESTEM introuvables. Cliquez sur « Actualiser » dans Clients.'
+  errPendingSync = 'Des clients enregistrés dans GESTEM ne sont pas encore dans l''Excel. Ouvrez Excel sur ce PC et cliquez sur « Actualiser » avant de réimporter.'
+  importAsk = 'Ceci relit TOUS les clients depuis l''Excel et remplace les données de GESTEM par celles de l''Excel. À utiliser seulement si l''Excel a été modifié à la main. Continuer ?'
+  importDone = '✓ Données réimportées depuis l''Excel'
+  savedNoExcel = '✓ Enregistré dans GESTEM (dossier {0}). L''Excel sera mis à jour dès qu''il pourra être ouvert.'
+  btnImport = 'Réimporter depuis l''Excel'
+  dataNote = 'GESTEM garde les clients dans son propre dossier « GESTEM datos », à côté de l''Excel, et met l''Excel à jour à chaque enregistrement.'
   calToday = 'Aujourd''hui'
   btnDocs = 'Documents'
   btnReceipt = 'Reçu PDF'
@@ -472,19 +502,19 @@ $script:TextMore = @{
   docsDrop = 'Déposez les fichiers pour les enregistrer'
   docsCount = '{0} document(s)'
   docsAdded = '✓ {0} document(s) ajouté(s)'
-  docsPick = 'Choisissez dabord un document dans la liste.'
+  docsPick = 'Choisissez d''abord un document dans la liste.'
   docsRemoveAsk = 'Retirer « {0} » ? Il ira dans la corbeille de Windows.'
   docsFilter = 'Documents et photos'
   docsAll = 'Tous les fichiers'
-  noPdfPrinter = 'Limprimante Windows « Microsoft Print to PDF » est absente. Activez-la dans : Panneau de configuration → Programmes → Activer ou désactiver des fonctionnalités Windows.'
-  pdfFail = 'Windows na pas créé le PDF.'
+  noPdfPrinter = 'L''imprimante Windows « Microsoft Print to PDF » est absente. Activez-la dans : Panneau de configuration → Programmes → Activer ou désactiver des fonctionnalités Windows.'
+  pdfFail = 'Windows n''a pas créé le PDF.'
   rcTitle = 'REÇU'
   rcSubtitle = 'Reçu de paiement'
   rcNo = 'N° {0}'
   rcDate = 'Date : {0}'
   rcClient = 'Client'
   rcProc = 'Démarche'
-  rcDoc = 'Pièce didentité'
+  rcDoc = 'Pièce d''identité'
   rcCase = 'Dossier'
   rcResp = 'Traité par'
   rcType = 'Type'
@@ -497,7 +527,7 @@ $script:TextMore = @{
   rcPaidFull = 'Payé'
   rcPartial = 'Paiement partiel'
   rcSign = 'Signature et cachet'
-  rcNote = 'Ce document justifie le paiement reçu pour la démarche indiquée. Ce nest pas une facture.'
+  rcNote = 'Ce document justifie le paiement reçu pour la démarche indiquée. Ce n''est pas une facture.'
   rcFooter = 'Créé avec GESTEM MANAGER'
   rcDone = '✓ Reçu {0} enregistré dans les documents du client'
   exTitle = 'Clients  ·  {0}'
@@ -509,6 +539,16 @@ $script:TextMore = @{
   exDone = '✓ Exporté : {0}'
  }
  ar = @{
+  loading = 'جارٍ تحميل البيانات…'
+  savingMsg = 'جارٍ الحفظ…'
+  errStoreBusy = 'حاسوب آخر يحفظ الآن. حاول مرة أخرى بعد ثوانٍ.'
+  errNoStore = 'لم يُعثر على بيانات GESTEM. اضغط «تحديث» في العملاء.'
+  errPendingSync = 'هناك عملاء محفوظون في GESTEM لم يصلوا بعد إلى ملف Excel. افتح Excel على هذا الحاسوب واضغط «تحديث» قبل إعادة الاستيراد.'
+  importAsk = 'سيعيد هذا قراءة كل العملاء من ملف Excel ويستبدل بيانات GESTEM ببيانات Excel. استخدمه فقط إذا عُدّل ملف Excel يدويًا. هل تريد المتابعة؟'
+  importDone = '✓ أُعيد استيراد البيانات من ملف Excel'
+  savedNoExcel = '✓ حُفظ في GESTEM (الملف {0}). سيُحدَّث ملف Excel فور إمكان فتحه.'
+  btnImport = 'إعادة الاستيراد من Excel'
+  dataNote = 'يحفظ GESTEM العملاء في مجلده الخاص «GESTEM datos» بجانب ملف Excel، ويحدّث Excel عند كل حفظ.'
   calToday = 'اليوم'
   btnDocs = 'المستندات'
   btnReceipt = 'إيصال PDF'
@@ -775,42 +815,6 @@ function Use-TramiteData($d) {
     Refresh-ClientGrid
     Update-StatusLine
 }
-function Get-FileStamp {
-    try { return (Get-Item -LiteralPath $script:Cfg.ExcelPath).LastWriteTimeUtc.Ticks } catch { return 0 }
-}
-function Load-Data([switch]$All) {
-    # abre el Excel UNA vez; con -All lee todas las pestañas y las guarda en memoria
-    Set-Status (L 'loading')
-    $h = $null
-    $cur = $script:T
-    try {
-        $h = Invoke-Excel { Open-Book }
-        if ($All) { $script:Cache = @{} }
-        if ($null -eq $script:Cache) { $script:Cache = @{} }
-        $list = @($cur)
-        if ($All) { $list = @($cur) + @($script:Tramites | Where-Object { $_.Id -ne $cur.Id }) }
-        foreach ($t in $list) {
-            $script:T = $t
-            try { $script:Cache[$t.Id] = Invoke-Excel { Read-TramiteData $h } }
-            catch {
-                if ($t.Id -eq $cur.Id) { throw }
-                Write-Log "pestaña no leída ($($t.Sheet)): $($_.Exception.Message)"
-            }
-        }
-        $script:T = $cur
-        Close-Book $h $false; $h = $null
-        $script:CacheStamp = Get-FileStamp
-        Use-TramiteData $script:Cache[$cur.Id]
-        return $true
-    } catch {
-        $script:T = $cur
-        if ($h) { try { Close-Book $h $false } catch {} }
-        Write-Log "Load-Data: $($_.Exception.Message)"
-        Set-Status ($_.Exception.Message)
-        Show-Error $_.Exception.Message
-        return $false
-    }
-}
 function Get-CachedData {
     # cambiar de trámite: instantáneo si el Excel no ha cambiado desde la última lectura
     if ($script:Cache -and $script:Cache.ContainsKey($script:T.Id) -and $script:CacheStamp -eq (Get-FileStamp)) {
@@ -830,23 +834,45 @@ function Restore-Formula($ws, [string]$col, [int]$row) {
     }
 }
 
+function ConvertTo-CellNumber($v) {
+    if ($null -eq $v -or "$v" -eq '') { return $null }
+    if ($v -is [double] -or $v -is [int] -or $v -is [long] -or $v -is [decimal] -or $v -is [single]) { return [double]$v }
+    return (Parse-Money "$v")
+}
+function ConvertTo-CellDate($v) {
+    # devuelve la fecha como número de Excel (o $null)
+    if ($null -eq $v -or "$v" -eq '') { return $null }
+    if ($v -is [DateTime]) { return $v.ToOADate() }
+    if ($v -is [double] -or $v -is [int] -or $v -is [decimal]) { return [double]$v }
+    $d = [DateTime]::MinValue
+    foreach ($fmt in 'yyyy-MM-dd', 'dd/MM/yyyy', 'yyyy-MM-ddTHH:mm:ss') {
+        if ([DateTime]::TryParseExact("$v", $fmt, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$d)) { return $d.ToOADate() }
+    }
+    return $null
+}
 function Set-CellValue($ws, [string]$addr, $value, [string]$type) {
     $rng = $ws.Range($addr)
     if ($null -eq $value -or ("$value" -eq '')) { $rng.ClearContents() | Out-Null; return }
     switch ($type) {
-        'Date'  { $rng.Value2 = ([DateTime]$value).ToOADate() }
+        'Date'  { $rng.Value2 = [double]$value }     # ya convertida a número de Excel
         'Money' { $rng.Value2 = [double]$value }
         default { $rng.Value2 = "'" + "$value" }     # el apóstrofo obliga a guardarlo como texto
     }
 }
 
-function Save-Client([hashtable]$vals, $row) {
+function Save-Client([hashtable]$vals, $row, [string]$ExpectName, [switch]$IsNew, $Handle) {
+    # escribe un cliente en su fila del Excel (con -Handle usa un Excel ya abierto)
     $T = $script:T
-    $h = $null
+    $h = $Handle; $own = -not $Handle
     try {
-        $h = Invoke-Excel { Open-Book -ForWrite }
+        if ($own) { $h = Invoke-Excel { Open-Book -ForWrite } }
         $ws = Get-Sheet $h
-        if ($script:Cfg.Backup) { Backup-Excel }
+        if ($own -and $script:Cfg.Backup) { Backup-Excel }
+        if ($row -and $IsNew) {
+            # si esa fila del Excel ya tiene otro cliente (escrito a mano), se usa la primera libre
+            $curName = "$($ws.Range("$($T.NameCol)$row").Value2)".Trim()
+            if ($curName -and $curName -ne "$ExpectName".Trim()) { $row = $null }
+        }
         if (-not $row) {
             $col = Invoke-Excel { ,($ws.Range("$($T.NameCol)$($T.FirstRow):$($T.NameCol)$($T.LastRow)").Value2) }
             $n = $T.LastRow - $T.FirstRow + 1
@@ -854,36 +880,473 @@ function Save-Client([hashtable]$vals, $row) {
             if (-not $row) { throw (L 'errFull') }
         }
         $tipo = "$($vals['tipo'])"
-        Invoke-Excel {
-            foreach ($f in $T.Fields) {
-                $addr = "$($f.Col)$row"
-                $v = $vals[$f.Key]
-                switch ($f.Role) {
-                    'nationality' {
-                        if (-not "$v" -or "$v" -ieq $T.DefaultNationality) { Restore-Formula $ws $f.Col $row }
-                        else { Set-CellValue $ws $addr "$v" 'Text' }
-                    }
-                    'price' {
-                        $tar = $null
-                        if ($tipo -and $script:Tariff.ContainsKey($tipo)) { $tar = $script:Tariff[$tipo] }
-                        if ($null -eq $v -or ($null -ne $tar -and [double]$v -eq $tar)) { Restore-Formula $ws $f.Col $row }
-                        else { Set-CellValue $ws $addr $v 'Money' }
-                    }
-                    'paid' {
-                        if ("$($vals['paystate'])" -eq 'Parcial' -and $null -ne $v) { Set-CellValue $ws $addr $v 'Money' }
-                        else { Restore-Formula $ws $f.Col $row }
-                    }
-                    default { Set-CellValue $ws $addr $v $f.Type }
+        # 1) se preparan y comprueban TODOS los valores antes de tocar el Excel (nunca queda una fila a medias)
+        $ops = New-Object System.Collections.Generic.List[object]
+        foreach ($f in $T.Fields) {
+            $v = $vals[$f.Key]
+            $op = @{ Col = $f.Col; Kind = 'value'; Value = $null; Type = 'Text' }
+            switch ($f.Role) {
+                'nationality' {
+                    if (-not "$v" -or "$v" -ieq $T.DefaultNationality) { $op.Kind = 'formula' } else { $op.Value = "$v" }
                 }
+                'price' {
+                    $tar = $null; $pv = ConvertTo-CellNumber $v
+                    if ($tipo -and $script:Tariff.ContainsKey($tipo)) { $tar = [double]$script:Tariff[$tipo] }
+                    if ($null -eq $pv -or ($null -ne $tar -and $pv -eq $tar)) { $op.Kind = 'formula' } else { $op.Value = $pv; $op.Type = 'Money' }
+                }
+                'paid' {
+                    $pv = ConvertTo-CellNumber $v
+                    if ("$($vals['paystate'])" -eq 'Parcial' -and $null -ne $pv) { $op.Value = $pv; $op.Type = 'Money' } else { $op.Kind = 'formula' }
+                }
+                default {
+                    if ($f.Type -eq 'Date') { $op.Value = ConvertTo-CellDate $v; $op.Type = 'Date' }
+                    elseif ($f.Type -eq 'Money') { $op.Value = ConvertTo-CellNumber $v; $op.Type = 'Money' }
+                    elseif ($null -ne $v -and "$v" -ne '') { $op.Value = "$v" }
+                }
+            }
+            $ops.Add($op)
+        }
+        # 2) se escribe la fila
+        Invoke-Excel {
+            foreach ($op in $ops) {
+                if ($op.Kind -eq 'formula') { Restore-Formula $ws $op.Col $row }
+                else { Set-CellValue $ws "$($op.Col)$row" $op.Value $op.Type }
             }
         }
         $id = "$($ws.Range("$($T.IdCol)$row").Value2)"
-        Invoke-Excel { Close-Book $h $true }; $h = $null
-        Write-Log "guardado fila $row ($id)"
-        return $id
+        if ($own) { Invoke-Excel { Close-Book $h $true } }; $h = $null
+        Write-Log "Excel: fila $row ($id)"
+        return @{ Id = $id; Row = [int]$row }
     } catch {
-        if ($h) { try { Close-Book $h $false } catch {} }
+        if ($own -and $h) { try { Close-Book $h $false } catch {} }
         throw
+    }
+}
+
+# =====================================================================
+#  DATOS PROPIOS DE GESTEM (la copia principal) · el Excel se actualiza en cada guardado · © Yano
+# =====================================================================
+function Get-StoreDir {
+    $x = "$($script:Cfg.ExcelPath)"
+    if (-not $x) { return $null }
+    return (Join-Path (Split-Path -Parent $x) 'GESTEM datos')
+}
+function Get-StorePath($t) { $d = Get-StoreDir; if (-not $d) { return $null }; return (Join-Path $d ($t.Id + '.json')) }
+function Get-FileStamp {
+    # marca de cambios de los datos de GESTEM (si otro PC guarda, se vuelve a leer)
+    $d = Get-StoreDir
+    try {
+        if ($d -and (Test-Path -LiteralPath $d)) {
+            $m = Get-ChildItem -LiteralPath $d -Filter '*.json' -File | Measure-Object -Property LastWriteTimeUtc -Maximum
+            if ($m.Maximum) { return ([DateTime]$m.Maximum).Ticks }
+        }
+    } catch { }
+    return 0
+}
+function Enter-StoreLock {
+    $d = Get-StoreDir
+    if (-not (Test-Path -LiteralPath $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+    $lk = Join-Path $d 'bloqueo.lock'
+    for ($i = 0; $i -lt 50; $i++) {
+        try {
+            $fs = New-Object IO.FileStream($lk, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+            $b = [Text.Encoding]::UTF8.GetBytes("$($env:COMPUTERNAME) $($script:User) $(Get-Date -Format s)")
+            $fs.Write($b, 0, $b.Length); $fs.Dispose()
+            return $lk
+        } catch {
+            # un bloqueo de más de 1 minuto es de un programa que se cerró mal
+            try { if (((Get-Date) - (Get-Item -LiteralPath $lk).LastWriteTime).TotalSeconds -gt 60) { Remove-Item -LiteralPath $lk -Force } } catch { }
+            Start-Sleep -Milliseconds 200
+        }
+    }
+    throw (L 'errStoreBusy')
+}
+function Exit-StoreLock($lk) { if ($lk) { try { Remove-Item -LiteralPath $lk -Force } catch { } } }
+
+function ConvertTo-StoreValue($f, $v) {
+    if ($null -eq $v -or "$v" -eq '') { return $null }
+    if ($f.Type -eq 'Date') { if ($v -is [DateTime]) { return $v.ToString('yyyy-MM-dd') }; return "$v" }
+    if ($f.Type -eq 'Money') { if ($v -is [double] -or $v -is [int] -or $v -is [decimal]) { return [double]$v }; $d = Parse-Money "$v"; return $d }
+    if ($v -is [double]) { return $v }
+    return "$v"
+}
+function ConvertFrom-StoreValue($f, $v) {
+    if ($null -eq $v -or "$v" -eq '') { return $null }
+    if ($f.Type -eq 'Date') {
+        if ($v -is [DateTime]) { return $v }
+        $d = [DateTime]::MinValue
+        if ([DateTime]::TryParseExact("$v", 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$d)) { return $d }
+        return $null
+    }
+    if ($f.Type -eq 'Money') { return [double]$v }
+    return $v
+}
+function Read-Store($t) {
+    $p = Get-StorePath $t
+    if (-not $p -or -not (Test-Path -LiteralPath $p)) { return $null }
+    $j = [IO.File]::ReadAllText($p, [Text.Encoding]::UTF8) | ConvertFrom-Json
+    $meta = @{ Lists = @{}; Tariff = @{}; TariffNet = @{}; DefaultPrice = $null; IdPrefix = "$($j.meta.idPrefix)"; IdWidth = 3 }
+    if ($j.meta.idWidth) { $meta.IdWidth = [int]$j.meta.idWidth }
+    if ($j.meta.lists) { foreach ($pr in $j.meta.lists.PSObject.Properties) { $meta.Lists[$pr.Name] = @($pr.Value | ForEach-Object { "$_" }) } }
+    if ($j.meta.tariff) { foreach ($pr in $j.meta.tariff.PSObject.Properties) { $meta.Tariff[$pr.Name] = [double]$pr.Value } }
+    if ($j.meta.tariffNet) { foreach ($pr in $j.meta.tariffNet.PSObject.Properties) { $meta.TariffNet[$pr.Name] = [double]$pr.Value } }
+    if ($null -ne $j.meta.defaultPrice) { $meta.DefaultPrice = [double]$j.meta.defaultPrice }
+    $clients = New-Object System.Collections.Generic.List[object]
+    foreach ($c in @($j.clients)) {
+        if (-not $c) { continue }
+        $FV = @{}
+        foreach ($f in $t.Fields) { $FV[$f.Key] = ConvertFrom-StoreValue $f $c.f.($f.Key) }
+        $clients.Add(@{ Row = [int]$c.row; Id = "$($c.id)"; F = $FV; Sync = [bool]$c.sync; New = [bool]$c.nuevo; Updated = "$($c.updated)"; By = "$($c.by)" })
+    }
+    return @{ Meta = $meta; Clients = $clients }
+}
+function Write-Store($t, $store) {
+    $p = Get-StorePath $t
+    $fields = @{}
+    $list = New-Object System.Collections.Generic.List[object]
+    foreach ($c in ($store.Clients | Sort-Object { $_.Row })) {
+        $o = [ordered]@{}
+        foreach ($f in $t.Fields) { $o[$f.Key] = ConvertTo-StoreValue $f $c.F[$f.Key] }
+        $list.Add([ordered]@{ row = $c.Row; id = $c.Id; sync = [bool]$c.Sync; nuevo = [bool]$c.New; updated = $c.Updated; by = $c.By; f = $o })
+    }
+    $m = $store.Meta
+    $obj = [ordered]@{
+        app = 'GESTEM MANAGER'; formato = 1; tramite = $t.Id; hoja = $t.Sheet; guardado = (Get-Date).ToString('s')
+        meta = [ordered]@{ idPrefix = $m.IdPrefix; idWidth = $m.IdWidth; defaultPrice = $m.DefaultPrice; tariff = $m.Tariff; tariffNet = $m.TariffNet; lists = $m.Lists }
+        clients = $list.ToArray()
+    }
+    $json = $obj | ConvertTo-Json -Depth 8
+    $tmp = "$p.tmp"
+    [IO.File]::WriteAllText($tmp, $json, (New-Object Text.UTF8Encoding($true)))
+    if (Test-Path -LiteralPath $p) {
+        # copia diaria del archivo de datos antes de cambiarlo
+        try {
+            $bk = Join-Path $script:BackupDir ("datos_{0}_{1:yyyy-MM-dd}.json" -f $t.Id, (Get-Date))
+            if (-not (Test-Path -LiteralPath $bk)) { Copy-Item -LiteralPath $p -Destination $bk -Force }
+        } catch { }
+        try { [IO.File]::Replace($tmp, $p, [NullString]::Value) }
+        catch { Copy-Item -LiteralPath $tmp -Destination $p -Force; Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+    } else {
+        Move-Item -LiteralPath $tmp -Destination $p -Force
+    }
+}
+
+# --- valores que en el Excel calculan sus fórmulas ---
+function Resolve-Record($t, [hashtable]$FV, $meta) {
+    $natF = $t.Fields | Where-Object { $_.Role -eq 'nationality' } | Select-Object -First 1
+    if ($natF -and -not "$($FV[$natF.Key])".Trim() -and "$($FV['name'])".Trim()) { $FV[$natF.Key] = $t.DefaultNationality }
+    $tipo = "$($FV['tipo'])"
+    if ($t.TipoCol -and $null -eq $FV['price'] -and $tipo -and $meta.Tariff.ContainsKey($tipo)) { $FV['price'] = $meta.Tariff[$tipo] }
+    $price = $FV['price']
+    $ps = "$($FV['paystate'])"
+    if ($null -eq $price) { if ($ps -ne 'Parcial') { $FV['paid'] = $null } }
+    elseif ($ps -eq 'Pagado') { $FV['paid'] = [double]$price }
+    elseif ($ps -eq 'Pendiente') { $FV['paid'] = [double]0 }
+    elseif ($ps -ne 'Parcial') { $FV['paid'] = $null }
+    return $FV
+}
+function New-RowObject($t, $c, $meta) {
+    $FV = $c.F
+    $rec = @{ Row = $c.Row }
+    foreach ($k in $FV.Keys) { $rec[$k] = $FV[$k] }
+    $price = $FV['price']; $paid = $FV['paid']; $ps = "$($FV['paystate'])"; $status = "$($FV['status'])"
+    $pend = 0.0
+    if ($null -ne $price) {
+        if ($ps -ne 'Pagado') { $pv = 0.0; if ($null -ne $paid) { $pv = [double]$paid }; $pend = [math]::Max([double]0, [double]$price - $pv) }
+    }
+    $days = ''
+    $closed = @('Finalizado'); if (-not $t.TipoCol) { $closed += 'Desfavorable' }
+    if ($FV['fsol'] -is [DateTime] -and $status -notin $closed) { $days = [int]([DateTime]::Today - $FV['fsol'].Date).TotalDays }
+    $net = 0.0
+    if ($null -ne $price) {
+        if ($t.NetCol -eq 'W') { $g = 0.0; if ($null -ne $FV['gastos']) { $g = [double]$FV['gastos'] }; $net = [double]$price - $g }
+        elseif ($t.TipoCol -and $meta.TariffNet.ContainsKey("$($FV['tipo'])")) { $net = $meta.TariffNet["$($FV['tipo'])"] }
+    }
+    $color = '#FFFFFF'
+    if ($t.StatusColors.ContainsKey($status)) { $color = $t.StatusColors[$status] }
+    return [pscustomobject]@{
+        Row = $c.Row; Id = $c.Id; Name = "$($FV['name'])"; Doc = "$($FV['doc'])"
+        Tipo = $(if ($FV.ContainsKey('tipo')) { "$($FV['tipo'])" } else { "$($FV['xF'])" }); Status = $status; Color = $color; Pay = $ps
+        Pending = $pend
+        PendingText = $(if ($pend -gt 0) { Format-Money $pend } else { '' })
+        Days = $days
+        Loc = "$($FV['loc'])"; Resp = "$($FV['resp'])"; Data = $rec
+        PriceV = $(if ($null -ne $price) { [double]$price } else { 0 })
+        PaidV = $(if ($null -ne $paid) { [double]$paid } else { 0 })
+        NetV = $net
+        Fecha = $(if ($FV['fsol'] -is [DateTime]) { $FV['fsol'] } else { $null })
+        Sync = $c.Sync
+    }
+}
+function Get-RowId($t, $meta, [int]$row) {
+    if (-not $meta.IdPrefix) { return '' }
+    return $meta.IdPrefix + ([string]($row - $t.FirstRow + 1)).PadLeft($meta.IdWidth, '0')
+}
+function Build-TramiteData($t, $store) {
+    $meta = $store.Meta
+    $rows = New-Object System.Collections.Generic.List[object]
+    $used = New-Object System.Collections.Generic.HashSet[int]
+    $payExtra = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($c in ($store.Clients | Sort-Object { $_.Row })) {
+        $rows.Add((New-RowObject $t $c $meta)); [void]$used.Add([int]$c.Row)
+        if ("$($c.F['forma'])".Trim()) { [void]$payExtra.Add("$($c.F['forma'])".Trim()) }
+    }
+    $firstEmpty = $null
+    for ($r = $t.FirstRow; $r -le $t.LastRow; $r++) { if (-not $used.Contains($r)) { $firstEmpty = $r; break } }
+    $lists = @{}
+    foreach ($k in $meta.Lists.Keys) { $lists[$k] = $meta.Lists[$k] }
+    $all = New-Object System.Collections.Generic.List[string]
+    foreach ($p in $script:FormasPago) { $all.Add($p) }
+    foreach ($p in $payExtra) { if (-not $all.Contains($p) -and $p.Length -le 30) { $all.Add($p) } }
+    $lists['payments'] = $all.ToArray()
+    $lists['nationalities'] = $script:Nacionalidades
+    $col = New-Object System.Collections.Generic.List[string]
+    foreach ($c in @($script:Cfg.Colleagues)) { if ("$c".Trim() -and -not $col.Contains("$c")) { $col.Add("$c") } }
+    foreach ($r in $rows) { $x = "$($r.Resp)".Trim().ToUpper(); if ($x -and -not $col.Contains($x)) { $col.Add($x) } }
+    $lists['colleagues'] = $col.ToArray()
+    return @{ Lists = $lists; Tariff = $meta.Tariff; DefaultPrice = $meta.DefaultPrice; Rows = $rows; FirstEmpty = $firstEmpty
+              NextId = $(if ($firstEmpty) { Get-RowId $t $meta $firstEmpty } else { '' }); Store = $store }
+}
+
+# --- importar del Excel (la primera vez, o cuando se pide) ---
+function Read-TariffNet($ws, [string]$col) {
+    $T = $script:T
+    $map = @{}
+    try { $f = "$($ws.Range("$col$($T.FirstRow)").Validation.Formula1)".TrimStart('=') } catch { return $map }
+    if ($f -match '^(.+)!(\$?[A-Z]+\$?\d+(:\$?[A-Z]+\$?\d+)?)$') {
+        $rng = $ws.Parent.Worksheets.Item($Matches[1].Trim("'")).Range($Matches[2])
+        foreach ($c in $rng.Cells) {
+            $k = "$($c.Value2)".Trim()
+            $p = $c.Offset(0, 2).Value2
+            if ($k -and ($p -is [double])) { $map[$k] = [double]$p }
+        }
+    }
+    return $map
+}
+function Read-ExcelMeta($h, $t, $d) {
+    # listas y precios de AJUSTES + formato de los nº de expediente
+    $ws = Get-Sheet $h
+    $lists = @{}
+    foreach ($k in $d.Lists.Keys) { if ($k -like 'excel:*') { $lists[$k] = @($d.Lists[$k]) } }
+    $net = @{}
+    if ($t.TipoCol) { $net = Invoke-Excel { Read-TariffNet $ws $t.TipoCol } }
+    $prefix = ''; $width = 3
+    $first = "$($ws.Range("$($t.IdCol)$($t.FirstRow)").Value2)"
+    if ($first -match '^(.*?)(\d+)$') { $prefix = $Matches[1]; $width = $Matches[2].Length }
+    return @{ Lists = $lists; Tariff = $d.Tariff; TariffNet = $net; DefaultPrice = $d.DefaultPrice; IdPrefix = $prefix; IdWidth = $width }
+}
+function Import-TramiteFromExcel($h, $t) {
+    $d = Read-TramiteData $h
+    $meta = Read-ExcelMeta $h $t $d
+    $clients = New-Object System.Collections.Generic.List[object]
+    foreach ($r in $d.Rows) {
+        $FV = @{}
+        foreach ($f in $t.Fields) { $FV[$f.Key] = $r.Data[$f.Key] }
+        $clients.Add(@{ Row = [int]$r.Row; Id = "$($r.Id)"; F = $FV; Sync = $true; Updated = (Get-Date).ToString('s'); By = 'Excel' })
+    }
+    $store = @{ Meta = $meta; Clients = $clients }
+    Write-Store $t $store
+    Write-Log ("importó del Excel: {0} ({1} clientes)" -f $t.Sheet, $clients.Count)
+    return $store
+}
+function Update-StoreMeta($h, $t) {
+    # vuelve a leer del Excel solo las listas y los precios (los clientes no se tocan)
+    $d = Read-TramiteData $h
+    $meta = Read-ExcelMeta $h $t $d
+    $lk = Enter-StoreLock
+    try {
+        $s = Read-Store $t
+        if (-not $s) { return }
+        $s.Meta = $meta
+        Write-Store $t $s
+    } finally { Exit-StoreLock $lk }
+}
+
+# --- guardar: primero en GESTEM, luego en el Excel ---
+function Save-ClientStore([hashtable]$vals, $editRow) {
+    $t = $script:T
+    $lk = Enter-StoreLock
+    $rec = $null; $store = $null
+    try {
+        $store = Read-Store $t
+        if (-not $store) { throw (L 'errNoStore') }
+        $FV = @{}
+        foreach ($f in $t.Fields) { $FV[$f.Key] = $vals[$f.Key] }
+        $FV = Resolve-Record $t $FV $store.Meta
+        if ($editRow) {
+            $rec = $store.Clients | Where-Object { $_.Row -eq [int]$editRow } | Select-Object -First 1
+        }
+        if ($rec) {
+            $rec.F = $FV
+        } else {
+            $used = New-Object System.Collections.Generic.HashSet[int]
+            foreach ($c in $store.Clients) { [void]$used.Add([int]$c.Row) }
+            $row = $null
+            for ($r = $t.FirstRow; $r -le $t.LastRow; $r++) { if (-not $used.Contains($r)) { $row = $r; break } }
+            if (-not $row) { throw (L 'errFull') }
+            $rec = @{ Row = $row; Id = (Get-RowId $t $store.Meta $row); F = $FV; Sync = $false; New = $true; Updated = ''; By = '' }
+            $store.Clients.Add($rec)
+        }
+        $rec.Sync = $false
+        $rec.Updated = (Get-Date).ToString('s')
+        $rec.By = $(if ($script:IsAdmin -or $script:IsOwnerPC) { 'ADMIN' } else { $script:User })
+        Write-Store $t $store
+    } finally { Exit-StoreLock $lk }
+    # el Excel se actualiza después; si no se puede ahora, se hará más tarde
+    $synced = Sync-RecordToExcel $t $rec
+    return @{ Id = $rec.Id; Synced = $synced }
+}
+function Sync-RecordToExcel($t, $rec, $h) {
+    $prevT = $script:T; $prevTar = $script:Tariff
+    try {
+        $script:T = $t
+        $s0 = Read-Store $t
+        if ($s0) { $script:Tariff = $s0.Meta.Tariff }
+        $vals = @{}
+        foreach ($k in $rec.F.Keys) { $vals[$k] = $rec.F[$k] }
+        # campos con fórmula en el Excel: se dejan a la fórmula cuando coinciden
+        $r = Save-Client $vals $rec.Row -ExpectName "$($rec.F['name'])" -IsNew:([bool]$rec.New) -Handle $h
+        $lk = Enter-StoreLock
+        try {
+            $s = Read-Store $t
+            $c = $s.Clients | Where-Object { $_.Row -eq [int]$rec.Row } | Select-Object -First 1
+            if ($c) {
+                if ($r.Row -ne $rec.Row) { $c.Row = $r.Row; Write-Log ("expediente {0} pasa a la fila {1} del Excel" -f $rec.Id, $r.Row) }
+                if ($r.Id) { $c.Id = $r.Id }
+                $c.Sync = $true; $c.New = $false
+                Write-Store $t $s
+            }
+            $rec.Row = $r.Row; if ($r.Id) { $rec.Id = $r.Id }
+        } finally { Exit-StoreLock $lk }
+        return $true
+    } catch {
+        Write-Log ("Excel no actualizado ({0}): {1} (línea {2})" -f $rec.Id, $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
+        return $false
+    } finally { $script:T = $prevT; $script:Tariff = $prevTar }
+}
+function Sync-PendingToExcel {
+    # clientes guardados en GESTEM que todavía no están en el Excel
+    $todo = @()
+    foreach ($t in $script:Tramites) {
+        $s = $null; try { $s = Read-Store $t } catch { }
+        if ($s) { foreach ($c in $s.Clients) { if (-not $c.Sync) { $todo += ,@($t, $c) } } }
+    }
+    if (-not $todo.Count) { return 0 }
+    $h = $null; $n = 0
+    try {
+        $h = Invoke-Excel { Open-Book -ForWrite }
+        if ($script:Cfg.Backup) { Backup-Excel }
+        foreach ($x in $todo) { if (Sync-RecordToExcel $x[0] $x[1] -h $h) { $n++ } }
+        Invoke-Excel { Close-Book $h $true }; $h = $null
+    } catch {
+        Write-Log "sincronizar con el Excel: $($_.Exception.Message)"
+        if ($h) { try { Close-Book $h $false } catch { } }
+    }
+    if ($n) { Write-Log ("Excel actualizado con {0} cliente(s) pendiente(s)" -f $n) }
+    return $n
+}
+function Get-PendingSyncCount {
+    $n = 0
+    foreach ($t in $script:Tramites) { if ($script:Cache.ContainsKey($t.Id)) { foreach ($r in $script:Cache[$t.Id].Rows) { if (-not $r.Sync) { $n++ } } } }
+    return $n
+}
+function Import-AllFromExcel {
+    # vuelve a crear los datos de GESTEM a partir del Excel (pide confirmación)
+    [void](Sync-PendingToExcel)
+    [void](Load-Data -All)
+    if ((Get-PendingSyncCount) -gt 0) { Show-Error (L 'errPendingSync'); return }
+    $ans = [Windows.MessageBox]::Show($script:Win, (L 'importAsk'), $script:AppName, 'YesNo', 'Warning')
+    if ("$ans" -ne 'Yes') { return }
+    $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    $h = $null; $cur = $script:T
+    try {
+        $h = Invoke-Excel { Open-Book }
+        $lk = Enter-StoreLock
+        try {
+            foreach ($t in $script:Tramites) {
+                $script:T = $t
+                try { [void](Import-TramiteFromExcel $h $t) } catch { Write-Log "importar ($($t.Sheet)): $($_.Exception.Message)" }
+            }
+        } finally { Exit-StoreLock $lk }
+        $script:T = $cur
+        Close-Book $h $false; $h = $null
+        [void](Load-Data -All)
+        Set-Status (L 'importDone')
+    } catch {
+        $script:T = $cur
+        if ($h) { try { Close-Book $h $false } catch { } }
+        Show-Error $_.Exception.Message
+    } finally { $script:Win.Cursor = $null }
+}
+
+function Refresh-FromExcel {
+    # «Actualizar»: listas y precios desde AJUSTES del Excel + envía al Excel lo pendiente
+    $h = $null; $cur = $script:T
+    try {
+        if (Test-ExcelInstalled) {
+            $h = Invoke-Excel { Open-Book }
+            foreach ($t in $script:Tramites) {
+                $script:T = $t
+                try { Update-StoreMeta $h $t } catch { Write-Log "listas ($($t.Sheet)): $($_.Exception.Message)" }
+            }
+            $script:T = $cur
+            Close-Book $h $false; $h = $null
+        }
+    } catch {
+        $script:T = $cur
+        if ($h) { try { Close-Book $h $false } catch { } }
+        Write-Log "actualizar desde el Excel: $($_.Exception.Message)"
+    }
+    [void](Sync-PendingToExcel)
+    return (Load-Data -All)
+}
+function Load-Data([switch]$All) {
+    # lee los datos de GESTEM (rápido, sin Excel); la primera vez los importa del Excel
+    Set-Status (L 'loading')
+    $h = $null
+    $cur = $script:T
+    try {
+        if (-not $script:Cfg.ExcelPath -or -not (Test-Path -LiteralPath $script:Cfg.ExcelPath)) { throw (L 'errNoFile') }
+        if ($All -or $null -eq $script:Cache) { $script:Cache = @{} }
+        $list = @($cur)
+        if ($All) { $list = @($cur) + @($script:Tramites | Where-Object { $_.Id -ne $cur.Id }) }
+        foreach ($t in $list) {
+            $script:T = $t
+            try {
+                $s = Read-Store $t
+                if (-not $s) {
+                    if (-not $h) { $h = Invoke-Excel { Open-Book } }
+                    $lk = Enter-StoreLock
+                    try { $s = Read-Store $t; if (-not $s) { $s = Import-TramiteFromExcel $h $t } } finally { Exit-StoreLock $lk }
+                }
+                $script:Cache[$t.Id] = Build-TramiteData $t $s
+            } catch {
+                if ($t.Id -eq $cur.Id) { throw }
+                Write-Log "pestaña no leída ($($t.Sheet)): $($_.Exception.Message)"
+            }
+        }
+        $script:T = $cur
+        if ($h) { Close-Book $h $false; $h = $null }
+        $script:CacheStamp = Get-FileStamp
+        Use-TramiteData $script:Cache[$cur.Id]
+        return $true
+    } catch {
+        $script:T = $cur
+        if ($h) { try { Close-Book $h $false } catch {} }
+        Write-Log "Load-Data: $($_.Exception.Message)"
+        Set-Status ($_.Exception.Message)
+        Show-Error $_.Exception.Message
+        return $false
+    }
+}
+function Sync-DataBackup([string]$dir) {
+    # copia de los datos de GESTEM en la carpeta externa
+    $root = Get-StoreDir
+    if (-not $root -or -not (Test-Path -LiteralPath $root)) { return }
+    $dst = Join-Path $dir 'datos GESTEM'
+    if (-not (Test-Path -LiteralPath $dst)) { New-Item -ItemType Directory -Force -Path $dst | Out-Null }
+    foreach ($f in (Get-ChildItem -LiteralPath $root -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
+        try { Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $dst $f.Name) -Force } catch { }
     }
 }
 
@@ -955,6 +1418,7 @@ function Backup-External([switch]$Quiet) {
         Save-Config
         Write-Log "copia externa: $dst"
         Sync-DocsBackup $dir
+        Sync-DataBackup $dir
         Export-ActivityLog $dir
         return $true
     } catch {
@@ -2145,6 +2609,10 @@ $xaml = @'
                     <Button x:Name="ChangeFileBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
                     <TextBox x:Name="FilePathBox" IsReadOnly="True" Background="#F8F6F6"/>
                   </DockPanel>
+                  <DockPanel Margin="0,10,0,0">
+                    <Button x:Name="ImportXlBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                    <TextBlock x:Name="DataNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                  </DockPanel>
                   <TextBlock x:Name="SetNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" Margin="1,10,0,0"/>
                 </StackPanel>
               </Grid>
@@ -2457,7 +2925,7 @@ $xaml = @'
             </Border>
             <StackPanel Grid.Column="1">
               <TextBlock Text="8. El Excel y las copias" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="0,8,0,8"/>
-              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="GESTEM escribe en vuestro Excel de clientes. Funciona con el Excel abierto o cerrado. Si estás escribiendo dentro de una celda, pulsa Enter en Excel antes de guardar en GESTEM." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
+              <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="GESTEM guarda los clientes en su propia carpeta «GESTEM datos», junto al Excel, y actualiza vuestro Excel en cada guardado. Si el Excel no se puede abrir en ese momento, se actualiza solo más tarde." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
               <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Antes de cada guardado se hace una copia de seguridad del Excel (Ajustes → «Abrir carpeta de copias»)." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
               <DockPanel Margin="0,0,0,6"><Ellipse DockPanel.Dock="Left" Width="5" Height="5" Fill="#C4161C" Margin="2,8,10,0" VerticalAlignment="Top"/><TextBlock Text="Copia externa: al abrir y al cerrar GESTEM se guarda una copia completa (Excel, ajustes y documentos) en la nube de la empresa (OneDrive o Google Drive) o en la carpeta elegida en Ajustes." TextWrapping="Wrap" Foreground="#3B3536" FontSize="13.5" LineHeight="21"/></DockPanel>
             </StackPanel>
@@ -3055,12 +3523,14 @@ function Save-FromForm {
     Set-Status (L 'savingMsg')
     try {
         $row = $null; if ($script:EditRow) { $row = $script:EditRow.Row }
-        $id = Save-Client $vals $row
+        $res = Save-ClientStore $vals $row
+        $id = $res.Id
         $wasEdit = [bool]$script:EditRow
         $tTitle = $script:T.Title['es']
         Write-Log ("{0} cliente {1} · {2} · {3}" -f $(if ($wasEdit) { 'editó' } else { 'añadió' }), $id, "$($vals.name)", $tTitle)
         [void](Load-Data)
         Set-Status ($(if ($wasEdit) { (L 'savedEdit') -f $id } else { (L 'saved') -f $id }))
+        if (-not $res.Synced) { Set-Status ((L 'savedNoExcel') -f $id) }
         Reset-Form
         if ($wasEdit) { $ui.NavClients.IsChecked = $true }
         if ($script:Cfg.OpenAfterSave) { Open-ExcelWindow }
@@ -3097,10 +3567,15 @@ function Refresh-ClientGrid {
 }
 
 function Edit-Selected {
-    $sel = $script:UI.ClientsGrid.SelectedItem
-    if (-not $sel) { Show-Info (L 'selectFirst'); return }
-    $script:UI.NavNew.IsChecked = $true
-    Fill-FormForEdit $sel
+    try {
+        $sel = $script:UI.ClientsGrid.SelectedItem
+        if (-not $sel) { Show-Info (L 'selectFirst'); return }
+        $script:UI.NavNew.IsChecked = $true
+        Fill-FormForEdit $sel
+    } catch {
+        Write-Log "DEBUG editar: $($_.Exception.Message) (línea $($_.InvocationInfo.ScriptLineNumber))"
+        Show-Error $_.Exception.Message
+    }
 }
 
 # =====================================================================
@@ -3609,6 +4084,7 @@ function Apply-Language {
     $ui.DocsAddBtn.Content = L 'docsAdd'; $ui.DocsOpenBtn.Content = L 'docsOpen'; $ui.DocsRemoveBtn.Content = L 'docsRemove'; $ui.DocsFolderBtn.Content = L 'docsFolder'
     $ui.DocsEmptyT.Text = L 'docsEmpty'; $ui.DocsDropT.Text = L 'docsDrop'; $ui.DocsClose.ToolTip = L 'docsClose'
     $ui.SetTitle.Text = L 'setTitle'; $ui.SetFileL.Text = L 'setFile'; $ui.ChangeFileBtn.Content = L 'btnChange'
+    $ui.ImportXlBtn.Content = L 'btnImport'; $ui.DataNote.Text = L 'dataNote'
     $ui.SetLangL.Text = L 'setLang'; $ui.SetNatL.Text = L 'setNat'; $ui.BackupChk.Content = L 'setBackup'
     $ui.OpenAfterChk.Content = L 'setOpen'; $ui.SetNote.Text = L 'setNote'
     $ui.SaveSettingsBtn.Content = L 'btnSaveSettings'; $ui.BackupsBtn.Content = L 'btnBackups'; $ui.UpdateBtn.Content = L 'btnUpdate'
@@ -4319,7 +4795,7 @@ $script:HelpTr = @{
  'La gráfica muestra la evolución por día, semana o mes: verde cuando sube, rojo cuando baja.' = @{ en = 'The chart shows the trend by day, week or month: green when it goes up, red when it goes down.'; fr = 'Le graphique montre l''évolution par jour, semaine ou mois : vert quand ça monte, rouge quand ça baisse.'; ar = 'يعرض الرسم التطور حسب اليوم أو الأسبوع أو الشهر: أخضر عند الصعود وأحمر عند الهبوط.' }
  'Filtra por compañera y por periodo: este mes, el mes anterior o este año (según la fecha de solicitud).' = @{ en = 'Filter by colleague and by period: this month, last month or this year (by application date).'; fr = 'Filtrez par collègue et par période : ce mois-ci, le mois dernier ou cette année (selon la date de demande).'; ar = 'صفِّ حسب الزميل والفترة: هذا الشهر أو الشهر الماضي أو هذه السنة (حسب تاريخ الطلب).' }
  '8. El Excel y las copias' = @{ en = '8. The Excel file and backups'; fr = '8. L''Excel et les copies'; ar = '8. ملف Excel والنسخ الاحتياطية' }
- 'GESTEM escribe en vuestro Excel de clientes. Funciona con el Excel abierto o cerrado. Si estás escribiendo dentro de una celda, pulsa Enter en Excel antes de guardar en GESTEM.' = @{ en = 'GESTEM writes to your client Excel file. It works with Excel open or closed. If you are typing in a cell, press Enter in Excel before saving in GESTEM.'; fr = 'GESTEM écrit dans votre Excel clients, ouvert ou fermé. Si vous tapez dans une cellule, appuyez sur Entrée dans Excel avant d''enregistrer dans GESTEM.'; ar = 'يكتب GESTEM في ملف Excel الخاص بالعملاء، مفتوحًا كان أو مغلقًا. إذا كنت تكتب داخل خلية فاضغط Enter في Excel قبل الحفظ في GESTEM.' }
+ 'GESTEM guarda los clientes en su propia carpeta «GESTEM datos», junto al Excel, y actualiza vuestro Excel en cada guardado. Si el Excel no se puede abrir en ese momento, se actualiza solo más tarde.' = @{ en = 'GESTEM keeps clients in its own «GESTEM datos» folder next to the Excel file, and updates your Excel on every save. If the Excel can''t be opened at that moment, it is updated automatically later.'; fr = 'GESTEM garde les clients dans son propre dossier « GESTEM datos », à côté de l''Excel, et met votre Excel à jour à chaque enregistrement. Si l''Excel ne peut pas être ouvert à ce moment-là, il est mis à jour plus tard tout seul.'; ar = 'يحفظ GESTEM العملاء في مجلده الخاص «GESTEM datos» بجانب ملف Excel، ويحدّث ملف Excel عند كل حفظ. وإذا تعذّر فتح Excel في تلك اللحظة يُحدَّث تلقائيًا لاحقًا.' }
  'Antes de cada guardado se hace una copia de seguridad del Excel (Ajustes → «Abrir carpeta de copias»).' = @{ en = 'A backup of the Excel file is made before every save (Settings → «Open backups folder»).'; fr = 'Une copie de l''Excel est faite avant chaque enregistrement (Paramètres → « Ouvrir le dossier des copies »).'; ar = 'تُنشأ نسخة احتياطية من Excel قبل كل حفظ (الإعدادات ← «فتح مجلد النسخ»).' }
  'Copia externa: al abrir y al cerrar GESTEM se guarda una copia completa (Excel, ajustes y documentos) en la nube de la empresa (OneDrive o Google Drive) o en la carpeta elegida en Ajustes.' = @{ en = 'External backup: when GESTEM opens and closes, a full copy (Excel, settings and documents) is saved to the company cloud (OneDrive or Google Drive) or to the folder chosen in Settings.'; fr = 'Copie externe : à l''ouverture et à la fermeture, une copie complète (Excel, paramètres et documents) est enregistrée dans le cloud de l''entreprise (OneDrive ou Google Drive) ou dans le dossier choisi.'; ar = 'النسخة الخارجية: عند فتح GESTEM وإغلاقه تُحفظ نسخة كاملة (Excel والإعدادات والمستندات) في سحابة الشركة (OneDrive أو Google Drive) أو في المجلد المختار.' }
  '9. Ajustes' = @{ en = '9. Settings'; fr = '9. Paramètres'; ar = '9. الإعدادات' }
@@ -4662,7 +5138,7 @@ foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings'
                  'PanelAbout','AboutLogo','AboutVer','AboutText','AboutBy','EasterEgg',
                  'UserBtn','OnlyMine','SetCollL','ColleaguesBox','PanelSession','SessTitle','SessHint','SessNames','SessGo','SessNew','SessNewHint',
                  'HelpBtn','HelpClose','PanelHelp','SetSub',
-                 'SecExtT','SecExtD','ExtDirL','ExtDirBox','ExtDirBtn','ExtClearBtn','ExtOneDriveBtn','ExtNowBtn','ExtOpenBtn','ExtLastTxt','ExtNote',
+                 'SecExtT','SecExtD','ImportXlBtn','DataNote','ExtDirL','ExtDirBox','ExtDirBtn','ExtClearBtn','ExtOneDriveBtn','ExtNowBtn','ExtOpenBtn','ExtLastTxt','ExtNote',
                  'SecFileT','SecFileD','SecCompT','SecCompD','SecTeamT','SecTeamD','SecPrefT','SecPrefD','SecHelpT','SecHelpD',
                  'ChartDay','ChartWeek','ChartMonth','ChartTitle','ChartSub','ChartLegPaid','ChartLegPend','ChartGrid',
                  'ChartCanvas','ChartLabels','ChartDelta','ChartDeltaB','ChartLegMoney',
@@ -4789,7 +5265,8 @@ foreach ($dz in $ui.PanelDocs, $ui.DocsCard) {
         $_.Handled = $true
     })
 }
-$ui.RefreshBtn.Add_Click({ $script:Win.Cursor = [Windows.Input.Cursors]::Wait; [void](Load-Data -All); $script:Win.Cursor = $null })
+$ui.RefreshBtn.Add_Click({ $script:Win.Cursor = [Windows.Input.Cursors]::Wait; [void](Refresh-FromExcel); $script:Win.Cursor = $null })
+$ui.ImportXlBtn.Add_Click({ Import-AllFromExcel })
 $ui.OpenExcelBtn.Add_Click({
     $sel = $script:UI.ClientsGrid.SelectedItem
     if ($sel) { Open-ExcelWindow $sel.Row } else { Open-ExcelWindow }
@@ -4852,6 +5329,8 @@ Apply-Language
 # copia al cerrar
 $script:Win.Add_Closing({
     if ($script:Restarting) { return }
+    # errores silenciosos de la sesión (botones, eventos) al registro, para poder revisarlos
+    try { foreach ($er in @($Error | Where-Object { "$($_.Exception.Message)" -notmatch 'GetActiveObject|MK_E_UNAVAILABLE' } | Select-Object -First 15)) { $pos = ''; if ($er.InvocationInfo) { $pos = " (línea $($er.InvocationInfo.ScriptLineNumber))" }; Write-Log ("DEBUG error: $($er.Exception.Message)$pos") } } catch { }
     if ($script:User) { Write-Log 'cerró GESTEM' }
     if ($script:Cfg.ExtBackupDir -and $script:Cfg.ExcelPath) { try { [void](Backup-External -Quiet) } catch {} }
 })
@@ -4869,7 +5348,10 @@ $script:Win.Add_ContentRendered({
         return
     }
     $script:Win.Cursor = [Windows.Input.Cursors]::Wait
-    if (Load-Data -All) { Apply-Language }
+    if (Load-Data -All) {
+        Apply-Language
+        if ((Get-PendingSyncCount) -gt 0) { if ((Sync-PendingToExcel) -gt 0) { [void](Load-Data -All) } }
+    }
     $script:Win.Cursor = $null
     # primera vez sin carpeta externa: se usa sola la nube de la empresa si este PC la tiene
     if (-not $script:Cfg.ExtBackupDir) {
