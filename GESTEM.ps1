@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.15'
+$script:AppVersion = '1.5.16'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -1607,6 +1607,18 @@ function Build-TramiteData($t, $store) {
     for ($r = $t.FirstRow; $r -le $t.LastRow; $r++) { if (-not $used.Contains($r)) { $firstEmpty = $r; break } }
     $lists = @{}
     foreach ($k in $meta.Lists.Keys) { $lists[$k] = $meta.Lists[$k] }
+    # listas guardadas antes de 1.5.14: «1 PASO» + «APODERAMIENTO HECHO» se unen si los clientes tienen «1 PASO, APODERAMIENTO HECHO»
+    foreach ($f in $t.Fields) {
+        if ("$($f.List)" -notlike 'excel:*' -or -not $lists.ContainsKey($f.List)) { continue }
+        $vals = New-Object System.Collections.Generic.HashSet[string]
+        foreach ($c in $store.Clients) { $v = "$($c.F[$f.Key])".Trim(); if ($v) { [void]$vals.Add($v) } }
+        $src = @($lists[$f.List]); $fixed = New-Object System.Collections.Generic.List[string]; $changed = $false
+        for ($i = 0; $i -lt $src.Count; $i++) {
+            if ($i + 1 -lt $src.Count -and -not $vals.Contains("$($src[$i])") -and $vals.Contains("$($src[$i]), $($src[$i + 1])")) { $fixed.Add("$($src[$i]), $($src[$i + 1])"); $i++; $changed = $true }
+            else { $fixed.Add("$($src[$i])") }
+        }
+        if ($changed) { $lists[$f.List] = $fixed.ToArray() }
+    }
     $all = New-Object System.Collections.Generic.List[string]
     foreach ($p in $script:FormasPago) { $all.Add($p) }
     foreach ($p in $payExtra) { if (-not $all.Contains($p) -and $p.Length -le 30) { $all.Add($p) } }
