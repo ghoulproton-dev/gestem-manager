@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.13'
+$script:AppVersion = '1.5.14'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -1209,7 +1209,14 @@ function Read-ValidationList($ws, [string]$col) {
         return ,$out.ToArray()
     }
     if ($f -match '^\$?[A-Z]+\$?\d+') { return @() }
-    return ,@($f.Split(@(',', ';')) | ForEach-Object { $_.Trim().Trim('"') } | Where-Object { $_ })
+    # «1 PASO, APODERAMIENTO HECHO»: un trozo que empieza por espacio es parte de la opción anterior (la coma es del texto)
+    $out = New-Object System.Collections.Generic.List[string]
+    foreach ($piece in $f.Split(@(',', ';'))) {
+        $v = $piece.Trim().Trim('"').Trim()
+        if (-not $v) { continue }
+        if ($piece.StartsWith(' ') -and $out.Count) { $out[$out.Count - 1] = $out[$out.Count - 1] + ', ' + $v } else { $out.Add($v) }
+    }
+    return ,$out.ToArray()
 }
 
 function Read-Tariff($ws, [string]$col) {
