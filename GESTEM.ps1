@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.14'
+$script:AppVersion = '1.5.15'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -5975,7 +5975,12 @@ foreach ($dz in $ui.PanelDocs, $ui.DocsCard) {
         $_.Handled = $true
     })
 }
-$ui.RefreshBtn.Add_Click({ $script:Win.Cursor = [Windows.Input.Cursors]::Wait; [void](Refresh-FromExcel); $script:Win.Cursor = $null })
+$ui.RefreshBtn.Add_Click({
+    $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    [void](Refresh-FromExcel)
+    if (-not $script:EditRow) { try { Build-Form; Reset-Form } catch { Write-Log "formulario: $($_.Exception.Message)" } }    # listas nuevas del Excel (Pasos, Tipo…) también en el formulario
+    $script:Win.Cursor = $null
+})
 $ui.ImportXlBtn.Add_Click({ Import-AllFromExcel })
 $ui.OpenExcelBtn.Add_Click({
     $sel = $script:UI.ClientsGrid.SelectedItem
