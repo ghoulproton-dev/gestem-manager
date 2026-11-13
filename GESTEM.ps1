@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.7.2'
+$script:AppVersion = '1.7.3'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -442,6 +442,8 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'Deshacer'
   cmUndone = 'Cambio deshecho'
+  undoNone = 'No hay nada que deshacer'
+  undoOther = 'Para deshacer, vuelve al trámite donde hiciste el cambio'
   cmResp = 'Asignar responsable'
   cmRespN = 'Asignar responsable ({0} clientes)'
   respAsk = '¿Poner a {1} como responsable de {0} clientes?'
@@ -547,6 +549,8 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'Undo'
   cmUndone = 'Change undone'
+  undoNone = 'Nothing to undo'
+  undoOther = 'To undo, go back to the procedure where you made the change'
   cmResp = 'Assign handler'
   cmRespN = 'Assign handler ({0} clients)'
   respAsk = 'Set {1} as the handler of {0} clients?'
@@ -652,6 +656,8 @@ $script:TextMore = @{
   cmDone = '✓ {0} : {1}'
   cmUndo = 'Annuler'
   cmUndone = 'Modification annulée'
+  undoNone = 'Rien à annuler'
+  undoOther = 'Pour annuler, revenez à la démarche où vous avez fait le changement'
   cmResp = 'Attribuer un responsable'
   cmRespN = 'Attribuer un responsable ({0} clients)'
   respAsk = 'Mettre {1} comme responsable de {0} clients ?'
@@ -757,6 +763,8 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'تراجع'
   cmUndone = 'تم التراجع عن التغيير'
+  undoNone = 'لا يوجد ما يمكن التراجع عنه'
+  undoOther = 'للتراجع، ارجع إلى المعاملة التي أجريت فيها التغيير'
   cmResp = 'تعيين المسؤول'
   cmRespN = 'تعيين المسؤول ({0} عملاء)'
   respAsk = 'تعيين {1} مسؤولًا عن {0} عملاء؟'
@@ -4756,6 +4764,7 @@ function Check-Duplicate {
 
 function Save-FromForm {
     Write-Log 'Save-FromForm inicio'
+    $script:UndoInfo = $null   # un cambio nuevo: lo anterior ya no se deshace con Ctrl+Z
     $vals = Get-FormValues
     if (-not $vals.name) { Show-Error (L 'reqName'); $script:Ctl['name'].Focus() | Out-Null; return }
     $dup = Find-DuplicateDoc "$($vals.doc)"
@@ -4890,6 +4899,7 @@ function Set-RespBulk([string]$who) {
     try {
         $norm = @($sel | Where-Object { [int]$_.Row -lt $script:HandRowBase })
         $hand = @($sel | Where-Object { [int]$_.Row -ge $script:HandRowBase })
+        $undo = New-Object System.Collections.ArrayList   # para poder deshacer: responsable que tenía cada uno
         if ($norm.Count) {
             $lk = Enter-StoreLock
             try {
@@ -4897,6 +4907,7 @@ function Set-RespBulk([string]$who) {
                 foreach ($r in $norm) {
                     $c = $s.Clients | Where-Object { [int]$_.Row -eq [int]$r.Row } | Select-Object -First 1
                     if (-not $c) { continue }
+                    [void]$undo.Add(@{ Row = [int]$c.Row; Id = "$($c.Id)"; Old = "$($c.F['resp'])" })
                     $c.F['resp'] = $who; $c.Sync = $false; $c.Updated = (Get-Date).ToString('s')
                     $c.By = $(if ($script:User) { $script:User } else { 'ADMIN' }); $n++
                 }
@@ -4906,21 +4917,54 @@ function Set-RespBulk([string]$who) {
         # clientes de una pestaña hecha a mano: pasan a GESTEM con el responsable puesto
         foreach ($r in $hand) {
             $vals = @{}; foreach ($k in $r.Data.Keys) { $vals[$k] = $r.Data[$k] }
+            $oldResp = "$($vals['resp'])"
             $vals['resp'] = $who
-            [void](Save-ClientStore $vals $r.Row); $n++
+            $res = Save-ClientStore $vals $r.Row; $n++
+            if ($res -and $res.Id) { [void]$undo.Add(@{ Row = 0; Id = "$($res.Id)"; Old = $oldResp }) }
         }
         [void](Sync-PendingToExcel)
         Write-Log ("asignó {0} cliente(s) a {1} · {2}" -f $n, $who, $t.Title['es'])
         [void](Load-Data)
-        Show-Toast ((L 'respDone') -f $n, $who)
+        $script:UndoInfo = @{ Kind = 'resp'; T = $t; Items = @($undo); Who = $who }
+        Show-Toast ((L 'respDone') -f $n, $who) (L 'cmUndo') { Invoke-QuickUndo } 15
     } catch {
         Write-Log "asignar responsable: $($_.Exception.Message)"
         Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
     } finally { $script:Busy = $false; $script:Win.Cursor = $null; Set-Status '' }
 }
+function Undo-RespBulk($u) {
+    # vuelve a poner el responsable que tenía cada cliente antes de «Asignar responsable»
+    $t = $u.T; $n = 0
+    $script:Busy = $true; $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    Set-Status (L 'savingMsg')
+    try {
+        $lk = Enter-StoreLock
+        try {
+            $s = Read-Store $t
+            foreach ($it in $u.Items) {
+                $c = $null
+                if ([int]$it.Row -gt 0) { $c = $s.Clients | Where-Object { [int]$_.Row -eq [int]$it.Row } | Select-Object -First 1 }
+                if (-not $c -and $it.Id) { $c = $s.Clients | Where-Object { "$($_.Id)" -eq $it.Id } | Select-Object -First 1 }
+                if (-not $c) { continue }
+                $c.F['resp'] = $it.Old; $c.Sync = $false; $c.Updated = (Get-Date).ToString('s')
+                $c.By = $(if ($script:User) { $script:User } else { 'ADMIN' }); $n++
+            }
+            Write-Store $t $s
+        } finally { Exit-StoreLock $lk }
+        [void](Sync-PendingToExcel)
+        Write-Log ("deshizo asignar responsable ({0}): {1} cliente(s) · {2}" -f $u.Who, $n, $t.Title['es'])
+        [void](Load-Data)
+        Show-Toast (L 'cmUndone')
+    } catch {
+        Write-Log "deshacer responsable: $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    } finally { $script:Busy = $false; $script:Win.Cursor = $null; Set-Status '' }
+}
 function Invoke-QuickUndo {
     $u = $script:UndoInfo; $script:UndoInfo = $null
-    if (-not $u -or $script:T.Id -ne $u.Tramite) { return }
+    if (-not $u) { Show-Toast (L 'undoNone'); return }
+    if ($u.Kind -eq 'resp') { Undo-RespBulk $u; return }
+    if ($script:T.Id -ne $u.Tramite) { $script:UndoInfo = $u; Show-Toast (L 'undoOther'); return }
     $r = @($script:Rows | Where-Object { [int]$_.Row -eq $u.Row })[0]
     if (-not $r) { Show-Toast (L 'cmUndoFail'); return }
     $script:UI.ClientsGrid.SelectedItem = $r
@@ -7050,6 +7094,10 @@ $script:Win.Add_KeyDown({
     if ($ctrl -and $_.Key -eq 'N') {
         if (-not $script:EditRow) { $ui.NavNew.IsChecked = $true; $script:Ctl['name'].Focus() | Out-Null }
         else { $ui.NavNew.IsChecked = $true }
+        $_.Handled = $true; return
+    }
+    if ($ctrl -and $_.Key -eq 'Z' -and -not ([Windows.Input.Keyboard]::FocusedElement -is [Windows.Controls.Primitives.TextBoxBase])) {
+        if (-not $script:Busy) { Invoke-QuickUndo }
         $_.Handled = $true; return
     }
     if ($ctrl -and $_.Key -eq 'F') { $ui.NavClients.IsChecked = $true; $ui.SearchBox.Focus() | Out-Null; $ui.SearchBox.SelectAll(); $_.Handled = $true; return }
