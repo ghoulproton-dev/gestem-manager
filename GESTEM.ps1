@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.5.12'
+$script:AppVersion = '1.5.13'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -179,6 +179,13 @@ $script:Tramites += New-GenTramite 'dispensa' 'DISPENSA EXAMEN' (New-Label 'Disp
     @('Examen', 'CCSE|DELE A2|Ambos'), @('Motivo', 'Edad|Estudios en España|Discapacidad|Otro'), @('Nº expediente', ''), @('Contraseña', ''))
 $script:Tramites += New-GenTramite 'visado' 'VISADO ESTUDIOS' (New-Label 'Visado de estudios' 'Student visa' 'Visa étudiant' 'تأشيرة الدراسة') @(
     @('Centro de estudios', ''), @('Consulado', ''), @('Fecha de cita', ''), @('Nº expediente', ''))
+# tasas: lee la pestaña «TASA» del Excel; son gastos, no ingresos, así que no cuentan en el resumen económico
+$tasasT = New-GenTramite 'tasas' 'TASA' (New-Label 'Tasas' 'Fees (tasas)' 'Taxes (tasas)' 'الرسوم') @(
+    @('Tipo de tasa', 'DT21|Larga duración|Hijo de residente|Otro'), @('Pagada', ''), @('Presentada', ''), @('Quién la pagó', 'Gestoría|Cliente'))
+$tasasT.NoStats = $true; $tasasT.PriceKey = $null
+# la pestaña TASA no tiene cabecera: A nombre, B fecha, C estado, D pagada (quién/cuándo), E tipo de tasa o fecha, F notas
+$tasasT.HandCols = @{ 2 = 'fsol'; 3 = 'status'; 4 = 'xG'; 5 = 'tipoOrDate'; 6 = 'obs' }
+$script:Tramites += $tasasT
 
 # =====================================================================
 #  IDIOMAS
@@ -735,7 +742,7 @@ function Test-ExcelBusyError($e) {
 # otros nombres con los que la gestoría tiene las pestañas en su Excel
 $script:SheetAliases = @{
     nacionalidad = @('NACIONALIDAD ESPAÑOLA'); autonomo = @('AUTÓNOMOS'); certificado = @('CERT DIG', 'CERTIFICADO')
-    dispensa = @('DISPENSA'); visado = @('VISADO'); extranjeria = @('EXTRANJERÍA'); homologacion = @('HOMOLOGACION')
+    dispensa = @('DISPENSA'); visado = @('VISADO'); tasas = @('TASAS'); extranjeria = @('EXTRANJERÍA'); homologacion = @('HOMOLOGACION')
 }
 function Test-GestemLayout($ws, $t) {
     # ¿la pestaña tiene el formato de GESTEM? (cabecera «Cliente»/«Nombre…» en la columna del nombre, fila 10)
@@ -986,6 +993,7 @@ function Get-HandLayout($cells, $t) {
             if (-not $role) { $map[[int]$c] = '#' + "$($cells[$hdr][$c])".Trim() }    # cabecera desconocida: va a observaciones con su nombre
         }
     }
+    if (-not $hdr -and $t.HandCols) { foreach ($e in $t.HandCols.GetEnumerator()) { $map[[int]$e.Key] = $e.Value } }
     $nameCol = 1
     foreach ($e in $map.GetEnumerator()) { if ($e.Value -eq 'name') { $nameCol = [int]$e.Key; break } }
     $map[$nameCol] = 'name'
@@ -1034,7 +1042,12 @@ function ConvertFrom-HandRow($row, $lay, $t) {
         if ($role -eq 'name') { continue }
         $txt = Format-HandText $v
         if (-not $txt) { continue }
+        if ($t.Id -eq 'tasas' -and $v -is [double] -and "$role" -ne 'price' -and "$role" -ne 'paid' -and "$role" -ne 'pend') { $dd = ConvertFrom-HandDate $v; if ($dd -and "$role" -ne 'fsol' -and "$role" -ne 'fres') { $txt = $dd.ToString('dd/MM/yyyy') } }
         switch -Wildcard ($role) {
+            'tipoOrDate' {
+                # «DT21», «LARGA DURACION 21,87€»… es el tipo de tasa; una fecha o «HECHO SAFAE» es la presentación
+                if ((ConvertTo-HandKey $txt) -match '^(DT|EX|LARGA|HIJO|TASA|MODELO|790)') { $FV['xF'] = $txt } else { $FV['xH'] = $txt }
+            }
             'doc'     { $FV['doc'] = $txt.ToUpper() }
             'tel'     { $FV['tel'] = $txt }
             'nat'     { $FV['nat'] = $txt.ToUpper() }
@@ -1067,7 +1080,7 @@ function ConvertFrom-HandRow($row, $lay, $t) {
         elseif ($k -match 'PAGAD') { if ($null -eq $price -and $null -ne $n) { $price = $n }; if ($null -eq $paid -and $null -ne $price) { $paid = $price } }
         elseif ($null -eq $price -and $null -ne $n) { $price = $n }
     }
-    if ($null -eq $price -and $null -eq $paid -and $null -eq $pend) {
+    if (-not $t.NoStats -and $null -eq $price -and $null -eq $paid -and $null -eq $pend) {
         # «255 EUROS PAGADO …» escrito en otra columna
         foreach ($s in $notes) { if ((ConvertTo-HandKey $s) -match '(\d+(?:[.,]\d{1,2})?)\s*(EUROS?|E)?\s*PAGAD') { $price = Parse-Money $Matches[1]; $paid = $price; break } }
     }
@@ -1080,6 +1093,12 @@ function ConvertFrom-HandRow($row, $lay, $t) {
     } elseif ($null -ne $price) { $FV['paystate'] = 'Pendiente' }
     elseif ($null -ne $paid -and $paid -gt 0) { $FV['paystate'] = 'Parcial'; $FV['paid'] = $paid }    # pagó algo, precio desconocido
     $FV['status'] = Convert-HandStatus $stTexts.ToArray() $presDate
+    if ($t.Id -eq 'tasas') {
+        $all = ConvertTo-HandKey ((@($row.Keys | Where-Object { [int]$_ -ne [int]$lay.NameCol }) | ForEach-Object { Format-HandText $row[$_] }) -join ' ')
+        if ($all -match 'CUENTA PROPIA|POR SU CUENTA') { $FV['tasa'] = 'Sí'; $FV['xI'] = 'Cliente' }
+        elseif ($all -match 'SAFA|POR MI|HECHO') { $FV['tasa'] = 'Sí'; $FV['xI'] = 'Gestoría' }
+        elseif ($all -match 'PAGAD') { $FV['tasa'] = 'Sí' }
+    }
     if ($notes.Count) { $FV['obs'] = ($notes | Select-Object -Unique) -join ' · ' }
     return $FV
 }
@@ -5189,6 +5208,7 @@ function Update-Stats {
     foreach ($t in $script:Tramites) {
         if (-not $script:Cache -or -not $script:Cache.ContainsKey($t.Id)) { continue }
         if ($scope -and $t.Id -ne $scope) { continue }
+        if ($t.NoStats -and $t.Id -ne $scope) { continue }    # las tasas son gastos: no suman como facturado
         $nTram++
         $title = $t.Title[$script:Cfg.Language]; if (-not $title) { $title = $t.Title['es'] }
         if ($scope) { $scopeTitle = $title }
