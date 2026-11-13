@@ -15,10 +15,10 @@ trap {
     try { Add-Type -AssemblyName PresentationFramework; [void][Windows.MessageBox]::Show($msg, 'GESTEM MANAGER - error', 'OK', 'Error') } catch {}
     exit 1
 }
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Security, System.Drawing
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.3.3'
+$script:AppVersion = '1.4'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -220,7 +220,7 @@ $script:Text = @{
   search='Search (name, NIE, ID, reference)'; filterAll='All statuses'; onlyDebt='Outstanding payment only'
   btnEdit='Edit client'; btnOpenExcel='Open Excel'; btnRefresh='Refresh'
   colId='ID'; colName='Client'; colDoc='NIE / DNI'; colTipo='Type'; colStatus='Status'; colPay='Payment'; colPend='Outstanding'; colDays='Days'
-  secExtT='External backup'; secExtD='A full copy of the Excel file outside the program: on a USB drive, OneDrive, Google Drive or a network folder. If something goes wrong on this PC, the data is still safe.'; extDirL='External backup folder'; extChooseBtn='Choose folder…'; extOneDrive='Use the company cloud'; extNoCloud='No OneDrive or Google Drive found on this PC. Install the company's cloud app and sign in, or choose the folder manually.'; extNow='Back up now'; extOpen='Open folder'; extLast='Last backup: {0}'; extNever='No backup made yet'; extNone='No folder: choose one to protect the data'; extNote='GESTEM copies the Excel file when it opens and when it closes, and when you press «Back up now». It keeps one file per day (60 days). Each copy is a normal Excel file that opens without GESTEM. Program settings are saved in «ajustes GESTEM».'; extChoose='Choose where to keep the external backup'; extFail='The external backup could not be made.'; extDone='External backup done.'
+  secExtT='External backup'; secExtD='A full copy of the Excel file outside the program: on a USB drive, OneDrive, Google Drive or a network folder. If something goes wrong on this PC, the data is still safe.'; extDirL='External backup folder'; extChooseBtn='Choose folder…'; extOneDrive='Use the company cloud'; extNoCloud='No OneDrive or Google Drive found on this PC. Install the company''s cloud app and sign in, or choose the folder manually.'; extNow='Back up now'; extOpen='Open folder'; extLast='Last backup: {0}'; extNever='No backup made yet'; extNone='No folder: choose one to protect the data'; extNote='GESTEM copies the Excel file when it opens and when it closes, and when you press «Back up now». It keeps one file per day (60 days). Each copy is a normal Excel file that opens without GESTEM. Program settings are saved in «ajustes GESTEM».'; extChoose='Choose where to keep the external backup'; extFail='The external backup could not be made.'; extDone='External backup done.'
   stAll='See all procedures'
   scopeAll='All procedures'; stStatus='Status'; statsTableSt='By status · {0}'; statsSubOne='{0} · {1} cases · updated at {2}'; stNoStatus='No status'; stClickHint='Click a procedure to see only its data'
   setSub='Set GESTEM up for your office. Changes apply when you press «Save settings».'; secFileT='Client file'; secFileD='The Excel file GESTEM reads and writes clients to.'; secCompT='Company'; secCompD='Name and logo shown in the menu and on the start screen.'; secTeamT='Team'; secTeamD='The people who use GESTEM. Shown at sign-in and as the person in charge.'; secPrefT='Preferences'; secPrefD='Language, defaults and backups.'; secHelpT='Help and version'; secHelpD='User manual, updates and saved backups.'
@@ -328,6 +328,226 @@ $script:Text = @{
   sessTitle='من يستخدم GESTEM؟'; sessHint='اختر اسمك. سيتذكره GESTEM ويسجّلك كمسؤول عن العملاء الذين تحفظهم.'; sessNew='اسم آخر…'; sessGo='دخول'; userTip='المستخدم: {0}'; onlyMine='عملائي فقط'; colResp='المسؤول'; setColleagues='الزملاء (مفصولون بفواصل)'; setCompany='اسم الشركة'; setLogo='شعار الشركة'; btnLogo='اختيار صورة…'; btnLogoClear='إزالة'; chooseLogo='اختر شعار الشركة'
  }
 }
+# textos de documentos, recibos y exportar
+$script:TextMore = @{
+ es = @{
+  btnDocs = 'Documentos'
+  btnReceipt = 'Recibo PDF'
+  btnExport = 'Exportar'
+  expPdf = 'Lista en PDF'
+  expCsv = 'Lista en CSV (para Excel)'
+  colDocs = 'Docs'
+  docsTitle = 'Documentos'
+  docsSub = 'Expediente {0}  ·  {1}'
+  docsAdd = 'Añadir archivos…'
+  docsOpen = 'Abrir'
+  docsRemove = 'Quitar'
+  docsFolder = 'Abrir carpeta'
+  docsClose = 'Cerrar'
+  docsEmpty = 'Todavía no hay documentos de este cliente. Arrastra aquí los escaneos (PDF, fotos…) o pulsa «Añadir archivos».'
+  docsDrop = 'Suelta los archivos para guardarlos'
+  docsCount = '{0} documento(s)'
+  docsAdded = '✓ {0} documento(s) añadido(s)'
+  docsPick = 'Elige primero un documento de la lista.'
+  docsRemoveAsk = '¿Quitar «{0}»? Irá a la papelera de Windows.'
+  docsFilter = 'Documentos y fotos'
+  docsAll = 'Todos los archivos'
+  noPdfPrinter = 'Falta la impresora «Microsoft Print to PDF» de Windows. Actívala en: Panel de control → Programas → Activar o desactivar las características de Windows.'
+  pdfFail = 'Windows no ha creado el PDF.'
+  rcTitle = 'RECIBO'
+  rcSubtitle = 'Recibo de pago'
+  rcNo = 'Nº {0}'
+  rcDate = 'Fecha: {0}'
+  rcClient = 'Cliente'
+  rcProc = 'Trámite'
+  rcDoc = 'Documento'
+  rcCase = 'Expediente'
+  rcResp = 'Atendido por'
+  rcType = 'Tipo'
+  rcApplied = 'Solicitud'
+  rcStatusP = 'Estado'
+  rcPrice = 'Importe del trámite'
+  rcPaid = 'Pagado'
+  rcPend = 'Pendiente'
+  rcMethod = 'Forma de pago'
+  rcPaidFull = 'Pagado'
+  rcPartial = 'Pago parcial'
+  rcSign = 'Firma y sello'
+  rcNote = 'Este documento justifica el pago recibido por el trámite indicado. No es una factura.'
+  rcFooter = 'Generado con GESTEM MANAGER'
+  rcDone = '✓ Recibo {0} guardado en los documentos del cliente'
+  exTitle = 'Clientes  ·  {0}'
+  exFilters = 'Filtros'
+  exNoFilter = 'Todos los clientes'
+  exTotal = '{0} clientes  ·  {1} con pago pendiente'
+  exPage = 'Página {0} de {1}'
+  exEmpty = 'No hay clientes en la lista para exportar.'
+  exDone = '✓ Exportado: {0}'
+ }
+ en = @{
+  btnDocs = 'Documents'
+  btnReceipt = 'PDF receipt'
+  btnExport = 'Export'
+  expPdf = 'List as PDF'
+  expCsv = 'List as CSV (for Excel)'
+  colDocs = 'Docs'
+  docsTitle = 'Documents'
+  docsSub = 'Case {0}  ·  {1}'
+  docsAdd = 'Add files…'
+  docsOpen = 'Open'
+  docsRemove = 'Remove'
+  docsFolder = 'Open folder'
+  docsClose = 'Close'
+  docsEmpty = 'No documents for this client yet. Drag scans here (PDF, photos…) or press «Add files».'
+  docsDrop = 'Drop the files to save them'
+  docsCount = '{0} document(s)'
+  docsAdded = '✓ {0} document(s) added'
+  docsPick = 'Pick a document from the list first.'
+  docsRemoveAsk = 'Remove «{0}»? It goes to the Windows Recycle Bin.'
+  docsFilter = 'Documents and photos'
+  docsAll = 'All files'
+  noPdfPrinter = 'The Windows «Microsoft Print to PDF» printer is missing. Turn it on in: Control Panel → Programs → Turn Windows features on or off.'
+  pdfFail = 'Windows did not create the PDF.'
+  rcTitle = 'RECEIPT'
+  rcSubtitle = 'Payment receipt'
+  rcNo = 'No. {0}'
+  rcDate = 'Date: {0}'
+  rcClient = 'Client'
+  rcProc = 'Procedure'
+  rcDoc = 'ID document'
+  rcCase = 'Case'
+  rcResp = 'Handled by'
+  rcType = 'Type'
+  rcApplied = 'Applied'
+  rcStatusP = 'Status'
+  rcPrice = 'Procedure amount'
+  rcPaid = 'Paid'
+  rcPend = 'Outstanding'
+  rcMethod = 'Payment method'
+  rcPaidFull = 'Paid'
+  rcPartial = 'Partial payment'
+  rcSign = 'Signature and stamp'
+  rcNote = 'This document confirms the payment received for the procedure shown. It is not an invoice.'
+  rcFooter = 'Created with GESTEM MANAGER'
+  rcDone = '✓ Receipt {0} saved in the clients documents'
+  exTitle = 'Clients  ·  {0}'
+  exFilters = 'Filters'
+  exNoFilter = 'All clients'
+  exTotal = '{0} clients  ·  {1} with payment due'
+  exPage = 'Page {0} of {1}'
+  exEmpty = 'There are no clients in the list to export.'
+  exDone = '✓ Exported: {0}'
+ }
+ fr = @{
+  btnDocs = 'Documents'
+  btnReceipt = 'Reçu PDF'
+  btnExport = 'Exporter'
+  expPdf = 'Liste en PDF'
+  expCsv = 'Liste en CSV (pour Excel)'
+  colDocs = 'Docs'
+  docsTitle = 'Documents'
+  docsSub = 'Dossier {0}  ·  {1}'
+  docsAdd = 'Ajouter des fichiers…'
+  docsOpen = 'Ouvrir'
+  docsRemove = 'Retirer'
+  docsFolder = 'Ouvrir le dossier'
+  docsClose = 'Fermer'
+  docsEmpty = 'Aucun document pour ce client. Glissez ici les scans (PDF, photos…) ou cliquez sur « Ajouter des fichiers ».'
+  docsDrop = 'Déposez les fichiers pour les enregistrer'
+  docsCount = '{0} document(s)'
+  docsAdded = '✓ {0} document(s) ajouté(s)'
+  docsPick = 'Choisissez dabord un document dans la liste.'
+  docsRemoveAsk = 'Retirer « {0} » ? Il ira dans la corbeille de Windows.'
+  docsFilter = 'Documents et photos'
+  docsAll = 'Tous les fichiers'
+  noPdfPrinter = 'Limprimante Windows « Microsoft Print to PDF » est absente. Activez-la dans : Panneau de configuration → Programmes → Activer ou désactiver des fonctionnalités Windows.'
+  pdfFail = 'Windows na pas créé le PDF.'
+  rcTitle = 'REÇU'
+  rcSubtitle = 'Reçu de paiement'
+  rcNo = 'N° {0}'
+  rcDate = 'Date : {0}'
+  rcClient = 'Client'
+  rcProc = 'Démarche'
+  rcDoc = 'Pièce didentité'
+  rcCase = 'Dossier'
+  rcResp = 'Traité par'
+  rcType = 'Type'
+  rcApplied = 'Demande'
+  rcStatusP = 'État'
+  rcPrice = 'Montant de la démarche'
+  rcPaid = 'Payé'
+  rcPend = 'Reste à payer'
+  rcMethod = 'Mode de paiement'
+  rcPaidFull = 'Payé'
+  rcPartial = 'Paiement partiel'
+  rcSign = 'Signature et cachet'
+  rcNote = 'Ce document justifie le paiement reçu pour la démarche indiquée. Ce nest pas une facture.'
+  rcFooter = 'Créé avec GESTEM MANAGER'
+  rcDone = '✓ Reçu {0} enregistré dans les documents du client'
+  exTitle = 'Clients  ·  {0}'
+  exFilters = 'Filtres'
+  exNoFilter = 'Tous les clients'
+  exTotal = '{0} clients  ·  {1} avec paiement en attente'
+  exPage = 'Page {0} sur {1}'
+  exEmpty = 'Aucun client dans la liste à exporter.'
+  exDone = '✓ Exporté : {0}'
+ }
+ ar = @{
+  btnDocs = 'المستندات'
+  btnReceipt = 'إيصال PDF'
+  btnExport = 'تصدير'
+  expPdf = 'القائمة بصيغة PDF'
+  expCsv = 'القائمة بصيغة CSV (لـ Excel)'
+  colDocs = 'مستندات'
+  docsTitle = 'المستندات'
+  docsSub = 'الملف {0}  ·  {1}'
+  docsAdd = 'إضافة ملفات…'
+  docsOpen = 'فتح'
+  docsRemove = 'إزالة'
+  docsFolder = 'فتح المجلد'
+  docsClose = 'إغلاق'
+  docsEmpty = 'لا توجد مستندات لهذا العميل بعد. اسحب الملفات الممسوحة هنا (PDF، صور…) أو اضغط «إضافة ملفات».'
+  docsDrop = 'أفلت الملفات لحفظها'
+  docsCount = '{0} مستند'
+  docsAdded = '✓ تمت إضافة {0} مستند'
+  docsPick = 'اختر مستندًا من القائمة أولًا.'
+  docsRemoveAsk = 'إزالة «{0}»؟ سينتقل إلى سلة محذوفات Windows.'
+  docsFilter = 'مستندات وصور'
+  docsAll = 'كل الملفات'
+  noPdfPrinter = 'طابعة Windows «Microsoft Print to PDF» غير موجودة. فعّلها من: لوحة التحكم ← البرامج ← تشغيل ميزات Windows أو إيقاف تشغيلها.'
+  pdfFail = 'لم ينشئ Windows ملف PDF.'
+  rcTitle = 'إيصال'
+  rcSubtitle = 'إيصال دفع'
+  rcNo = 'رقم {0}'
+  rcDate = 'التاريخ: {0}'
+  rcClient = 'العميل'
+  rcProc = 'الإجراء'
+  rcDoc = 'الوثيقة'
+  rcCase = 'الملف'
+  rcResp = 'المسؤول'
+  rcType = 'النوع'
+  rcApplied = 'الطلب'
+  rcStatusP = 'الحالة'
+  rcPrice = 'مبلغ الإجراء'
+  rcPaid = 'المدفوع'
+  rcPend = 'المتبقي'
+  rcMethod = 'طريقة الدفع'
+  rcPaidFull = 'مدفوع'
+  rcPartial = 'دفع جزئي'
+  rcSign = 'التوقيع والختم'
+  rcNote = 'تثبت هذه الوثيقة الدفعة المستلمة عن الإجراء المذكور. وهي ليست فاتورة.'
+  rcFooter = 'أُنشئ بواسطة GESTEM MANAGER'
+  rcDone = '✓ تم حفظ الإيصال {0} في مستندات العميل'
+  exTitle = 'العملاء  ·  {0}'
+  exFilters = 'المرشحات'
+  exNoFilter = 'كل العملاء'
+  exTotal = '{0} عملاء  ·  {1} عليهم دفع'
+  exPage = 'الصفحة {0} من {1}'
+  exEmpty = 'لا يوجد عملاء في القائمة للتصدير.'
+  exDone = '✓ تم التصدير: {0}'
+ }
+}
+foreach ($lg in $script:TextMore.Keys) { foreach ($k in $script:TextMore[$lg].Keys) { $script:Text[$lg][$k] = $script:TextMore[$lg][$k] } }
 function L([string]$key) {
     $t = $script:Text[$script:Cfg.Language]
     if ($t -and $t.ContainsKey($key)) { return $t[$key] }
@@ -534,6 +754,7 @@ function Use-TramiteData($d) {
     $script:Rows = $d.Rows
     $script:FirstEmpty = $d.FirstEmpty
     $script:NextId = $d.NextId
+    Update-DocsMap
     Refresh-ClientGrid
     Update-StatusLine
 }
@@ -716,6 +937,7 @@ function Backup-External([switch]$Quiet) {
         $script:Cfg.LastExtBackup = (Get-Date).ToString('yyyy-MM-dd HH:mm')
         Save-Config
         Write-Log "copia externa: $dst"
+        Sync-DocsBackup $dir
         Export-ActivityLog $dir
         return $true
     } catch {
@@ -1454,17 +1676,27 @@ $xaml = @'
         <DockPanel>
           <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+              <Button x:Name="DocsBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="ReceiptBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="ExportBtn" Style="{StaticResource Btn}" Margin="8,0,0,0">
+                <Button.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem x:Name="ExpPdf"/>
+                    <MenuItem x:Name="ExpCsv"/>
+                  </ContextMenu>
+                </Button.ContextMenu>
+              </Button>
               <Button x:Name="RefreshBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
               <Button x:Name="OpenExcelBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
               <Button x:Name="EditBtn" Style="{StaticResource Primary}" Margin="8,0,0,0" Height="38" FontSize="13" Padding="18,0"/>
             </StackPanel>
             <WrapPanel>
-              <Grid Width="300">
+              <Grid Width="250">
                 <TextBox x:Name="SearchBox" Padding="32,0,10,0"/>
                 <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="#98A2B3" IsHitTestVisible="False" Margin="12,0,0,0" VerticalAlignment="Center"/>
                 <TextBlock x:Name="SearchHint" IsHitTestVisible="False" Foreground="#98A2B3" Margin="34,0,0,0" VerticalAlignment="Center"/>
               </Grid>
-              <ComboBox x:Name="FilterBox" Width="190" Margin="10,0,0,0"/>
+              <ComboBox x:Name="FilterBox" Width="170" Margin="10,0,0,0"/>
               <CheckBox x:Name="OnlyDebt" Margin="16,0,0,0"/>
               <CheckBox x:Name="OnlyMine" Margin="16,0,0,0"/>
             </WrapPanel>
@@ -1473,6 +1705,13 @@ $xaml = @'
                     HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEF0F3"
                     RowHeight="40" Background="White" BorderThickness="0" CanUserAddRows="False" CanUserResizeRows="False"
                     AlternatingRowBackground="#FAFBFC" Foreground="#17202E">
+            <DataGrid.ContextMenu>
+              <ContextMenu>
+                <MenuItem x:Name="CmEdit"/>
+                <MenuItem x:Name="CmReceipt"/>
+                <MenuItem x:Name="CmDocs"/>
+              </ContextMenu>
+            </DataGrid.ContextMenu>
             <DataGrid.ColumnHeaderStyle>
               <Style TargetType="DataGridColumnHeader">
                 <Setter Property="Background" Value="White"/>
@@ -1540,6 +1779,16 @@ $xaml = @'
               </DataGridTextColumn>
               <DataGridTextColumn Binding="{Binding Days}" Width="50"/>
               <DataGridTextColumn Binding="{Binding Resp}" Width="100"/>
+              <DataGridTemplateColumn x:Name="DocsCol" Width="64">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding DocsVis}">
+                      <TextBlock Text="&#xE723;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="#9E1820" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding DocsN}" Margin="5,0,0,0" FontWeight="SemiBold" Foreground="#4B4345" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>
@@ -2020,6 +2269,102 @@ $xaml = @'
       </DockPanel>
     </Border>
   </Grid>
+  <Grid x:Name="PanelDocs" Background="#C0141112" Visibility="Collapsed" AllowDrop="True">
+    <Border x:Name="DocsCard" Background="White" CornerRadius="18" Width="720" Margin="0,50" HorizontalAlignment="Center" VerticalAlignment="Stretch" AllowDrop="True">
+      <Border.Effect><DropShadowEffect BlurRadius="40" ShadowDepth="8" Direction="270" Opacity="0.35" Color="#000000"/></Border.Effect>
+      <DockPanel>
+        <Border DockPanel.Dock="Top" CornerRadius="18,18,0,0" Padding="30,22,22,18">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+              <GradientStop Color="#9E1820" Offset="0"/>
+              <GradientStop Color="#560A0F" Offset="1"/>
+            </LinearGradientBrush>
+          </Border.Background>
+          <DockPanel>
+            <Button x:Name="DocsClose" DockPanel.Dock="Right" VerticalAlignment="Top" Cursor="Hand" ToolTip="Cerrar">
+              <Button.Template>
+                <ControlTemplate TargetType="Button">
+                  <Border x:Name="b" Width="34" Height="34" CornerRadius="17" Background="#26FFFFFF">
+                    <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#4DFFFFFF"/></Trigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </Button.Template>
+            </Button>
+            <StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE723;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock x:Name="DocsTitle" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="22" FontWeight="SemiBold" Foreground="White"/>
+              </StackPanel>
+              <TextBlock x:Name="DocsSub" Foreground="#F3D5D7" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Border DockPanel.Dock="Bottom" BorderBrush="#EEE9EA" BorderThickness="0,1,0,0" Padding="24,14">
+          <DockPanel>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+              <Button x:Name="DocsOpenBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="DocsRemoveBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="DocsFolderBtn" Style="{StaticResource Btn}" Margin="8,0,0,0"/>
+              <Button x:Name="DocsAddBtn" Style="{StaticResource Primary}" Height="38" Padding="18,0" FontSize="13" Margin="8,0,0,0"/>
+            </StackPanel>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock x:Name="DocsCount" Foreground="#6E6466" FontWeight="SemiBold"/>
+              <TextBlock x:Name="DocsMsg" Foreground="#1B7F45" FontWeight="SemiBold"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Grid Margin="24,16,24,10">
+          <ListBox x:Name="DocsList" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemContainerStyle>
+              <Style TargetType="ListBoxItem">
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Margin" Value="0,0,0,6"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                      <Border x:Name="bd" Background="#FAF8F8" BorderBrush="#EEE9EA" BorderThickness="1" CornerRadius="10" Padding="14,10">
+                        <ContentPresenter/>
+                      </Border>
+                      <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#F5EFF0"/></Trigger>
+                        <Trigger Property="IsSelected" Value="True"><Setter TargetName="bd" Property="Background" Value="#FBEDEE"/><Setter TargetName="bd" Property="BorderBrush" Value="#D8A7AB"/></Trigger>
+                      </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+              </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <DockPanel>
+                  <Border Width="36" Height="36" CornerRadius="8" Background="#FBEDEE" Margin="0,0,12,0">
+                    <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#1E1A1B" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Info}" Foreground="#8A7F81" FontSize="12" Margin="0,2,0,0"/>
+                  </StackPanel>
+                </DockPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel x:Name="DocsEmpty" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
+            <Border Width="64" Height="64" CornerRadius="32" Background="#FBEDEE" HorizontalAlignment="Center">
+              <TextBlock Text="&#xE898;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="24" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <TextBlock x:Name="DocsEmptyT" Foreground="#6E6466" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420" Margin="0,14,0,0" LineHeight="20"/>
+          </StackPanel>
+          <Border x:Name="DocsDrop" CornerRadius="12" BorderBrush="#9E1820" BorderThickness="2" Background="#E6FFFFFF" Visibility="Collapsed" IsHitTestVisible="False">
+            <TextBlock x:Name="DocsDropT" Foreground="#9E1820" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+        </Grid>
+      </DockPanel>
+    </Border>
+  </Grid>
   <Grid x:Name="PanelPaused" Background="#F2141112" Visibility="Collapsed">
     <Border Background="White" CornerRadius="18" Padding="40,34" Width="520" HorizontalAlignment="Center" VerticalAlignment="Center">
       <StackPanel>
@@ -2488,6 +2833,9 @@ function Refresh-ClientGrid {
         if ($ui.FilterBox.SelectedIndex -gt 0 -and $r.Status -ne $st) { continue }
         if ($onlyDebt -and $r.Pending -le 0) { continue }
         if ($ui.OnlyMine.IsChecked -and $script:User -and "$($r.Resp)" -ine $script:User) { continue }
+        $nd = Get-DocsCount $r
+        $r | Add-Member -NotePropertyName DocsN -NotePropertyValue $nd -Force
+        $r | Add-Member -NotePropertyName DocsVis -NotePropertyValue $(if ($nd -gt 0) { 'Visible' } else { 'Collapsed' }) -Force
         $r
     }
     $ui.ClientsGrid.ItemsSource = @($list)
@@ -2498,6 +2846,478 @@ function Edit-Selected {
     if (-not $sel) { Show-Info (L 'selectFirst'); return }
     $script:UI.NavNew.IsChecked = $true
     Fill-FormForEdit $sel
+}
+
+# =====================================================================
+#  DOCUMENTOS, RECIBOS PDF Y EXPORTAR  · © Yassine Belali
+# =====================================================================
+$script:PdfPrinter = 'Microsoft Print to PDF'
+$script:DocsMap = @{}
+$script:DocsRow = $null
+
+function Get-SafeName([string]$s) { return (("$s" -replace '[\\/:*?"<>|]', ' ') -replace '\s+', ' ').Trim().TrimEnd('.') }
+function Get-DocsRoot {
+    $x = "$($script:Cfg.ExcelPath)"
+    if (-not $x) { return $null }
+    return (Join-Path (Split-Path -Parent $x) 'GESTEM documentos')
+}
+function Get-TramiteDocsDir { $r = Get-DocsRoot; if (-not $r) { return $null }; return (Join-Path $r (Get-SafeName $script:T.Sheet)) }
+function Get-ClientDocsDir($r, [switch]$Create) {
+    $tdir = Get-TramiteDocsDir
+    if (-not $tdir) { return $null }
+    $id = Get-SafeName "$($r.Id)"
+    if (-not $id) { $id = "fila $($r.Row)" }
+    if (Test-Path -LiteralPath $tdir) {
+        $hit = Get-ChildItem -LiteralPath $tdir -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq $id -or $_.Name.StartsWith("$id - ") } | Select-Object -First 1
+        if ($hit) { return $hit.FullName }
+    }
+    $p = Join-Path $tdir ("$id - " + (Get-SafeName "$($r.Name)"))
+    if ($Create) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
+    return $p
+}
+function Update-DocsMap {
+    # nº de documentos por expediente del trámite actual (para la columna de la lista)
+    $script:DocsMap = @{}
+    try {
+        $tdir = Get-TramiteDocsDir
+        if (-not $tdir -or -not (Test-Path -LiteralPath $tdir)) { return }
+        foreach ($d in (Get-ChildItem -LiteralPath $tdir -Directory -ErrorAction SilentlyContinue)) {
+            $id = $d.Name; $i = $id.IndexOf(' - '); if ($i -gt 0) { $id = $id.Substring(0, $i) }
+            $script:DocsMap[$id] = @(Get-ChildItem -LiteralPath $d.FullName -File -ErrorAction SilentlyContinue).Count
+        }
+    } catch { }
+}
+function Get-DocsCount($r) {
+    $id = Get-SafeName "$($r.Id)"; if (-not $id) { $id = "fila $($r.Row)" }
+    if ($script:DocsMap.ContainsKey($id)) { return [int]$script:DocsMap[$id] }
+    return 0
+}
+function Get-SelectedClient {
+    $sel = $script:UI.ClientsGrid.SelectedItem
+    if (-not $sel) { Show-Info (L 'selectFirst') }
+    return $sel
+}
+
+# ---------- panel de documentos ----------
+function Open-DocsPanel($r) {
+    if (-not $r) { return }
+    if (-not (Get-DocsRoot)) { Show-Error (L 'noFile'); return }
+    $script:DocsRow = $r
+    $ui = $script:UI
+    $ui.DocsTitle.Text = L 'docsTitle'
+    $ui.DocsSub.Text = ((L 'docsSub') -f $r.Id, $r.Name)
+    $ui.DocsMsg.Text = ''
+    Fill-DocsList
+    $ui.PanelDocs.Visibility = 'Visible'
+}
+function Fill-DocsList {
+    $ui = $script:UI
+    $items = New-Object System.Collections.Generic.List[object]
+    $dir = Get-ClientDocsDir $script:DocsRow
+    if ($dir -and (Test-Path -LiteralPath $dir)) {
+        foreach ($f in (Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)) {
+            $ext = $f.Extension.ToLower()
+            $glyph = [string][char]0xE8A5
+            if ($ext -in '.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tif', '.tiff', '.heic', '.webp') { $glyph = [string][char]0xEB9F }
+            elseif ($ext -eq '.pdf') { $glyph = [string][char]0xEA90 }
+            $kb = [math]::Max([double]1, [math]::Round($f.Length / 1KB))
+            $size = $(if ($kb -ge 1024) { ([double]$kb / 1024).ToString('0.0', $script:ES) + ' MB' } else { "$kb KB" })
+            $items.Add([pscustomobject]@{ Name = $f.Name; Info = "$size  ·  $($f.LastWriteTime.ToString('dd/MM/yyyy HH:mm'))"; Glyph = $glyph; Path = $f.FullName })
+        }
+    }
+    $ui.DocsList.ItemsSource = $items
+    $ui.DocsEmpty.Visibility = $(if ($items.Count) { 'Collapsed' } else { 'Visible' })
+    $ui.DocsCount.Text = $(if ($items.Count) { (L 'docsCount') -f $items.Count } else { '' })
+}
+function Add-ClientDocs($paths) {
+    $r = $script:DocsRow
+    if (-not $r) { return }
+    $files = @($paths | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) })
+    if (-not $files.Count) { return }
+    try {
+        $dir = Get-ClientDocsDir $r -Create
+        $n = 0
+        foreach ($p in $files) {
+            $name = [IO.Path]::GetFileNameWithoutExtension($p); $ext = [IO.Path]::GetExtension($p)
+            $dst = Join-Path $dir ($name + $ext); $k = 2
+            while (Test-Path -LiteralPath $dst) { $dst = Join-Path $dir ("$name ($k)$ext"); $k++ }
+            Copy-Item -LiteralPath $p -Destination $dst
+            $n++
+        }
+        Write-Log ("añadió {0} documento(s) al expediente {1}" -f $n, $r.Id)
+        $script:UI.DocsMsg.Text = ((L 'docsAdded') -f $n)
+    } catch {
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    }
+    Fill-DocsList
+    Update-DocsMap; Refresh-ClientGrid
+}
+function Add-DocsFromDialog {
+    $dlg = New-Object Microsoft.Win32.OpenFileDialog
+    $dlg.Multiselect = $true
+    $dlg.Title = L 'docsAdd'
+    $dlg.Filter = (L 'docsFilter') + '|*.pdf;*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.heic;*.webp;*.doc;*.docx;*.xls;*.xlsx|' + (L 'docsAll') + '|*.*'
+    if ($dlg.ShowDialog($script:Win)) { Add-ClientDocs $dlg.FileNames }
+}
+function Open-SelectedDoc {
+    $it = $script:UI.DocsList.SelectedItem
+    if (-not $it) { return }
+    try { Start-Process -FilePath $it.Path } catch { Show-Error $_.Exception.Message }
+}
+function Remove-SelectedDoc {
+    $it = $script:UI.DocsList.SelectedItem
+    if (-not $it) { Show-Info (L 'docsPick'); return }
+    $ans = [Windows.MessageBox]::Show($script:Win, ((L 'docsRemoveAsk') -f $it.Name), $script:AppName, 'YesNo', 'Question')
+    if ("$ans" -ne 'Yes') { return }
+    try {
+        Add-Type -AssemblyName Microsoft.VisualBasic
+        [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($it.Path, 'OnlyErrorDialogs', 'SendToRecycleBin')
+        Write-Log ("quitó un documento del expediente {0}" -f $script:DocsRow.Id)
+    } catch { Show-Error $_.Exception.Message }
+    Fill-DocsList
+    Update-DocsMap; Refresh-ClientGrid
+}
+function Open-DocsFolder {
+    $dir = Get-ClientDocsDir $script:DocsRow -Create
+    Start-Process explorer.exe -ArgumentList "`"$dir`""
+}
+function Sync-DocsBackup([string]$dir) {
+    # copia de los documentos escaneados en la carpeta externa (solo lo nuevo o cambiado)
+    $root = Get-DocsRoot
+    if (-not $root -or -not (Test-Path -LiteralPath $root)) { return }
+    $dstRoot = Join-Path $dir 'documentos'
+    foreach ($f in (Get-ChildItem -LiteralPath $root -File -Recurse -ErrorAction SilentlyContinue)) {
+        try {
+            $rel = $f.FullName.Substring($root.Length).TrimStart('\')
+            $dst = Join-Path $dstRoot $rel
+            $di = Split-Path -Parent $dst
+            if (-not (Test-Path -LiteralPath $di)) { New-Item -ItemType Directory -Force -Path $di | Out-Null }
+            if (Test-Path -LiteralPath $dst) {
+                $o = Get-Item -LiteralPath $dst
+                if ($o.Length -eq $f.Length -and $o.LastWriteTimeUtc -ge $f.LastWriteTimeUtc) { continue }
+            }
+            Copy-Item -LiteralPath $f.FullName -Destination $dst -Force
+        } catch { }
+    }
+}
+
+# ---------- PDF (impresora «Microsoft Print to PDF» de Windows, sin diálogos) ----------
+function Test-PdfPrinter {
+    try { return (@([Drawing.Printing.PrinterSettings]::InstalledPrinters) -contains $script:PdfPrinter) } catch { return $false }
+}
+function New-PdfFont([double]$size, [string]$weight = 'Regular') {
+    $fam = 'Segoe UI'; $st = [Drawing.FontStyle]::Regular
+    if ($weight -eq 'Semibold') { $fam = 'Segoe UI Semibold' }
+    elseif ($weight -eq 'Bold') { $st = [Drawing.FontStyle]::Bold }
+    elseif ($weight -eq 'Light') { $fam = 'Segoe UI Light' }
+    return (New-Object Drawing.Font($fam, [single]$size, $st, [Drawing.GraphicsUnit]::Point))
+}
+function PdfColor([string]$hex) { return [Drawing.ColorTranslator]::FromHtml($hex) }
+function PdfText($g, $text, [double]$x, [double]$y, [double]$w, [double]$size, [string]$weight = 'Regular', [string]$color = '#1E1A1B', [string]$align = 'Near') {
+    $font = New-PdfFont $size $weight
+    $br = New-Object Drawing.SolidBrush((PdfColor $color))
+    $sf = New-Object Drawing.StringFormat
+    $sf.Alignment = [Drawing.StringAlignment]$align
+    $sf.Trimming = [Drawing.StringTrimming]::EllipsisCharacter
+    $sf.FormatFlags = [Drawing.StringFormatFlags]::NoWrap
+    $h = $size * 0.55 + 1.5
+    $g.DrawString("$text", $font, $br, (New-Object Drawing.RectangleF([single]$x, [single]$y, [single]$w, [single]$h)), $sf)
+    $sf.Dispose(); $br.Dispose(); $font.Dispose()
+}
+function PdfWrap($g, $text, [double]$x, [double]$y, [double]$w, [double]$h, [double]$size, [string]$color = '#6E6466') {
+    $font = New-PdfFont $size
+    $br = New-Object Drawing.SolidBrush((PdfColor $color))
+    $g.DrawString("$text", $font, $br, (New-Object Drawing.RectangleF([single]$x, [single]$y, [single]$w, [single]$h)))
+    $br.Dispose(); $font.Dispose()
+}
+function PdfRect($g, [double]$x, [double]$y, [double]$w, [double]$h, [string]$fill, [double]$radius = 0) {
+    $br = New-Object Drawing.SolidBrush((PdfColor $fill))
+    if ($radius -le 0) { $g.FillRectangle($br, [single]$x, [single]$y, [single]$w, [single]$h) }
+    else {
+        $d = [single]($radius * 2)
+        $gp = New-Object Drawing.Drawing2D.GraphicsPath
+        $gp.AddArc([single]$x, [single]$y, $d, $d, 180, 90)
+        $gp.AddArc([single]($x + $w - $d), [single]$y, $d, $d, 270, 90)
+        $gp.AddArc([single]($x + $w - $d), [single]($y + $h - $d), $d, $d, 0, 90)
+        $gp.AddArc([single]$x, [single]($y + $h - $d), $d, $d, 90, 90)
+        $gp.CloseFigure()
+        $g.FillPath($br, $gp); $gp.Dispose()
+    }
+    $br.Dispose()
+}
+function PdfLine($g, [double]$x1, [double]$y1, [double]$x2, [double]$y2, [string]$color = '#E6E1E2', [double]$width = 0.3) {
+    $pen = New-Object Drawing.Pen((PdfColor $color), [single]$width)
+    $g.DrawLine($pen, [single]$x1, [single]$y1, [single]$x2, [single]$y2)
+    $pen.Dispose()
+}
+function PdfLogo($g, [double]$x, [double]$y, [double]$size) {
+    $p = "$($script:Cfg.CompanyLogo)"
+    if (-not $p -or -not (Test-Path -LiteralPath $p)) { return $false }
+    try {
+        $img = [Drawing.Image]::FromFile($p)
+        $g.DrawImage($img, (New-Object Drawing.RectangleF([single]$x, [single]$y, [single]$size, [single]$size)))
+        $img.Dispose()
+        return $true
+    } catch { return $false }
+}
+function Invoke-PdfPrint([string]$path, [bool]$landscape, [scriptblock]$draw) {
+    # $draw recibe ($g, nº de página) y devuelve $true si hay más páginas; los datos van en $script:PdfData
+    $doc = New-Object Drawing.Printing.PrintDocument
+    $doc.PrinterSettings.PrinterName = $script:PdfPrinter
+    $doc.PrinterSettings.PrintToFile = $true
+    $doc.PrinterSettings.PrintFileName = $path
+    $doc.DocumentName = [IO.Path]::GetFileNameWithoutExtension($path)
+    $doc.PrintController = New-Object Drawing.Printing.StandardPrintController
+    $a4 = $doc.PrinterSettings.PaperSizes | Where-Object { $_.Kind -eq [Drawing.Printing.PaperKind]::A4 } | Select-Object -First 1
+    if ($a4) { $doc.DefaultPageSettings.PaperSize = $a4 }
+    $doc.DefaultPageSettings.Landscape = $landscape
+    $doc.DefaultPageSettings.Margins = New-Object Drawing.Printing.Margins(0, 0, 0, 0)
+    $script:PdfPage = 0
+    $script:PdfDraw = $draw
+    $script:PdfErr = $null
+    $doc.Add_PrintPage({
+        param($s, $e)
+        try {
+            $g = $e.Graphics
+            $g.PageUnit = [Drawing.GraphicsUnit]::Millimeter
+            $g.SmoothingMode = [Drawing.Drawing2D.SmoothingMode]::AntiAlias
+            $g.TextRenderingHint = [Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+            $g.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $g.TranslateTransform([single](-$e.PageSettings.HardMarginX * 0.254), [single](-$e.PageSettings.HardMarginY * 0.254))
+            $more = & $script:PdfDraw $g $script:PdfPage
+            $script:PdfPage++
+            $e.HasMorePages = [bool]$more
+        } catch { $script:PdfErr = $_.Exception.Message; $e.HasMorePages = $false }
+    })
+    if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force }
+    try { $doc.Print() } finally { $doc.Dispose() }
+    if ($script:PdfErr) { throw $script:PdfErr }
+    # la impresora escribe el archivo en segundo plano: esperar a que exista
+    for ($i = 0; $i -lt 60 -and -not (Test-Path -LiteralPath $path); $i++) { Start-Sleep -Milliseconds 150 }
+    if (-not (Test-Path -LiteralPath $path)) { throw (L 'pdfFail') }
+    # esperar a que el tamaño deje de cambiar
+    $last = -1
+    for ($i = 0; $i -lt 40; $i++) { $len = (Get-Item -LiteralPath $path).Length; if ($len -gt 0 -and $len -eq $last) { break }; $last = $len; Start-Sleep -Milliseconds 200 }
+}
+
+# ---------- recibo ----------
+function Draw-Receipt($g, $page) {
+    $d = $script:PdfData
+    $LE = 18; $RE = 192; $W = $RE - $LE
+    # cabecera
+    PdfRect $g 0 0 210 4 '#9E1820'
+    $hasLogo = PdfLogo $g $LE 14 20
+    $tx = $(if ($hasLogo) { $LE + 25 } else { $LE })
+    PdfText $g $d.Company $tx 16.5 95 15 'Semibold' '#1E1A1B'
+    PdfText $g (L 'rcSubtitle') $tx 25 95 9 'Regular' '#8A7F81'
+    PdfText $g (L 'rcTitle') 110 14 $($RE - 110) 24 'Light' '#9E1820' 'Far'
+    PdfText $g ((L 'rcNo') -f $d.No) 110 27 $($RE - 110) 10 'Semibold' '#1E1A1B' 'Far'
+    PdfText $g ((L 'rcDate') -f $d.Date) 110 32.5 $($RE - 110) 9 'Regular' '#6E6466' 'Far'
+    PdfLine $g $LE 44 $RE 44 '#E6E1E2' 0.35
+    # cliente y trámite
+    $y = 52
+    PdfText $g (L 'rcClient').ToUpper() $LE $y 80 7.5 'Semibold' '#9E1820'
+    PdfText $g (L 'rcProc').ToUpper() 110 $y 80 7.5 'Semibold' '#9E1820'
+    PdfText $g $d.Name $LE ($y + 5) 88 13 'Semibold' '#1E1A1B'
+    PdfText $g $d.Tramite 110 ($y + 5) 82 13 'Semibold' '#1E1A1B'
+    $ly = $y + 14
+    $left = @(@((L 'rcDoc'), $d.Doc), @((L 'rcCase'), $d.Id), @((L 'rcResp'), $d.Resp))
+    $right = @(@((L 'rcType'), $d.Tipo), @((L 'rcApplied'), $d.Fsol), @((L 'rcStatusP'), $d.Status))
+    for ($i = 0; $i -lt 3; $i++) {
+        $yy = $ly + $i * 7
+        PdfText $g $left[$i][0] $LE $yy 30 8.5 'Regular' '#8A7F81'
+        PdfText $g $(if ("$($left[$i][1])".Trim()) { $left[$i][1] } else { '—' }) ($LE + 30) $yy 58 9 'Semibold' '#2B2526'
+        PdfText $g $right[$i][0] 110 $yy 32 8.5 'Regular' '#8A7F81'
+        PdfText $g $(if ("$($right[$i][1])".Trim()) { $right[$i][1] } else { '—' }) 142 $yy 50 9 'Semibold' '#2B2526'
+    }
+    # importes
+    $by = 100
+    PdfRect $g $LE $by $W 52 '#F7F5F5' 3
+    PdfText $g (L 'rcPrice') ($LE + 8) ($by + 8) 100 10 'Regular' '#4B4345'
+    PdfText $g (Format-Money $d.Price) 110 ($by + 8) ($RE - 118) 10 'Semibold' '#1E1A1B' 'Far'
+    PdfText $g (L 'rcPaid') ($LE + 8) ($by + 17) 100 10 'Regular' '#4B4345'
+    PdfText $g (Format-Money $d.Paid) 110 ($by + 17) ($RE - 118) 10 'Semibold' '#1F7A45' 'Far'
+    PdfLine $g ($LE + 8) ($by + 27) ($RE - 8) ($by + 27) '#DDD6D7' 0.3
+    PdfText $g (L 'rcPend') ($LE + 8) ($by + 32) 100 12 'Semibold' '#1E1A1B'
+    PdfText $g (Format-Money $d.Pend) 100 ($by + 31) ($RE - 108) 16 'Semibold' $(if ($d.Pend -gt 0) { '#B42318' } else { '#1F7A45' }) 'Far'
+    if ("$($d.Forma)".Trim()) { PdfText $g ((L 'rcMethod') + ': ' + $d.Forma) ($LE + 8) ($by + 43) 120 8.5 'Regular' '#6E6466' }
+    # sello de estado
+    $stamp = $(if ($d.Pend -le 0 -and $d.Price -gt 0) { (L 'rcPaidFull') } elseif ($d.Paid -gt 0) { (L 'rcPartial') } else { '' })
+    if ($stamp) {
+        $sc = $(if ($d.Pend -le 0) { '#1F7A45' } else { '#B7791F' })
+        PdfRect $g ($RE - 52) 160 52 10 $(if ($d.Pend -le 0) { '#E7F4EC' } else { '#FDF3E1' }) 5
+        PdfText $g $stamp.ToUpper() ($RE - 52) 162.3 52 9 'Semibold' $sc 'Center'
+    }
+    # firma
+    PdfLine $g $LE 215 ($LE + 70) 215 '#B9B0B2' 0.3
+    PdfText $g (L 'rcSign') $LE 217 70 8 'Regular' '#8A7F81'
+    PdfWrap $g (L 'rcNote') $LE 232 $W 12 8 '#8A7F81'
+    # pie
+    PdfLine $g $LE 280 $RE 280 '#EEE9EA' 0.3
+    PdfText $g $d.Company $LE 282.5 100 7.5 'Regular' '#A69C9E'
+    PdfText $g (L 'rcFooter') 100 282.5 ($RE - 100) 7.5 'Regular' '#A69C9E' 'Far'
+    return $false
+}
+function New-ClientReceipt($r) {
+    if (-not $r) { return }
+    if (-not (Test-PdfPrinter)) { Show-Error (L 'noPdfPrinter'); return }
+    $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    try {
+        $dir = Get-ClientDocsDir $r -Create
+        $n = @(Get-ChildItem -LiteralPath $dir -Filter 'Recibo *.pdf' -ErrorAction SilentlyContinue).Count + 1
+        $id = "$($r.Id)".Trim(); if (-not $id) { $id = "F$($r.Row)" }
+        $no = "$id-$n"
+        $price = [double]$r.PriceV; $pend = [double]$r.Pending
+        $paid = [math]::Max([double]0, $price - $pend)
+        $title = $script:T.Title[$script:Cfg.Language]; if (-not $title) { $title = $script:T.Title['es'] }
+        $fs = $r.Data['fsol']
+        $script:PdfData = @{
+            Company = $(if ("$($script:Cfg.CompanyName)".Trim()) { "$($script:Cfg.CompanyName)" } else { 'GESTEM MANAGER' })
+            No = $no; Date = (Get-Date).ToString('dd/MM/yyyy'); Name = "$($r.Name)"; Doc = "$($r.Doc)"; Id = $id
+            Tramite = $title; Tipo = "$($r.Tipo)"; Status = "$($r.Status)"; Resp = "$($r.Resp)"
+            Fsol = $(if ($fs -is [DateTime]) { $fs.ToString('dd/MM/yyyy') } else { '' })
+            Price = $price; Paid = $paid; Pend = $pend; Forma = "$($r.Data['forma'])"
+        }
+        $file = Join-Path $dir ("Recibo {0} {1:yyyy-MM-dd}.pdf" -f (Get-SafeName $no), (Get-Date))
+        Invoke-PdfPrint $file $false ${function:Draw-Receipt}
+        Write-Log ("creó el recibo {0}" -f $no)
+        Update-DocsMap; Refresh-ClientGrid
+        if (Test-Path -LiteralPath $file) { Start-Process -FilePath $file }
+        Set-Status ((L 'rcDone') -f $no)
+    } catch {
+        Write-Log "recibo: $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    } finally { $script:Win.Cursor = $null }
+}
+
+# ---------- exportar la lista ----------
+function Get-ExportFile([string]$ext, [string]$filter) {
+    $title = $script:T.Title[$script:Cfg.Language]; if (-not $title) { $title = $script:T.Title['es'] }
+    $dlg = New-Object Microsoft.Win32.SaveFileDialog
+    $dlg.FileName = Get-SafeName ("{0} {1} {2:yyyy-MM-dd}" -f (L 'navClients'), $title, (Get-Date))
+    $dlg.DefaultExt = $ext
+    $xd = Split-Path -Parent "$($script:Cfg.ExcelPath)"
+    if ($xd -and (Test-Path -LiteralPath $xd)) { $dlg.InitialDirectory = $xd }
+    $dlg.Filter = $filter
+    if ($dlg.ShowDialog($script:Win)) { return $dlg.FileName }
+    return $null
+}
+function Export-ClientsCsv {
+    $rows = @($script:UI.ClientsGrid.ItemsSource)
+    if (-not $rows.Count) { Show-Info (L 'exEmpty'); return }
+    $file = Get-ExportFile '.csv' 'CSV (Excel)|*.csv'
+    if (-not $file) { return }
+    try {
+        $q = { param($v) $s = "$v"; if ($s -match '[;"\r\n]') { '"' + $s.Replace('"', '""') + '"' } else { $s } }
+        $fields = @($script:T.Fields)
+        $head = @((L 'colId')) + @($fields | ForEach-Object { Get-FieldLabel $_ }) + @((L 'colPend'))
+        $lines = New-Object System.Collections.Generic.List[string]
+        $lines.Add((($head | ForEach-Object { & $q $_ }) -join ';'))
+        foreach ($r in $rows) {
+            $cells = @(& $q $r.Id)
+            foreach ($f in $fields) {
+                $v = $r.Data[$f.Key]
+                if ($v -is [DateTime]) { $v = $v.ToString('dd/MM/yyyy') }
+                elseif ($v -is [double]) { $v = $v.ToString('0.##', $script:ES) }
+                $cells += (& $q $v)
+            }
+            $cells += (& $q ([double]$r.Pending).ToString('0.00', $script:ES))
+            $lines.Add(($cells -join ';'))
+        }
+        [IO.File]::WriteAllLines($file, [string[]]$lines, (New-Object Text.UTF8Encoding($true)))
+        Write-Log ("exportó la lista a CSV ({0} clientes)" -f $rows.Count)
+        Set-Status ((L 'exDone') -f [IO.Path]::GetFileName($file))
+        Start-Process explorer.exe -ArgumentList "/select,`"$file`""
+    } catch { Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message) }
+}
+function Draw-ClientList($g, $page) {
+    $d = $script:PdfData
+    $LE = 12; $RE = 285
+    $cols = @(@('colId', 27), @('colName', 60), @('colDoc', 27), @('colTipo', 33), @('colStatus', 40), @('colPay', 22), @('colPend', 24), @('colDays', 12), @('colResp', 28))
+    # cabecera
+    PdfRect $g 0 0 297 3 '#9E1820'
+    $hasLogo = PdfLogo $g $LE 9 13
+    $tx = $(if ($hasLogo) { $LE + 16 } else { $LE })
+    PdfText $g $d.Company $tx 9.5 150 12 'Semibold' '#1E1A1B'
+    PdfText $g $d.Title $tx 16 170 9 'Regular' '#6E6466'
+    PdfText $g $d.Sub 150 10.5 ($RE - 150) 8 'Regular' '#8A7F81' 'Far'
+    PdfText $g $d.Sub2 150 15.5 ($RE - 150) 8 'Regular' '#8A7F81' 'Far'
+    # cabecera de tabla
+    $y = 27
+    PdfRect $g $LE $y ($RE - $LE) 7 '#F3EFEF' 1.5
+    $x = $LE + 2
+    foreach ($c in $cols) {
+        $al = $(if ($c[0] -in 'colPend', 'colDays') { 'Far' } else { 'Near' })
+        PdfText $g (L $c[0]) $x ($y + 1.6) ($c[1] - 3) 7.5 'Semibold' '#6E6466' $al
+        $x += $c[1]
+    }
+    $y += 8.5
+    $start = $page * $d.PerPage
+    $end = [math]::Min($d.Rows.Count, $start + $d.PerPage)
+    for ($i = $start; $i -lt $end; $i++) {
+        $r = $d.Rows[$i]
+        $x = $LE + 2
+        $vals = @("$($r.Id)", "$($r.Name)", "$($r.Doc)", "$($r.Tipo)", "$($r.Status)", "$($r.Pay)", "$($r.PendingText)", "$($r.Days)", "$($r.Resp)")
+        for ($c = 0; $c -lt $cols.Count; $c++) {
+            $w = $cols[$c][1]
+            if ($c -eq 4 -and "$($r.Color)" -and "$($r.Color)" -ne '#FFFFFF') {
+                PdfRect $g $x ($y + 1.6) 2.6 2.6 "$($r.Color)" 1.3
+                PdfText $g $vals[$c] ($x + 4) ($y + 0.8) ($w - 7) 8 'Regular' '#2B2526'
+            } else {
+                $al = $(if ($c -in 6, 7) { 'Far' } else { 'Near' })
+                $col = $(if ($c -eq 6) { '#B42318' } else { '#2B2526' })
+                $wt = $(if ($c -in 1, 6) { 'Semibold' } else { 'Regular' })
+                PdfText $g $vals[$c] $x ($y + 0.8) ($w - 3) 8 $wt $col $al
+            }
+            $x += $w
+        }
+        PdfLine $g $LE ($y + 6.2) $RE ($y + 6.2) '#F1EDED' 0.25
+        $y += 6.4
+    }
+    $last = ($end -ge $d.Rows.Count)
+    if ($last) {
+        $y += 3
+        PdfRect $g $LE $y ($RE - $LE) 9 '#F7F5F5' 1.5
+        PdfText $g $d.Total ($LE + 3) ($y + 2.2) 200 9 'Semibold' '#1E1A1B'
+        PdfText $g $d.TotalPend 180 ($y + 2.2) ($RE - 183) 9 'Semibold' '#B42318' 'Far'
+    }
+    PdfText $g ((L 'exPage') -f ($page + 1), $d.Pages) $LE 201 100 7.5 'Regular' '#A69C9E'
+    PdfText $g 'GESTEM MANAGER' 180 201 ($RE - 180) 7.5 'Regular' '#A69C9E' 'Far'
+    return (-not $last)
+}
+function Export-ClientsPdf {
+    $rows = @($script:UI.ClientsGrid.ItemsSource)
+    if (-not $rows.Count) { Show-Info (L 'exEmpty'); return }
+    if (-not (Test-PdfPrinter)) { Show-Error (L 'noPdfPrinter'); return }
+    $file = Get-ExportFile '.pdf' 'PDF|*.pdf'
+    if (-not $file) { return }
+    $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    try {
+        $title = $script:T.Title[$script:Cfg.Language]; if (-not $title) { $title = $script:T.Title['es'] }
+        $per = 25
+        $sumPend = 0.0; $nPend = 0
+        foreach ($r in $rows) { if ([double]$r.Pending -gt 0) { $sumPend += [double]$r.Pending; $nPend++ } }
+        $filt = @()
+        if ("$($script:UI.SearchBox.Text)".Trim()) { $filt += '«' + "$($script:UI.SearchBox.Text)".Trim() + '»' }
+        if ($script:UI.FilterBox.SelectedIndex -gt 0) { $filt += "$($script:UI.FilterBox.SelectedItem)" }
+        if ($script:UI.OnlyDebt.IsChecked) { $filt += (L 'onlyDebt') }
+        if ($script:UI.OnlyMine.IsChecked) { $filt += (L 'onlyMine') }
+        $script:PdfData = @{
+            Company = $(if ("$($script:Cfg.CompanyName)".Trim()) { "$($script:Cfg.CompanyName)" } else { 'GESTEM MANAGER' })
+            Title = ((L 'exTitle') -f $title)
+            Sub = (Get-Date).ToString('dd/MM/yyyy HH:mm') + $(if ($script:User) { "  ·  $($script:User)" } else { '' })
+            Sub2 = $(if ($filt.Count) { (L 'exFilters') + ': ' + ($filt -join ', ') } else { (L 'exNoFilter') })
+            Rows = $rows; PerPage = $per; Pages = [int][math]::Max([double]1, [math]::Ceiling($rows.Count / $per))
+            Total = ((L 'exTotal') -f $rows.Count, $nPend); TotalPend = (L 'colPend') + ': ' + (Format-Money $sumPend)
+        }
+        Invoke-PdfPrint $file $true ${function:Draw-ClientList}
+        Write-Log ("exportó la lista a PDF ({0} clientes)" -f $rows.Count)
+        Set-Status ((L 'exDone') -f [IO.Path]::GetFileName($file))
+        if (Test-Path -LiteralPath $file) { Start-Process -FilePath $file }
+    } catch {
+        Write-Log "exportar PDF: $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    } finally { $script:Win.Cursor = $null }
 }
 
 # =====================================================================
@@ -2527,6 +3347,12 @@ function Apply-Language {
     $ui.SetCompanyL.Text = L 'setCompany'; $ui.SetLogoL.Text = L 'setLogo'; $ui.LogoBtn.Content = L 'btnLogo'; $ui.LogoClearBtn.Content = L 'btnLogoClear'
     $ui.UserBtn.Content = $(if ($script:User) { (L 'userTip') -f $script:User } else { L 'sessGo' })
     for ($i = 0; $i -lt $heads.Count; $i++) { $cols[$i].Header = L $heads[$i] }
+    $ui.DocsCol.Header = L 'colDocs'
+    $ui.DocsBtn.Content = L 'btnDocs'; $ui.ReceiptBtn.Content = L 'btnReceipt'; $ui.ExportBtn.Content = (L 'btnExport') + '  ' + [char]0x25BE
+    $ui.ExpPdf.Header = L 'expPdf'; $ui.ExpCsv.Header = L 'expCsv'
+    $ui.CmEdit.Header = L 'btnEdit'; $ui.CmReceipt.Header = L 'btnReceipt'; $ui.CmDocs.Header = L 'btnDocs'
+    $ui.DocsAddBtn.Content = L 'docsAdd'; $ui.DocsOpenBtn.Content = L 'docsOpen'; $ui.DocsRemoveBtn.Content = L 'docsRemove'; $ui.DocsFolderBtn.Content = L 'docsFolder'
+    $ui.DocsEmptyT.Text = L 'docsEmpty'; $ui.DocsDropT.Text = L 'docsDrop'; $ui.DocsClose.ToolTip = L 'docsClose'
     $ui.SetTitle.Text = L 'setTitle'; $ui.SetFileL.Text = L 'setFile'; $ui.ChangeFileBtn.Content = L 'btnChange'
     $ui.SetLangL.Text = L 'setLang'; $ui.SetNatL.Text = L 'setNat'; $ui.BackupChk.Content = L 'setBackup'
     $ui.OpenAfterChk.Content = L 'setOpen'; $ui.SetNote.Text = L 'setNote'
@@ -3501,12 +4327,17 @@ foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings'
                  'SecFileT','SecFileD','SecCompT','SecCompD','SecTeamT','SecTeamD','SecPrefT','SecPrefD','SecHelpT','SecHelpD',
                  'ChartDay','ChartWeek','ChartMonth','ChartTitle','ChartSub','ChartLegPaid','ChartLegPend','ChartGrid',
                  'ChartCanvas','ChartLabels','ChartDelta','ChartDeltaB','ChartLegMoney',
+                 'DocsBtn','ReceiptBtn','ExportBtn','ExpPdf','ExpCsv','CmEdit','CmReceipt','CmDocs','DocsCol','PanelDocs','DocsCard','DocsClose','DocsTitle','DocsSub','DocsOpenBtn','DocsRemoveBtn','DocsFolderBtn','DocsAddBtn','DocsCount','DocsMsg','DocsList','DocsEmpty','DocsEmptyT','DocsDrop','DocsDropT',
                  'PanelPaused','PausedText','PanelAdminLogin','AdmLoginHint','AdmKeyHint','AdmPw','AdmPw2','AdmLoginMsg','AdmLoginCancel','AdmLoginBtn','PanelAdmin','AdmLogout','AdmClose','AdmTabLocks','AdmTabLog','AdmTabTools','AdmPageLocks','AdmPageLog','AdmPageTools','AdmLockFile','AdmLockExt','AdmLockComp','AdmLockTeam','AdmLockPref','AdmLockHelp','AdmLockAll','AdmIgnorePause','AdmOwnerPC','AdmSaveLocks','AdmLocksMsg','AdmLogRefresh','AdmLogAll','AdmLogTeam','AdmLogAdmin','AdmLogTitle','AdmLog','AdmRemoteTxt','AdmUpdate','AdmOpenData','AdmOpenApp','AdmShowAll','AdmInfo','AdmNewPw','AdmNewPw2','AdmChangePw','AdmPwMsg','SecFileBox','SecExtBox','SecCompBox','SecTeamBox','SecPrefBox','SecHelpBox',
                  'TopBar','StatsScope','StatsAllBtn','StatsAllTxt','NavStats','PanelStats','StatsWho','StatsPeriod','StatsRefresh','StatsTitle','StatsSub','StatsTable','StatsGrid',
                  'KpiBillL','KpiBill','KpiBillF','KpiPaidL','KpiPaid','KpiPaidTrack','KpiPaidF','KpiPendL','KpiPend','KpiPendF','KpiNetL','KpiNet','KpiNetF',
                  'SideLogo','SideCompany','SessLogo','SessCompany','AboutImg','AboutCompany','SetCompanyL','CompanyBox','SetLogoL','LogoPreview','LogoBtn','LogoClearBtn')) {
     $script:UI[$n] = $script:Win.FindName($n)
 }
+# menús y columnas no siempre se encuentran por nombre: se toman directamente
+if (-not $script:UI.ExpPdf) { $script:UI.ExpPdf = $script:UI.ExportBtn.ContextMenu.Items[0]; $script:UI.ExpCsv = $script:UI.ExportBtn.ContextMenu.Items[1] }
+if (-not $script:UI.CmEdit) { $cm = $script:UI.ClientsGrid.ContextMenu; $script:UI.CmEdit = $cm.Items[0]; $script:UI.CmReceipt = $cm.Items[1]; $script:UI.CmDocs = $cm.Items[2] }
+if (-not $script:UI.DocsCol) { $script:UI.DocsCol = $script:UI.ClientsGrid.Columns[$script:UI.ClientsGrid.Columns.Count - 1] }
 $script:UI.AboutImg.Source = $script:AppLogo
 $script:PendingLogo = ''
 Import-DefaultBranding
@@ -3588,6 +4419,36 @@ $ui.FilterBox.Add_SelectionChanged({ Refresh-ClientGrid })
 $ui.OnlyDebt.Add_Click({ Refresh-ClientGrid })
 $ui.ClientsGrid.Add_MouseDoubleClick({ if ($script:UI.ClientsGrid.SelectedItem) { Edit-Selected } })
 $ui.EditBtn.Add_Click({ Edit-Selected })
+$ui.DocsBtn.Add_Click({ $r = Get-SelectedClient; if ($r) { Open-DocsPanel $r } })
+$ui.ReceiptBtn.Add_Click({ $r = Get-SelectedClient; if ($r) { New-ClientReceipt $r } })
+$ui.ExportBtn.Add_Click({ $m = $this.ContextMenu; $m.PlacementTarget = $this; $m.Placement = 'Bottom'; $m.IsOpen = $true })
+$ui.ExpPdf.Add_Click({ Export-ClientsPdf })
+$ui.ExpCsv.Add_Click({ Export-ClientsCsv })
+$ui.CmEdit.Add_Click({ Edit-Selected })
+$ui.CmReceipt.Add_Click({ $r = Get-SelectedClient; if ($r) { New-ClientReceipt $r } })
+$ui.CmDocs.Add_Click({ $r = Get-SelectedClient; if ($r) { Open-DocsPanel $r } })
+# clic derecho: selecciona la fila que hay debajo antes de abrir el menú
+$ui.ClientsGrid.Add_PreviewMouseRightButtonDown({
+    $o = $_.OriginalSource
+    while ($o -and -not ($o -is [Windows.Controls.DataGridRow])) { $o = [Windows.Media.VisualTreeHelper]::GetParent($o) }
+    if ($o) { $o.IsSelected = $true }
+})
+$ui.DocsClose.Add_Click({ $script:UI.PanelDocs.Visibility = 'Collapsed' })
+$ui.DocsAddBtn.Add_Click({ Add-DocsFromDialog })
+$ui.DocsOpenBtn.Add_Click({ if ($script:UI.DocsList.SelectedItem) { Open-SelectedDoc } else { Show-Info (L 'docsPick') } })
+$ui.DocsRemoveBtn.Add_Click({ Remove-SelectedDoc })
+$ui.DocsFolderBtn.Add_Click({ Open-DocsFolder })
+$ui.DocsList.Add_MouseDoubleClick({ Open-SelectedDoc })
+foreach ($dz in $ui.PanelDocs, $ui.DocsCard) {
+    $dz.Add_DragEnter({ if ($_.Data.GetDataPresent([Windows.DataFormats]::FileDrop)) { $_.Effects = 'Copy'; $script:UI.DocsDrop.Visibility = 'Visible' } else { $_.Effects = 'None' }; $_.Handled = $true })
+    $dz.Add_DragOver({ $_.Effects = $(if ($_.Data.GetDataPresent([Windows.DataFormats]::FileDrop)) { 'Copy' } else { 'None' }); $_.Handled = $true })
+    $dz.Add_DragLeave({ $script:UI.DocsDrop.Visibility = 'Collapsed' })
+    $dz.Add_Drop({
+        $script:UI.DocsDrop.Visibility = 'Collapsed'
+        if ($_.Data.GetDataPresent([Windows.DataFormats]::FileDrop)) { Add-ClientDocs @($_.Data.GetData([Windows.DataFormats]::FileDrop)) }
+        $_.Handled = $true
+    })
+}
 $ui.RefreshBtn.Add_Click({ $script:Win.Cursor = [Windows.Input.Cursors]::Wait; [void](Load-Data -All); $script:Win.Cursor = $null })
 $ui.OpenExcelBtn.Add_Click({
     $sel = $script:UI.ClientsGrid.SelectedItem
