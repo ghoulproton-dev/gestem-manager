@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.6.6'
+$script:AppVersion = '1.6.7'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -2344,28 +2344,37 @@ function Open-ExcelWindow([int]$row = 0) {
 #  ACTUALIZACIÓN AUTOMÁTICA (desde GitHub)
 # =====================================================================
 function Start-UpdateCheckAsync {
-    # mira si hay versión nueva sin congelar la ventana; al abrir (sin nada a medias) se actualiza sola como antes
+    # mira si hay versión nueva sin congelar la ventana. Si no hay nada a medias, se actualiza sola como siempre.
+    # (HttpClient: la respuesta llega en segundo plano aunque la ventana esté ocupada cargando)
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $wc = New-Object Net.WebClient
-        $wc.Headers['Cache-Control'] = 'no-cache'
-        $script:UpdTask = $wc.DownloadStringTaskAsync("$($script:UpdateBase)/version.txt?t=$([DateTime]::UtcNow.Ticks)")
-        $script:UpdStart = Get-Date
+        try { Add-Type -AssemblyName System.Net.Http -ErrorAction Stop } catch { }
+        $hc = New-Object Net.Http.HttpClient
+        $hc.Timeout = [TimeSpan]::FromSeconds(20)
+        $script:UpdClient = $hc
+        $script:UpdTask = $hc.GetStringAsync("$($script:UpdateBase)/version.txt?t=$([DateTime]::UtcNow.Ticks)")
+        $script:UpdTicks = 0
         $script:UpdTimer = New-Object Windows.Threading.DispatcherTimer
         $script:UpdTimer.Interval = [TimeSpan]::FromMilliseconds(300)
         $script:UpdTimer.Add_Tick({
+            $script:UpdTicks++
             $t = $script:UpdTask
-            if (-not $t.IsCompleted) { if (((Get-Date) - $script:UpdStart).TotalSeconds -gt 20) { $script:UpdTimer.Stop() }; return }
+            if (-not $t.IsCompleted) {
+                if ($script:UpdTicks -gt 200) { $script:UpdTimer.Stop(); Write-Log 'actualización: GitHub no respondió' }
+                return
+            }
             $script:UpdTimer.Stop()
             if ("$($t.Status)" -ne 'RanToCompletion') { Write-Log "actualización: no se pudo mirar ($($t.Exception.InnerException.Message))"; return }
             $remote = "$($t.Result)".Trim()
             if (-not ($remote -match '^\d+(\.\d+){1,3}$') -or [version]$remote -le [version]$script:AppVersion) { return }
-            $early = (((Get-Date) - $script:UpdStart).TotalSeconds -lt 30)
-            if ($early -and -not $script:FormDirty -and -not $script:EditRow) { Check-Update }
+            if (-not $script:FormDirty -and -not $script:EditRow) { Check-Update }
             else { Show-Toast ((L 'updReady') -f $remote) (L 'updNow') { Check-Update -Manual } 20 }
         })
         $script:UpdTimer.Start()
-    } catch { Write-Log "actualización: $($_.Exception.Message)" }
+    } catch {
+        Write-Log "actualización (segundo plano): $($_.Exception.Message)"
+        Check-Update    # si el modo en segundo plano falla, se mira como antes
+    }
 }
 function Check-Update([switch]$Manual) {
     $me = $MyInvocation.ScriptName
