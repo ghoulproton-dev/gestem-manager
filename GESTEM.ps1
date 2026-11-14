@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.7.3'
+$script:AppVersion = '1.7.4'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -797,7 +797,7 @@ function Get-FieldLabel($field) { $l = $field.Label[$script:Cfg.Language]; if (-
 # =====================================================================
 function Load-Config {
     $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = ''
-             InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = ''; SumsRepaired = $false }    # emisor por defecto de las facturas: la gestora
+             InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = ''; SumsRepaired = $false; ExcelRepaired = $false }    # emisor por defecto de las facturas: la gestora
     if (Test-Path $script:CfgPath) {
         try {
             $j = Get-Content -Raw -Path $script:CfgPath -Encoding UTF8 | ConvertFrom-Json
@@ -969,17 +969,21 @@ function New-TramiteSheet($h, $t) {
     $meta = $null; try { $s = Read-Store $t; if ($s) { $meta = $s.Meta } } catch { }
     if (-not $meta) { $meta = (New-EmptyStore $t $null).Meta }
     $n = $l1 - $f1 + 1
-    $ids = New-Object 'object[,]' $n, 1
-    for ($i = 0; $i -lt $n; $i++) { $ids[$i, 0] = Get-RowId $t $meta ($f1 + $i) }
-    $ws.Range("A$($f1):A$l1").Value2 = $ids
+    # nº de expediente celda a celda (pasar una tabla de PowerShell a Excel falla: «Object[,] en String» / 0x800A03EC)
+    for ($i = 0; $i -lt $n; $i++) { $ws.Cells.Item($f1 + $i, 1).Value2 = [string](Get-RowId $t $meta ($f1 + $i)) }
     $ws.Range("L$($f1):L$l1").Formula = "=IF(J$f1=`"`",`"`",IF(M$f1=`"Pagado`",0,MAX(0,J$f1-N(K$f1))))"
     $ws.Range("T$($f1):T$l1").Formula = "=IF(OR(O$f1=`"`",N$f1=`"Finalizado`",N$f1=`"Desfavorable`"),`"`",TODAY()-O$f1)"
     $ws.Range("W$($f1):W$l1").Formula = "=IF(J$f1=`"`",`"`",J$f1-N(V$f1))"
-    foreach ($c in 'O', 'P') { $ws.Range("$c$($f1):$c$l1").NumberFormat = 'dd/mm/yyyy' }
-    foreach ($c in 'J', 'K', 'L', 'V', 'W') { $ws.Range("$c$($f1):$c$l1").NumberFormat = '#,##0.00 "€"' }
-    $ws.Range("T$($f1):T$l1").NumberFormat = '0'
-    $ws.Columns("A:$($t.LastCol)").ColumnWidth = 16
-    $ws.Columns('B').ColumnWidth = 32; $ws.Columns('R').ColumnWidth = 40
+    # formatos (solo aspecto: si Excel no los acepta, la pestaña se crea igual)
+    try {
+        foreach ($c in 'O', 'P') { $ws.Range("$c$($f1):$c$l1").NumberFormat = 'dd/mm/yyyy' }
+        foreach ($c in 'J', 'K', 'L', 'V', 'W') { $ws.Range("$c$($f1):$c$l1").NumberFormat = '#,##0.00 "€"' }
+        $ws.Range("T$($f1):T$l1").NumberFormat = '0'
+    } catch { if (Test-ExcelBusyError $_.Exception) { throw }; Write-Log "pestaña nueva: formatos no aplicados ($($_.Exception.Message))" }
+    try {
+        $ws.Columns("A:$($t.LastCol)").ColumnWidth = 16
+        $ws.Columns('B').ColumnWidth = 32; $ws.Columns('R').ColumnWidth = 40
+    } catch { if (Test-ExcelBusyError $_.Exception) { throw } }
     Write-Log "pestaña creada en el Excel: $($t.Sheet)"
     return $ws
 }
@@ -1550,6 +1554,88 @@ function Get-ClientOps([hashtable]$vals) {
     }
     return ,$ops
 }
+function Remove-CalcChainEntry($zip, $readXml, $writeXml) {
+    # calcChain.xml es la lista de Excel de las celdas con fórmula. Si una de esas celdas ya no tiene fórmula,
+    # Excel da el archivo por dañado y no lo abre. Se quita la lista entera: Excel la vuelve a crear sola.
+    $cc = $zip.GetEntry('xl/calcChain.xml')
+    if (-not $cc) { return $false }
+    $cc.Delete()
+    $rels = & $readXml 'xl/_rels/workbook.xml.rels'
+    if ($rels) {
+        foreach ($r in @($rels.DocumentElement.ChildNodes)) { if ($r.LocalName -eq 'Relationship' -and "$($r.GetAttribute('Type'))".EndsWith('/calcChain')) { [void]$rels.DocumentElement.RemoveChild($r) } }
+        & $writeXml 'xl/_rels/workbook.xml.rels' $rels
+    }
+    $ct = & $readXml '[Content_Types].xml'
+    if ($ct) {
+        foreach ($o in @($ct.DocumentElement.ChildNodes)) { if ($o.LocalName -eq 'Override' -and "$($o.GetAttribute('PartName'))" -eq '/xl/calcChain.xml') { [void]$ct.DocumentElement.RemoveChild($o) } }
+        & $writeXml '[Content_Types].xml' $ct
+    }
+    return $true
+}
+function Repair-ExcelFile {
+    # 1.7.2 y 1.7.3, al escribir directamente en el .xlsx, podían dejarlo de forma que Excel no lo abre («contenido dañado»):
+    #  - quitaban fórmulas sin quitar calcChain.xml (la lista de celdas con fórmula)
+    #  - un texto con espacios al principio o al final llevaba «d1p1:space» en vez de «xml:space»
+    # Una vez por PC, con el archivo cerrado: se arreglan las dos cosas (copia de seguridad antes). Nada más cambia.
+    if ($script:Cfg.ExcelRepaired) { return }
+    $path = "$($script:Cfg.ExcelPath)"
+    if (-not $path -or -not (Test-Path -LiteralPath $path)) { return }
+    try { $probe = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None); $probe.Dispose() } catch { Write-Log 'reparar Excel: el archivo está abierto, se hará otro día'; return }
+    try { Add-Type -AssemblyName System.IO.Compression -ErrorAction Stop } catch { }
+    try { Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop } catch { }
+    $tmp = Join-Path $env:TEMP ("GESTEM_reparar_{0}.xlsx" -f [guid]::NewGuid().ToString('N'))
+    Copy-Item -LiteralPath $path -Destination $tmp -Force
+    try {
+        $removed = $false
+        $zip = [IO.Compression.ZipFile]::Open($tmp, [IO.Compression.ZipArchiveMode]::Update)
+        try {
+            $readXml = {
+                param($name)
+                $e = $zip.GetEntry($name); if (-not $e) { return $null }
+                $sr = New-Object IO.StreamReader($e.Open())
+                try { $x = New-Object Xml.XmlDocument; $x.PreserveWhitespace = $true; $x.LoadXml($sr.ReadToEnd()); return $x } finally { $sr.Dispose() }
+            }
+            $writeXml = {
+                param($name, $x)
+                $old = $zip.GetEntry($name); if ($old) { $old.Delete() }
+                $e = $zip.CreateEntry($name, [IO.Compression.CompressionLevel]::Optimal)
+                $sw = New-Object IO.StreamWriter($e.Open(), (New-Object Text.UTF8Encoding($false)))
+                try { $x.Save($sw) } finally { $sw.Dispose() }
+            }
+            $removed = Remove-CalcChainEntry $zip $readXml $writeXml
+            foreach ($en in @($zip.Entries | Where-Object { $_.FullName -like 'xl/worksheets/*.xml' })) {
+                $name = $en.FullName
+                $sr = New-Object IO.StreamReader($en.Open(), [Text.Encoding]::UTF8); try { $txt = $sr.ReadToEnd() } finally { $sr.Dispose() }
+                $bad = @([regex]::Matches($txt, 'xmlns:(\w+)="http://www\.w3\.org/XML/1998/namespace"') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+                if (-not $bad.Count) { continue }
+                foreach ($px in $bad) {
+                    $txt = $txt.Replace(" xmlns:$px=`"http://www.w3.org/XML/1998/namespace`"", '')
+                    $txt = $txt.Replace("$($px):space=", 'xml:space=')
+                }
+                $en.Delete()
+                $ne = $zip.CreateEntry($name, [IO.Compression.CompressionLevel]::Optimal)
+                $sw = New-Object IO.StreamWriter($ne.Open(), (New-Object Text.UTF8Encoding($false))); try { $sw.Write($txt) } finally { $sw.Dispose() }
+                $removed = $true
+                Write-Log "reparar Excel: $name ($($bad.Count) espacio(s) de nombres no válidos)"
+            }
+        } finally { $zip.Dispose() }
+        if ($removed) {
+            $chk = [IO.Compression.ZipFile]::OpenRead($tmp)
+            try {
+                if (-not $chk.GetEntry('xl/workbook.xml') -or $chk.GetEntry('xl/calcChain.xml')) { throw 'comprobación fallida' }
+                foreach ($en in @($chk.Entries | Where-Object { $_.FullName -like 'xl/worksheets/*.xml' })) {
+                    $sr = New-Object IO.StreamReader($en.Open()); try { $t2 = $sr.ReadToEnd(); $xx = New-Object Xml.XmlDocument; $xx.LoadXml($t2) } finally { $sr.Dispose() }
+                    if ($t2 -match 'xmlns:\w+="http://www\.w3\.org/XML/1998/namespace"') { throw 'comprobación fallida' }
+                }
+            } finally { $chk.Dispose() }
+            Backup-Excel
+            [IO.File]::Copy($tmp, $path, $true)
+            Write-Log 'reparar Excel: archivo arreglado (Excel vuelve a crear calcChain.xml)'
+        }
+        $script:Cfg.ExcelRepaired = $true; Save-Config
+    } catch { Write-Log "reparar Excel: $($_.Exception.Message)" }
+    finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+}
 function Save-ClientToFile($ops, $row, [string]$ExpectName, [switch]$IsNew) {
     # un solo cliente: ver Save-ClientsToFile
     $r = Save-ClientsToFile @(@{ Ops = $ops; Row = $row; Expect = $ExpectName; IsNew = [bool]$IsNew })
@@ -1724,7 +1810,10 @@ function Save-ClientsToFile($items, [switch]$OnlyBroken) {
                         $c.SetAttribute('t', 'inlineStr')
                         $is = $doc.CreateElement('is', $ns); $tx = $doc.CreateElement('t', $ns)
                         $tx.InnerText = "$($op.Value)"
-                        if ("$($op.Value)" -ne "$($op.Value)".Trim()) { [void]$tx.SetAttribute('space', 'http://www.w3.org/XML/1998/namespace', 'preserve') }
+                        if ("$($op.Value)" -ne "$($op.Value)".Trim()) {
+                            # xml:space="preserve" (con SetAttribute(..., espacio de nombres) salía «d1p1:space» y Excel daba el archivo por dañado)
+                            $sa = $doc.CreateAttribute('xml', 'space', 'http://www.w3.org/XML/1998/namespace'); $sa.Value = 'preserve'; [void]$tx.Attributes.Append($sa)
+                        }
                         [void]$is.AppendChild($tx); [void]$c.AppendChild($is)
                     }
                 }
@@ -1734,6 +1823,8 @@ function Save-ClientsToFile($items, [switch]$OnlyBroken) {
             if (-not $changed) { $result = $results; $sheetPath = $null }
             else {
             & $writeXml $sheetPath $doc
+            # sin la lista de celdas con fórmula (calcChain.xml): si quedara apuntando a una celda cambiada, Excel no abriría el archivo
+            [void](Remove-CalcChainEntry $zip $readXml $writeXml)
             # que Excel vuelva a calcular los totales al abrir
             $calc = $wbx.GetElementsByTagName('calcPr', $ns) | Select-Object -First 1
             if ($calc) { $calc.SetAttribute('fullCalcOnLoad', '1'); & $writeXml 'xl/workbook.xml' $wbx }
@@ -1744,7 +1835,12 @@ function Save-ClientsToFile($items, [switch]$OnlyBroken) {
         if (-not $sheetPath) { return ,$result }    # nada que cambiar en el archivo
         # comprobación: el archivo nuevo se abre y la pestaña se lee bien
         $chk = [IO.Compression.ZipFile]::OpenRead($tmp)
-        try { $e = $chk.GetEntry($sheetPath); $sr = New-Object IO.StreamReader($e.Open()); try { $xx = New-Object Xml.XmlDocument; $xx.LoadXml($sr.ReadToEnd()) } finally { $sr.Dispose() } } finally { $chk.Dispose() }
+        try {
+            $e = $chk.GetEntry($sheetPath); $sr = New-Object IO.StreamReader($e.Open())
+            try { $txt = $sr.ReadToEnd(); $xx = New-Object Xml.XmlDocument; $xx.LoadXml($txt) } finally { $sr.Dispose() }
+            if ($txt -match 'xmlns:\w+="http://www\.w3\.org/XML/1998/namespace"') { throw 'XML no válido para Excel' }
+            if ($chk.GetEntry('xl/calcChain.xml')) { throw 'calcChain.xml sigue en el archivo' }
+        } finally { $chk.Dispose() }
         if ($script:Cfg.Backup) { Backup-Excel }
         [IO.File]::Copy($tmp, $path, $true)    # si Excel lo acaba de abrir, falla aquí y se usa Excel
         if ($OnlyBroken) { Write-Log ("Excel (directo): {0} celda(s) con SUM(...) copiada de la fila de totales, arreglada(s) · {1}" -f $script:SumFixed, $T.Sheet) }
@@ -7147,6 +7243,7 @@ $script:Win.Add_ContentRendered({
         return
     }
     $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    try { Repair-ExcelFile } catch { Write-Log "reparar Excel: $($_.Exception.Message)" }
     try { [void](Sync-HandmadeTabs -Force) } catch { Write-Log "pestañas propias: $($_.Exception.Message)" }
     if (Load-Data -All) {
         Apply-Language

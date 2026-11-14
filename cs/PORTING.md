@@ -24,8 +24,21 @@ La versión PowerShell (GESTEM.ps1) sigue siendo la que usa la gestoría hasta e
       Prueba 14/11/2026: editar, cliente nuevo, lote de 2, pasada SUM y trámite sin pestaña -> los .xlsx resultantes
       son idénticos byte a byte en todas las entradas.
 
+- [x] Etapa 2c — Excel por COM (ExcelCom con IDispatch por reflexión, no «dynamic»: dynamic fallaba al cerrar y volver a abrir Excel),
+      Data (Load-Data, Refresh-FromExcel, Sync-PendingToExcel, Save-ClientStore…). Prueba 14/11/2026: leer pestaña, guardar con Excel,
+      cliente nuevo, crear pestaña AUTÓNOMO -> mismas celdas (valores y fórmulas) en las 16 pestañas, y Excel abre los dos archivos.
+
+## Encontrado al trasladar (arreglado en PowerShell 1.7.4)
+- La escritura directa dejaba calcChain.xml apuntando a celdas sin fórmula -> Excel no abría el archivo. Ahora se quita calcChain.xml.
+- Textos con espacios al principio/final: SetAttribute('space', ns, …) escribía «d1p1:space» -> Excel no abría el archivo. Ahora xml:space.
+- Repair-ExcelFile: una vez por PC arregla los archivos ya dañados (config ExcelRepaired).
+- New-TramiteSheet nunca funcionaba en PowerShell (tabla de nº de expediente) -> ahora celda a celda; formatos sin bloquear.
+- Pruebas: comtest.bat (¿Excel abre los archivos?), cleanup.bat (cierra Excel ocultos de las pruebas).
+- Ojo: device_commit_files puede copiar una versión vieja si se reutiliza la misma ruta de origen: usar una carpeta nueva cada vez.
+- Ojo: ejecutar GESTEM.ps1 desde otra carpeta cambia los accesos directos (Repair-Shortcuts) -> fix_shortcuts.bat.
+
 ## Pendiente
-- [ ] Etapa 2c — Excel por COM (respaldo cuando el archivo está abierto): Open-Book/Close-Book/Invoke-Excel, Get-Sheet,
+- [ ] (hecho arriba) Etapa 2c — Excel por COM (respaldo cuando el archivo está abierto): Open-Book/Close-Book/Invoke-Excel, Get-Sheet,
       New-TramiteSheet, Restore-Formula, Set-CellValue, Save-Client, Read-TramiteData, Import-TramiteFromExcel,
       Sync-RecordToExcel, Save-PendingBatchToFile, Sync-PendingToExcel, Repair-TotalsFormulas, Refresh-FromExcel, Load-Data
 - [ ] Etapa 3 — ventana: lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos

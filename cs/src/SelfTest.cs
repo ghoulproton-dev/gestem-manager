@@ -17,7 +17,7 @@ namespace Gestem
         public static int Run(string testDir)
         {
             StringBuilder o = new StringBuilder();
-            App.DataDir = testDir; App.BackupDir = Path.Combine(testDir, "copias"); App.LogPath = Path.Combine(testDir, "cs_log.txt");
+            App.DataDir = testDir; App.BackupDir = Path.Combine(testDir, "copias"); App.LogPath = Path.Combine(testDir, "cs_log.txt"); App.CfgPath = Path.Combine(testDir, "config_cs.json");
             Directory.CreateDirectory(App.BackupDir);
             Config.Cur = new Config();
             Config.Cur.ExcelPath = Path.Combine(testDir, "cs", "x.xlsx");
@@ -78,6 +78,9 @@ namespace Gestem
             }
             // etapa 2b: escribir clientes directamente en el archivo
             Config.Cur.Backup = false;
+            Config.Cur.ExcelRepaired = false;
+            ExcelFile.RepairExcelFile();
+            o.Append("RX repaired=" + Config.Cur.ExcelRepaired + "\r\n");
             {
                 Tramite t = Tramite.ById("canje");
                 StoreData s = Store.Read(t);
@@ -104,6 +107,39 @@ namespace Gestem
                 StoreData sa = Store.Read(ta); TramiteData da = Store.BuildData(ta, sa);
                 o.Append("W4 " + WR(ExcelFile.SaveOne(ta, ExcelFile.ClientOps(ta, sa.Clients[0].F, da.Tariff), sa.Clients[0].Row, Ps.Str(sa.Clients[0].F["name"]), false)) + "\r\n");
             }
+            // etapa 2c: Excel por COM (leer la pestaña, guardar con Excel abierto, crear una pestaña nueva)
+            Book h = null;
+            try
+            {
+                G.T = Tramite.ById("canje");
+                h = ExcelCom.Open(false);
+                TramiteData d = ExcelCom.ReadTramiteData(h);
+                o.Append("C1 rows=" + d.Rows.Count + " firstEmpty=" + d.FirstEmpty + " nextId=" + d.NextId + " def=" + Ps.Str(d.DefaultPrice) + "\r\n");
+                foreach (ClientRow r in d.Rows)
+                    o.Append("CR " + r.Row + " " + r.Id + "|" + r.Name + "|" + r.Doc + "|" + r.Tipo + "|" + r.Status + "|" + r.Pay + "|" + N(r.Pending) + "|" + Ps.Str(r.Days) + "|" + r.Resp + "|" + N(r.PriceV) + "|" + N(r.PaidV) + "|" + N(r.NetV) + "|" + (r.Fecha.HasValue ? r.Fecha.Value.ToString("yyyy-MM-dd", Ps.Inv) : "") + "\r\n");
+                List<string> lk2 = new List<string>(d.Lists.Keys); lk2.Sort(StringComparer.Ordinal);
+                foreach (string k in lk2) o.Append("CL " + k + "=" + string.Join("|", d.Lists[k]) + "\r\n");
+                List<string> tk = new List<string>(d.Tariff.Keys); tk.Sort(StringComparer.Ordinal);
+                foreach (string k in tk) o.Append("CT " + k + "=" + N(d.Tariff[k]) + "\r\n");
+                ExcelCom.Close(h, false); h = null;
+                // guardar con Excel (como cuando el archivo está abierto)
+                StoreData s = Store.Read(G.T); TramiteData sd = Store.BuildData(G.T, s); G.Tariff = sd.Tariff;
+                ClientRec c13 = null; foreach (ClientRec c in s.Clients) if (c.Row == 14) { c13 = c; break; }
+                Dictionary<string, object> v = new Dictionary<string, object>(c13.F);
+                v["status"] = "Finalizado"; v["paystate"] = "Pagado"; v["obs"] = "guardado con Excel"; v["fres"] = new DateTime(2026, 11, 13);
+                h = ExcelCom.Open(true);
+                FileResult fr = ExcelCom.SaveClient(v, 14, Ps.Str(v["name"]), false, h, false);
+                Dictionary<string, object> vn = new Dictionary<string, object>();
+                foreach (Field f in G.T.Fields) vn[f.Key] = null;
+                vn["name"] = "NUEVO CON EXCEL"; vn["tipo"] = "B (Coche)"; vn["status"] = "Documentación"; vn["paystate"] = "Pendiente";
+                FileResult fn = ExcelCom.SaveClient(vn, null, "NUEVO CON EXCEL", true, h, false);
+                G.T = Tramite.ById("autonomo");
+                StoreData sa = Store.Read(G.T); G.Tariff = sa.Meta.Tariff;
+                FileResult fa = ExcelCom.SaveClient(new Dictionary<string, object>(sa.Clients[0].F), null, Ps.Str(sa.Clients[0].F["name"]), true, h, false);
+                ExcelCom.Close(h, true); h = null;
+                o.Append("C2 " + WR(fr) + " " + WR(fn) + " " + WR(fa) + "\r\n");
+            }
+            catch (Exception e) { o.Append("C! " + e.Message + "\r\n"); File.WriteAllText(Path.Combine(testDir, "cs_com_error.txt"), e.ToString()); if (h != null) { try { ExcelCom.Close(h, false); } catch { } } }
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             return 0;
         }

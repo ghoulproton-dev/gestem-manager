@@ -16,6 +16,7 @@ foreach ($fd in $ast.FindAll({ param($n) $n -is [System.Management.Automation.La
 $script:ES = [Globalization.CultureInfo]::GetCultureInfo('es-ES')
 $script:BackupDir = Join-Path $TestDir 'copias_ps'
 $script:LogPath = Join-Path $TestDir 'ps_log.txt'
+$script:CfgPath = Join-Path $TestDir 'config_ps.json'
 $script:User = ''
 New-Item -ItemType Directory -Force -Path $script:BackupDir | Out-Null
 $script:Cfg = [ordered]@{ ExcelPath = (Join-Path $TestDir 'ps\x.xlsx'); Language = 'es'; Colleagues = @('SAFAE', 'CHAYMAE') }
@@ -73,6 +74,9 @@ foreach ($t in $script:Tramites) {
 function WR($r) { if (-not $r) { return 'null' }; return "$($r.Row):$($r.Id)" }
 function WRL($l) { if (-not $l) { return 'null' }; return (@($l | ForEach-Object { WR $_ }) -join ',') }
 $script:Cfg.Backup = $false
+$script:Cfg.ExcelRepaired = $false
+Repair-ExcelFile
+[void]$o.Append("RX repaired=$($script:Cfg.ExcelRepaired)`r`n")
 $t = $script:Tramites | Where-Object { $_.Id -eq 'canje' }; $script:T = $t
 $s = Read-Store $t; $d = Build-TramiteData $t $s; $script:Tariff = $d.Tariff
 $byRow = @{}; foreach ($c in $s.Clients) { if (-not $byRow.ContainsKey([int]$c.Row)) { $byRow[[int]$c.Row] = $c } }
@@ -92,4 +96,39 @@ $w3 = Save-ClientsToFile $allIt -OnlyBroken
 $ta = $script:Tramites | Where-Object { $_.Id -eq 'autonomo' }; $script:T = $ta
 $sa = Read-Store $ta; $da = Build-TramiteData $ta $sa; $script:Tariff = $da.Tariff
 [void]$o.Append("W4 $(WR (Save-ClientToFile (Get-ClientOps $sa.Clients[0].F) $sa.Clients[0].Row "$($sa.Clients[0].F['name'])"))`r`n")
+$script:MissingTabs = @{}; $script:MissingWarned = @{}
+try {
+    $script:T = $script:Tramites | Where-Object { $_.Id -eq 'canje' }
+    $h = Open-Book
+    $d = Read-TramiteData $h
+    [void]$o.Append("C1 rows=$($d.Rows.Count) firstEmpty=$($d.FirstEmpty) nextId=$($d.NextId) def=$($d.DefaultPrice)`r`n")
+    foreach ($r in $d.Rows) {
+        $fe = ''; if ($r.Fecha) { $fe = $r.Fecha.ToString('yyyy-MM-dd', $inv) }
+        [void]$o.Append("CR $($r.Row) $($r.Id)|$($r.Name)|$($r.Doc)|$($r.Tipo)|$($r.Status)|$($r.Pay)|$(N $r.Pending)|$($r.Days)|$($r.Resp)|$(N $r.PriceV)|$(N $r.PaidV)|$(N $r.NetV)|$fe`r`n")
+    }
+    [string[]]$lk2 = @($d.Lists.Keys); [Array]::Sort($lk2, [StringComparer]::Ordinal)
+    foreach ($k in $lk2) { [void]$o.Append("CL $k=$(@($d.Lists[$k]) -join '|')`r`n") }
+    [string[]]$tk = @($d.Tariff.Keys); [Array]::Sort($tk, [StringComparer]::Ordinal)
+    foreach ($k in $tk) { [void]$o.Append("CT $k=$(N $d.Tariff[$k])`r`n") }
+    Close-Book $h $false
+    $s = Read-Store $script:T; $sd = Build-TramiteData $script:T $s; $script:Tariff = $sd.Tariff
+    $c13 = $s.Clients | Where-Object { $_.Row -eq 14 } | Select-Object -First 1
+    $v = @{}; foreach ($k in $c13.F.Keys) { $v[$k] = $c13.F[$k] }
+    $v['status'] = 'Finalizado'; $v['paystate'] = 'Pagado'; $v['obs'] = 'guardado con Excel'; $v['fres'] = (New-Object DateTime 2026, 11, 13)
+    $h = Open-Book -ForWrite
+    $fr = Save-Client $v 14 -ExpectName "$($v['name'])" -Handle $h
+    $vn = @{}; foreach ($f in $script:T.Fields) { $vn[$f.Key] = $null }
+    $vn['name'] = 'NUEVO CON EXCEL'; $vn['tipo'] = 'B (Coche)'; $vn['status'] = 'Documentación'; $vn['paystate'] = 'Pendiente'
+    $fn = Save-Client $vn $null -ExpectName 'NUEVO CON EXCEL' -IsNew -Handle $h
+    $script:T = $script:Tramites | Where-Object { $_.Id -eq 'autonomo' }
+    $sa = Read-Store $script:T; $script:Tariff = $sa.Meta.Tariff
+    $va = @{}; foreach ($k in $sa.Clients[0].F.Keys) { $va[$k] = $sa.Clients[0].F[$k] }
+    $fa = Save-Client $va $null -ExpectName "$($sa.Clients[0].F['name'])" -IsNew -Handle $h
+    Close-Book $h $true
+    [void]$o.Append("C2 $(WR $fr) $(WR $fn) $(WR $fa)`r`n")
+} catch {
+    [void]$o.Append("C! $($_.Exception.Message)`r`n")
+    [IO.File]::WriteAllText((Join-Path $TestDir 'ps_com_error.txt'), "$($_.Exception.Message)`r`nlínea $($_.InvocationInfo.ScriptLineNumber): $($_.InvocationInfo.Line)`r`n$($_.ScriptStackTrace)")
+    try { if ($h) { $h.Wb.Close($false); if ($h.Mine) { $h.Xl.Quit() } } } catch { }
+}
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

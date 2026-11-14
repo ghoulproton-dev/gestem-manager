@@ -92,6 +92,94 @@ namespace Gestem
             using (StreamWriter sw = new StreamWriter(e.Open(), new UTF8Encoding(false))) x.Save(sw);
         }
 
+        // calcChain.xml es la lista de Excel de las celdas con fórmula. Si una de esas celdas ya no tiene fórmula,
+        // Excel da el archivo por dañado y no lo abre. Se quita la lista entera: Excel la vuelve a crear sola.
+        public static bool RemoveCalcChain(ZipArchive zip)
+        {
+            ZipArchiveEntry cc = zip.GetEntry("xl/calcChain.xml");
+            if (cc == null) return false;
+            cc.Delete();
+            XmlDocument rels = ReadXml(zip, "xl/_rels/workbook.xml.rels");
+            if (rels != null)
+            {
+                List<XmlNode> kill = new List<XmlNode>();
+                foreach (XmlNode r in rels.DocumentElement.ChildNodes) if (r.LocalName == "Relationship" && ((XmlElement)r).GetAttribute("Type").EndsWith("/calcChain")) kill.Add(r);
+                foreach (XmlNode r in kill) rels.DocumentElement.RemoveChild(r);
+                WriteXml(zip, "xl/_rels/workbook.xml.rels", rels);
+            }
+            XmlDocument ct = ReadXml(zip, "[Content_Types].xml");
+            if (ct != null)
+            {
+                List<XmlNode> kill = new List<XmlNode>();
+                foreach (XmlNode o in ct.DocumentElement.ChildNodes) if (o.LocalName == "Override" && ((XmlElement)o).GetAttribute("PartName") == "/xl/calcChain.xml") kill.Add(o);
+                foreach (XmlNode o in kill) ct.DocumentElement.RemoveChild(o);
+                WriteXml(zip, "[Content_Types].xml", ct);
+            }
+            return true;
+        }
+
+        static readonly System.Text.RegularExpressions.Regex BadXmlNs = new System.Text.RegularExpressions.Regex(@"xmlns:(\w+)=""http://www\.w3\.org/XML/1998/namespace""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        // 1.7.2 y 1.7.3 podían dejar el .xlsx de forma que Excel no lo abre (calcChain.xml y «d1p1:space»):
+        // una vez por PC, con el archivo cerrado, se arreglan las dos cosas
+        public static void RepairExcelFile()
+        {
+            if (Config.Cur.ExcelRepaired) return;
+            string path = Config.Cur.ExcelPath ?? "";
+            if (path.Length == 0 || !File.Exists(path)) return;
+            try { using (FileStream probe = File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { } }
+            catch { App.Log("reparar Excel: el archivo está abierto, se hará otro día"); return; }
+            string tmp = Path.Combine(Path.GetTempPath(), "GESTEM_reparar_" + Guid.NewGuid().ToString("N") + ".xlsx");
+            File.Copy(path, tmp, true);
+            try
+            {
+                bool removed;
+                using (ZipArchive zip = ZipFile.Open(tmp, ZipArchiveMode.Update))
+                {
+                    removed = RemoveCalcChain(zip);
+                    List<ZipArchiveEntry> sheets = new List<ZipArchiveEntry>();
+                    foreach (ZipArchiveEntry en in zip.Entries) if (en.FullName.StartsWith("xl/worksheets/", StringComparison.OrdinalIgnoreCase) && en.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) && en.FullName.IndexOf('/', 14) < 0) sheets.Add(en);
+                    foreach (ZipArchiveEntry en in sheets)
+                    {
+                        string name = en.FullName; string txt;
+                        using (StreamReader sr = new StreamReader(en.Open(), Encoding.UTF8)) txt = sr.ReadToEnd();
+                        List<string> bad = new List<string>();
+                        foreach (System.Text.RegularExpressions.Match m in BadXmlNs.Matches(txt)) if (!bad.Contains(m.Groups[1].Value)) bad.Add(m.Groups[1].Value);
+                        if (bad.Count == 0) continue;
+                        foreach (string px in bad)
+                        {
+                            txt = txt.Replace(" xmlns:" + px + "=\"http://www.w3.org/XML/1998/namespace\"", "");
+                            txt = txt.Replace(px + ":space=", "xml:space=");
+                        }
+                        en.Delete();
+                        ZipArchiveEntry ne = zip.CreateEntry(name, CompressionLevel.Optimal);
+                        using (StreamWriter sw = new StreamWriter(ne.Open(), new UTF8Encoding(false))) sw.Write(txt);
+                        removed = true;
+                        App.Log("reparar Excel: " + name + " (" + bad.Count + " espacio(s) de nombres no válidos)");
+                    }
+                }
+                if (removed)
+                {
+                    using (ZipArchive chk = ZipFile.OpenRead(tmp))
+                    {
+                        if (chk.GetEntry("xl/workbook.xml") == null || chk.GetEntry("xl/calcChain.xml") != null) throw new GestemException("comprobación fallida");
+                        foreach (ZipArchiveEntry en in chk.Entries)
+                        {
+                            if (!(en.FullName.StartsWith("xl/worksheets/", StringComparison.OrdinalIgnoreCase) && en.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))) continue;
+                            string t2; using (StreamReader sr = new StreamReader(en.Open())) { t2 = sr.ReadToEnd(); XmlDocument xx = new XmlDocument(); xx.LoadXml(t2); }
+                            if (BadXmlNs.IsMatch(t2)) throw new GestemException("comprobación fallida");
+                        }
+                    }
+                    BackupExcel();
+                    File.Copy(tmp, path, true);
+                    App.Log("reparar Excel: archivo arreglado (Excel vuelve a crear calcChain.xml)");
+                }
+                Config.Cur.ExcelRepaired = true; Config.Save();
+            }
+            catch (Exception e) { App.Log("reparar Excel: " + e.Message); }
+            finally { try { File.Delete(tmp); } catch { } }
+        }
+
         class Ctx
         {
             public XmlDocument Doc; public Hashtable Rows; public XmlElement Sd; public List<string> Shared; public Tramite T;
@@ -292,7 +380,11 @@ namespace Gestem
                                 XmlElement isn = cx.Doc.CreateElement("is", NS); XmlElement tx = cx.Doc.CreateElement("t", NS);
                                 string sv = Ps.Str(op.Value);
                                 tx.InnerText = sv;
-                                if (sv != sv.Trim()) tx.SetAttribute("space", "http://www.w3.org/XML/1998/namespace", "preserve");
+                                if (sv != sv.Trim())
+                                {
+                                    // xml:space="preserve" (con SetAttribute(..., espacio de nombres) salía «d1p1:space» y Excel daba el archivo por dañado)
+                                    XmlAttribute sa = cx.Doc.CreateAttribute("xml", "space", "http://www.w3.org/XML/1998/namespace"); sa.Value = "preserve"; tx.Attributes.Append(sa);
+                                }
                                 isn.AppendChild(tx); c.AppendChild(isn);
                             }
                         }
@@ -303,6 +395,7 @@ namespace Gestem
                     else
                     {
                         WriteXml(zip, sheetPath, cx.Doc);
+                        RemoveCalcChain(zip);
                         // que Excel vuelva a calcular los totales al abrir
                         XmlNodeList calc = wbx.GetElementsByTagName("calcPr", NS);
                         if (calc.Count > 0) { ((XmlElement)calc[0]).SetAttribute("fullCalcOnLoad", "1"); WriteXml(zip, "xl/workbook.xml", wbx); }
@@ -313,7 +406,12 @@ namespace Gestem
                 if (sheetPath == null) return result;      // nada que cambiar en el archivo
                 // comprobación: el archivo nuevo se abre y la pestaña se lee bien
                 using (ZipArchive chk = ZipFile.OpenRead(tmp))
-                using (StreamReader sr = new StreamReader(chk.GetEntry(sheetPath).Open())) { XmlDocument xx = new XmlDocument(); xx.LoadXml(sr.ReadToEnd()); }
+                {
+                    string txt;
+                    using (StreamReader sr = new StreamReader(chk.GetEntry(sheetPath).Open())) { txt = sr.ReadToEnd(); XmlDocument xx = new XmlDocument(); xx.LoadXml(txt); }
+                    if (BadXmlNs.IsMatch(txt)) throw new GestemException("XML no válido para Excel");
+                    if (chk.GetEntry("xl/calcChain.xml") != null) throw new GestemException("calcChain.xml sigue en el archivo");
+                }
                 if (Config.Cur.Backup) BackupExcel();
                 File.Copy(tmp, path, true);      // si Excel lo acaba de abrir, falla aquí y se usa Excel
                 if (onlyBroken) App.Log(string.Format("Excel (directo): {0} celda(s) con SUM(...) copiada de la fila de totales, arreglada(s) · {1}", SumFixed, T.Sheet));

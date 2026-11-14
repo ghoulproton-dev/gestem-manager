@@ -9,7 +9,7 @@ namespace Gestem
     public class Config
     {
         public string ExcelPath = "", Language = "es", DefaultNationality = "MARROQUI", Tramite = "canje", LastUser = "";
-        public bool Backup = true, OpenAfterSave = false, SumsRepaired = false;
+        public bool Backup = true, OpenAfterSave = false, SumsRepaired = false, ExcelRepaired = false;
         public List<string> TabsChecked = new List<string>();
         public List<string> Colleagues = new List<string>(new string[] { "SAFAE", "CHAYMAE" });
         public string CompanyName = "", CompanyLogo = "", ExtBackupDir = "", LastExtBackup = "";
@@ -39,7 +39,7 @@ namespace Gestem
                     c.InvName = S(j, "InvName", c.InvName); c.InvActivity = S(j, "InvActivity", c.InvActivity);
                     c.InvNif = S(j, "InvNif", c.InvNif); c.InvAddress = S(j, "InvAddress", c.InvAddress);
                     c.InvTown = S(j, "InvTown", c.InvTown); c.InvIban = S(j, "InvIban", c.InvIban);
-                    c.SumsRepaired = B(j, "SumsRepaired", c.SumsRepaired);
+                    c.SumsRepaired = B(j, "SumsRepaired", c.SumsRepaired); c.ExcelRepaired = B(j, "ExcelRepaired", c.ExcelRepaired);
                 }
                 catch (Exception ex) { App.Log("config ilegible: " + ex.Message); }
             }
@@ -58,7 +58,7 @@ namespace Gestem
             o["CompanyName"] = c.CompanyName; o["CompanyLogo"] = c.CompanyLogo; o["ExtBackupDir"] = c.ExtBackupDir;
             o["LastExtBackup"] = c.LastExtBackup; o["InvName"] = c.InvName; o["InvActivity"] = c.InvActivity;
             o["InvNif"] = c.InvNif; o["InvAddress"] = c.InvAddress; o["InvTown"] = c.InvTown; o["InvIban"] = c.InvIban;
-            o["SumsRepaired"] = c.SumsRepaired;
+            o["SumsRepaired"] = c.SumsRepaired; o["ExcelRepaired"] = c.ExcelRepaired;
             File.WriteAllText(App.CfgPath, Json.Write(o), new UTF8Encoding(true));
         }
 
