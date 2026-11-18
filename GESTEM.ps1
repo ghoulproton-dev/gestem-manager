@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.8.2'
+$script:AppVersion = '1.9.0'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:RepoApi    = 'https://api.github.com/repos/ghoulproton-dev/gestem-manager'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -148,8 +148,10 @@ function New-GenTramite([string]$Id, [string]$Sheet, [hashtable]$Title, [array]$
     $letters = @('F', 'G', 'H', 'I')
     for ($k = 0; $k -lt $Extras.Count; $k++) {
         $ex = $Extras[$k]
-        $fx = @{ Key = ('x' + $letters[$k]); Col = $letters[$k]; Section = 'proc'; KeepCase = $true; Label = @{ es = $ex[0] } }
+        $fx = @{ Key = ('x' + $letters[$k]); Col = $letters[$k]; Section = 'proc'; KeepCase = $true; Label = $(if ($ex[0] -is [hashtable]) { $ex[0] } else { @{ es = $ex[0] } }) }
         if ($ex[1]) { $fx.Type = 'ComboEdit'; $fx.List = ('fixed:' + $ex[1]) } else { $fx.Type = 'Text' }
+        if ($ex.Count -gt 2 -and $ex[2]) { $fx.Type = $ex[2] }    # p. ej. 'Date'
+        if ($ex[0] -match '^Contraseña') { $fx.Local = $true }    # contraseñas: solo en este PC, nunca se suben a Firebase
         $list.Add($fx)
     }
     $list.Add(@{ Key='status'; Col='N'; Type='Pills'; Section='proc'; Span=2; List='excel:N'; Colored=$true; Label=(New-Label 'Estado del trámite' 'Procedure status' 'État de la démarche' 'حالة الإجراء') })
@@ -193,6 +195,23 @@ $script:Tramites += New-GenTramite 'dispensa' 'DISPENSA EXAMEN' (New-Label 'Disp
     @('Examen', 'CCSE|DELE A2|Ambos'), @('Motivo', 'Edad|Estudios en España|Discapacidad|Otro'), @('Nº expediente', ''), @('Contraseña', ''))
 $script:Tramites += New-GenTramite 'visado' 'VISADO ESTUDIOS' (New-Label 'Visado de estudios' 'Student visa' 'Visa étudiant' 'تأشيرة الدراسة') @(
     @('Centro de estudios', ''), @('Consulado', ''), @('Fecha de cita', ''), @('Nº expediente', ''))
+# requerimientos: plazo de 10 días hábiles para responder (la fecha límite la calcula GESTEM, no se escribe)
+$reqT = New-GenTramite 'requerimiento' 'REQUERIMIENTOS' (New-Label 'Requerimientos' 'Requests for documents (requerimientos)' 'Requêtes (requerimientos)' 'طلبات الاستكمال (requerimientos)') @(
+    @((New-Label 'Fecha de notificación' 'Notification date' 'Date de notification' 'تاريخ الإشعار'), '', 'Date'),
+    @((New-Label 'Fecha de apertura' 'Opening date' 'Date d''ouverture' 'تاريخ الفتح'), '', 'Date'),
+    @((New-Label 'Fecha de respuesta' 'Reply date' 'Date de réponse' 'تاريخ الرد'), '', 'Date'),
+    @((New-Label 'Estado requerimiento' 'Request status' 'État de la requête' 'حالة الطلب'), 'Notificado|Abierto|Respondido|Cerrado'))
+$reqList = New-Object System.Collections.Generic.List[object]
+foreach ($f in $reqT.Fields) {
+    $reqList.Add($f)
+    if ($f.Key -eq 'xI') { $reqList.Add(@{ Key = 'flim'; Col = $null; Type = 'Date'; Section = 'proc'; ReadOnly = $true
+        Label = (New-Label 'Fecha límite (10 días hábiles)' 'Deadline (10 working days)' 'Date limite (10 jours ouvrés)' 'آخر أجل (10 أيام عمل)') }) }
+}
+$reqT.Fields = $reqList.ToArray()
+$reqT.HandCols = @{ 1 = 'name'; 2 = 'xF'; 3 = 'xH' }    # pestaña sin cabecera de nombre: A nombre, B notificación, C respuesta
+$reqT.HandMDY = $true                                     # en esa pestaña las fechas escritas como texto son mm/dd/aaaa
+$script:Tramites += $reqT
+$script:Tramites += New-GenTramite 'regularizacion' 'REGULARIZACION EXTRAORDINARIA' (New-Label 'Regularización extraordinaria' 'Extraordinary regularisation' 'Régularisation extraordinaire' 'التسوية الاستثنائية') @()
 # tasas: lee la pestaña «TASA» del Excel; son gastos, no ingresos, así que no cuentan en el resumen económico
 $tasasT = New-GenTramite 'tasas' 'TASA' (New-Label 'Tasas' 'Fees (tasas)' 'Taxes (tasas)' 'الرسوم') @(
     @('Tipo de tasa', 'DT21|Larga duración|Hijo de residente|Otro'), @('Pagada', ''), @('Presentada', ''), @('Quién la pagó', 'Gestoría|Cliente'))
@@ -386,6 +405,8 @@ $script:TextMore = @{
   conflictAsk = '{0} cambió este cliente a las {1}, mientras lo tenías abierto. ¿Guardar igualmente tus cambios encima de los suyos?'
   someoneElse = 'Otra persona'
   liveUpdated = '↻ Lista actualizada con cambios de otro PC'
+  fbRenum = 'Otro PC creó antes un cliente con el nº {0}. El cliente nuevo de este PC pasa a ser el {1}.'
+  fbClash = 'En los datos compartidos, el nº {0} es otro cliente. {2} pasa a ser el nº {1}.'
   loading = 'Cargando los datos…'
   savingMsg = 'Guardando…'
   errStoreBusy = 'Otro PC está guardando en este momento. Vuelve a intentarlo en unos segundos.'
@@ -395,7 +416,7 @@ $script:TextMore = @{
   importDone = '✓ Datos importados de nuevo desde el Excel'
   savedNoExcel = '✓ Guardado en GESTEM (exp. {0}). El Excel se actualizará en cuanto se pueda abrir.'
   btnImport = 'Volver a importar del Excel'
-  dataNote = 'GESTEM guarda los clientes en su propia carpeta «GESTEM datos», junto al Excel, y actualiza el Excel en cada guardado.'
+  dataNote = 'GESTEM guarda los clientes en su propia carpeta «GESTEM datos» y los comparte entre los PC por internet. El Excel ya no se modifica: solo se lee al empezar un trámite vacío.'
   calToday = 'Hoy'
   btnDocs = 'Documentos'
   btnReceipt = 'Factura PDF'
@@ -469,6 +490,11 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'Deshacer'
   cmUndone = 'Cambio deshecho'
+  cmDelete = 'Eliminar cliente'
+  reqBadge = '{0} requerimiento(s) por vencer'
+  reqBadgeLate = '{0} requerimiento(s) vencido(s) · {1} por vencer'
+  delAsk = '¿Eliminar el cliente {0} ({1})? Desaparece de la lista en todos los PC. Se puede deshacer con «Deshacer» o Ctrl+Z.'
+  delDone = 'Cliente eliminado: {0}'
   undoNone = 'No hay nada que deshacer'
   undoOther = 'Para deshacer, vuelve al trámite donde hiciste el cambio'
   cmResp = 'Asignar responsable'
@@ -493,6 +519,8 @@ $script:TextMore = @{
   conflictAsk = '{0} changed this client at {1} while you had it open. Save your changes over theirs anyway?'
   someoneElse = 'Someone else'
   liveUpdated = '↻ List updated with changes from another PC'
+  fbRenum = 'Another PC created a client with nº {0} first. The new client on this PC is now nº {1}.'
+  fbClash = 'In the shared data, nº {0} is a different client. {2} is now nº {1}.'
   loading = 'Loading data…'
   savingMsg = 'Saving…'
   errStoreBusy = 'Another PC is saving right now. Try again in a few seconds.'
@@ -502,7 +530,7 @@ $script:TextMore = @{
   importDone = '✓ Data imported again from the Excel file'
   savedNoExcel = '✓ Saved in GESTEM (case {0}). The Excel file will be updated as soon as it can be opened.'
   btnImport = 'Import again from Excel'
-  dataNote = 'GESTEM keeps clients in its own «GESTEM datos» folder next to the Excel file, and updates the Excel on every save.'
+  dataNote = 'GESTEM keeps clients in its own «GESTEM datos» folder and shares them between PCs over the internet. The Excel file is no longer changed: it is only read when a procedure starts empty.'
   calToday = 'Today'
   btnDocs = 'Documents'
   btnReceipt = 'PDF invoice'
@@ -576,6 +604,11 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'Undo'
   cmUndone = 'Change undone'
+  cmDelete = 'Delete client'
+  reqBadge = '{0} request(s) due soon'
+  reqBadgeLate = '{0} request(s) overdue · {1} due soon'
+  delAsk = 'Delete client {0} ({1})? It disappears from the list on every PC. You can undo it with «Undo» or Ctrl+Z.'
+  delDone = 'Client deleted: {0}'
   undoNone = 'Nothing to undo'
   undoOther = 'To undo, go back to the procedure where you made the change'
   cmResp = 'Assign handler'
@@ -600,6 +633,8 @@ $script:TextMore = @{
   conflictAsk = '{0} a modifié ce client à {1} pendant que vous l''aviez ouvert. Enregistrer quand même vos modifications par-dessus les siennes ?'
   someoneElse = 'Quelqu''un d''autre'
   liveUpdated = '↻ Liste mise à jour avec des changements d''un autre PC'
+  fbRenum = 'Un autre PC a créé avant un client avec le nº {0}. Le nouveau client de ce PC devient le nº {1}.'
+  fbClash = 'Dans les données partagées, le nº {0} est un autre client. {2} devient le nº {1}.'
   loading = 'Chargement des données…'
   savingMsg = 'Enregistrement…'
   errStoreBusy = 'Un autre PC enregistre en ce moment. Réessayez dans quelques secondes.'
@@ -609,7 +644,7 @@ $script:TextMore = @{
   importDone = '✓ Données réimportées depuis l''Excel'
   savedNoExcel = '✓ Enregistré dans GESTEM (dossier {0}). L''Excel sera mis à jour dès qu''il pourra être ouvert.'
   btnImport = 'Réimporter depuis l''Excel'
-  dataNote = 'GESTEM garde les clients dans son propre dossier « GESTEM datos », à côté de l''Excel, et met l''Excel à jour à chaque enregistrement.'
+  dataNote = 'GESTEM enregistre les clients dans son propre dossier « GESTEM datos » et les partage entre les PC par internet. L''Excel n''est plus modifié : il est seulement lu quand une démarche commence vide.'
   calToday = 'Aujourd''hui'
   btnDocs = 'Documents'
   btnReceipt = 'Facture PDF'
@@ -683,6 +718,11 @@ $script:TextMore = @{
   cmDone = '✓ {0} : {1}'
   cmUndo = 'Annuler'
   cmUndone = 'Modification annulée'
+  cmDelete = 'Supprimer le client'
+  reqBadge = '{0} requête(s) bientôt échue(s)'
+  reqBadgeLate = '{0} requête(s) échue(s) · {1} bientôt'
+  delAsk = 'Supprimer le client {0} ({1}) ? Il disparaît de la liste sur tous les PC. Vous pouvez annuler avec « Annuler » ou Ctrl+Z.'
+  delDone = 'Client supprimé : {0}'
   undoNone = 'Rien à annuler'
   undoOther = 'Pour annuler, revenez à la démarche où vous avez fait le changement'
   cmResp = 'Attribuer un responsable'
@@ -707,6 +747,8 @@ $script:TextMore = @{
   conflictAsk = '{0} عدّل هذا العميل في {1} بينما كان مفتوحًا لديك. هل تريد حفظ تغييراتك فوق تغييراته على أي حال؟'
   someoneElse = 'شخص آخر'
   liveUpdated = '↻ تم تحديث القائمة بتغييرات من حاسوب آخر'
+  fbRenum = 'أنشأ حاسوب آخر قبل ذلك عميلاً بالرقم {0}. العميل الجديد في هذا الحاسوب أصبح رقمه {1}.'
+  fbClash = 'في البيانات المشتركة، الرقم {0} لعميل آخر. أصبح رقم {2} هو {1}.'
   loading = 'جارٍ تحميل البيانات…'
   savingMsg = 'جارٍ الحفظ…'
   errStoreBusy = 'حاسوب آخر يحفظ الآن. حاول مرة أخرى بعد ثوانٍ.'
@@ -716,7 +758,7 @@ $script:TextMore = @{
   importDone = '✓ أُعيد استيراد البيانات من ملف Excel'
   savedNoExcel = '✓ حُفظ في GESTEM (الملف {0}). سيُحدَّث ملف Excel فور إمكان فتحه.'
   btnImport = 'إعادة الاستيراد من Excel'
-  dataNote = 'يحفظ GESTEM العملاء في مجلده الخاص «GESTEM datos» بجانب ملف Excel، ويحدّث Excel عند كل حفظ.'
+  dataNote = 'يحفظ GESTEM العملاء في مجلده الخاص «GESTEM datos» ويشاركهم بين الحواسيب عبر الإنترنت. لم يعد ملف Excel يُعدَّل: يُقرأ فقط عندما يبدأ إجراء فارغًا.'
   calToday = 'اليوم'
   btnDocs = 'المستندات'
   btnReceipt = 'فاتورة PDF'
@@ -790,6 +832,11 @@ $script:TextMore = @{
   cmDone = '✓ {0}: {1}'
   cmUndo = 'تراجع'
   cmUndone = 'تم التراجع عن التغيير'
+  cmDelete = 'حذف العميل'
+  reqBadge = '{0} طلب(ات) يقترب أجلها'
+  reqBadgeLate = '{0} طلب(ات) فات أجلها · {1} يقترب أجلها'
+  delAsk = 'حذف العميل {0} ({1})؟ سيختفي من القائمة على كل الحواسيب. يمكنك التراجع بـ «تراجع» أو Ctrl+Z.'
+  delDone = 'تم حذف العميل: {0}'
   undoNone = 'لا يوجد ما يمكن التراجع عنه'
   undoOther = 'للتراجع، ارجع إلى المعاملة التي أجريت فيها التغيير'
   cmResp = 'تعيين المسؤول'
@@ -935,7 +982,7 @@ function Get-FieldLabel($field) { $l = $field.Label[$script:Cfg.Language]; if (-
 #  AJUSTES DEL PROGRAMA (config.json)
 # =====================================================================
 function Load-Config {
-    $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = ''
+    $cfg = [ordered]@{ FbSync = $true; ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = ''
              InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = ''; SumsRepaired = $false; ExcelRepaired = $false; TasasCanje = 'B=33; C=100; D=100'; TradProfit = [double]3; Collaborators = @(); UpdateKey = '' }    # emisor por defecto de las facturas: la gestora
     if (Test-Path $script:CfgPath) {
         try {
@@ -944,7 +991,15 @@ function Load-Config {
         } catch { Write-Log "config ilegible: $_" }
     }
     if (-not $script:Langs.Contains($cfg.Language)) { $cfg.Language = 'es' }
+    # sincronización apagada: también queda en un archivo aparte, porque una versión anterior (1.8.x) borra FbSync al guardar config.json
+    if (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $script:CfgPath) 'firebase_apagado.txt')) { $cfg.FbSync = $false }
     $script:Cfg = $cfg
+}
+function Set-FbSyncSwitch([bool]$on) {
+    $script:Cfg.FbSync = $on; Save-Config
+    $f = Join-Path (Split-Path -Parent $script:CfgPath) 'firebase_apagado.txt'
+    if ($on) { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
+    else { Set-Content -LiteralPath $f -Value 'GESTEM no sincroniza con Firebase en este PC (Ajustes de admin).' -Encoding UTF8 }
 }
 function Save-Config { ($script:Cfg | ConvertTo-Json) | Set-Content -Path $script:CfgPath -Encoding UTF8 }
 
@@ -1027,6 +1082,7 @@ function Test-ExcelBusyError($e) {
 $script:SheetAliases = @{
     nacionalidad = @('NACIONALIDAD ESPAÑOLA'); autonomo = @('AUTÓNOMOS'); certificado = @('CERT DIG', 'CERTIFICADO')
     dispensa = @('DISPENSA'); visado = @('VISADO'); tasas = @('TASAS'); extranjeria = @('EXTRANJERÍA'); homologacion = @('HOMOLOGACION')
+    requerimiento = @('REQUERIMIENTO'); regularizacion = @('REGULARIZACION', 'REGULARIZACIONES')
 }
 function Test-GestemLayout($ws, $t) {
     # ¿la pestaña tiene el formato de GESTEM? (cabecera «Cliente»/«Nombre…» en la columna del nombre, fila 10)
@@ -1085,7 +1141,7 @@ function New-EmptyStore($t, $h) {
     if ($h -and $t.PriceKey) { try { $price = Read-TramitePrice $h.Wb $t.PriceKey } catch { } }
     $meta = @{ Lists = @{ 'excel:N' = $script:GenStatusList; 'excel:M' = @('Pagado', 'Parcial', 'Pendiente') }
                Tariff = @{}; TariffNet = @{}; DefaultPrice = $price; IdPrefix = (Get-DefaultIdPrefix $t); IdWidth = 3 }
-    return @{ Meta = $meta; Clients = (New-Object System.Collections.Generic.List[object]); Adopted = (New-Object System.Collections.Generic.List[string]) }
+    return @{ Meta = $meta; Clients = (New-Object System.Collections.Generic.List[object]); Adopted = (New-Object System.Collections.Generic.List[string]); HandDel = @() }
 }
 function New-TramiteSheet($h, $t) {
     # crea en el Excel la pestaña del trámite (cabeceras, nº de expediente y fórmulas básicas)
@@ -1239,6 +1295,10 @@ function Test-CellsGestem($cells, $t) {
 function ConvertTo-HandKey([string]$s) { return ((ConvertTo-SheetKey $s) -replace '[^A-Z0-9 ]', ' ' -replace '\s+', ' ').Trim() }
 function Get-HandRole([string]$k, $t) {
     # qué es cada columna según su cabecera (sin tildes ni mayúsculas)
+    if ($t.Id -eq 'requerimiento') {
+        if ($k -match 'NOTIFICA') { return 'xF' }; if ($k -match 'APERTURA|ABIERT') { return 'xG' }; if ($k -match 'RESPUEST') { return 'xH' }
+        if ($k -match 'LIMITE|PLAZO') { return 'obs' }    # la fecha límite la calcula GESTEM
+    }
     if ($k -match '^(NOMBRE|CLIENTE)') { return 'name' }
     if ($k -match '\b(NIE|DNI|PASAPORTE|DOCUMENTO)\b') { return 'doc' }
     if ($k -match 'TELEFONO|MOVIL|\bTLF\b') { return 'tel' }
@@ -1291,13 +1351,42 @@ function Format-HandText($v) {
     if ($v -is [double]) { return $(if ($v -eq [Math]::Floor($v)) { ([long]$v).ToString() } else { $v.ToString('0.##', [Globalization.CultureInfo]::InvariantCulture) }) }
     return ("$v" -replace '\s+', ' ').Trim()
 }
-function ConvertFrom-HandDate($v) {
-    # fecha de Excel (número) o «dd/mm/aaaa» dentro de un texto
+function ConvertFrom-HandDate($v, [switch]$MDY) {
+    # fecha de Excel (número) o «dd/mm/aaaa» dentro de un texto (-MDY: «mm/dd/aaaa»)
     if ($v -is [double]) { if ($v -ge 20000 -and $v -le 80000) { return [DateTime]::FromOADate($v).Date }; return $null }
     if ("$v" -match '(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})') {
-        try { return (New-Object DateTime ([int]$Matches[3]), ([int]$Matches[2]), ([int]$Matches[1])) } catch { }
+        $dd = [int]$Matches[1]; $mm = [int]$Matches[2]; if ($MDY) { $dd = [int]$Matches[2]; $mm = [int]$Matches[1] }
+        try { return (New-Object DateTime ([int]$Matches[3]), $mm, $dd) } catch { }
     }
     return $null
+}
+function Get-ReqDeadline($apertura, $notif) {
+    # 10 días hábiles (lunes a viernes) contando desde el día siguiente a la apertura, o a la notificación si no hay apertura
+    # shortcut: no cuenta festivos (nacionales ni locales); añadir una lista de festivos si hace falta
+    $d = $(if ($apertura -is [DateTime]) { $apertura } elseif ($notif -is [DateTime]) { $notif } else { $null })
+    if ($null -eq $d) { return $null }
+    $d = $d.Date; $n = 0
+    while ($n -lt 10) { $d = $d.AddDays(1); if ($d.DayOfWeek -ne 'Saturday' -and $d.DayOfWeek -ne 'Sunday') { $n++ } }
+    return $d
+}
+function Get-WorkDaysUntil([DateTime]$from, [DateTime]$to) {
+    # días hábiles después de $from hasta $to (incluido); 0 si $to no es posterior
+    $n = 0; $d = $from.Date
+    while ($d -lt $to.Date) { $d = $d.AddDays(1); if ($d.DayOfWeek -ne 'Saturday' -and $d.DayOfWeek -ne 'Sunday') { $n++ } }
+    return $n
+}
+function Update-ReqDeadline($t, [hashtable]$FV) { if (@($t.Fields | Where-Object { $_.Key -eq 'flim' }).Count) { $FV['flim'] = Get-ReqDeadline $FV['xG'] $FV['xF'] } }
+function Get-ReqAlerts($rows, [DateTime]$today) {
+    # requerimientos abiertos (sin respuesta ni cerrados) que vencen en 3 días hábiles o menos, y cuántos ya vencieron
+    $due = 0; $late = 0
+    foreach ($r in $rows) {    # sin @(): con una List[object] da «los tipos de argumento no coinciden» en PS 5.1
+        if (-not $r) { continue }; $F = $r.Data
+        if ("$($F['xI'])" -in @('Respondido', 'Cerrado') -or $F['xH'] -is [DateTime]) { continue }
+        $dl = Get-ReqDeadline $F['xG'] $F['xF']
+        if ($null -eq $dl) { continue }
+        if ($dl -lt $today.Date) { $late++ } elseif ((Get-WorkDaysUntil $today $dl) -le 3) { $due++ }
+    }
+    return @{ Due = $due; Late = $late }
 }
 function Get-HandNumber($v) {
     if ($v -is [double]) { return [double]$v }
@@ -1339,7 +1428,11 @@ function ConvertFrom-HandRow($row, $lay, $t) {
             'doc'     { $FV['doc'] = $txt.ToUpper() }
             'tel'     { $FV['tel'] = $txt }
             'nat'     { $FV['nat'] = $txt.ToUpper() }
-            'x*'      { $FV[$role] = $txt }
+            'x*'      {
+                $xf = $t.Fields | Where-Object { $_.Key -eq $role } | Select-Object -First 1
+                if ($xf.Type -eq 'Date') { $d = ConvertFrom-HandDate $v -MDY:([bool]$t.HandMDY); if ($d) { $FV[$role] = $d } else { $notes.Add($txt) } }
+                else { $FV[$role] = $txt }
+            }
             'price'   { $n = Get-HandNumber $v; if ($null -ne $n) { $price = $n } else { $notes.Add($txt) } }
             'paid'    { $n = Get-HandNumber $v; if ($null -ne $n) { $paid = $n } else { $payTexts.Add($txt); $notes.Add($txt) } }
             'pend'    { $n = Get-HandNumber $v; if ($null -ne $n) { $pend = $n } else { $notes.Add($txt) } }
@@ -1388,6 +1481,7 @@ function ConvertFrom-HandRow($row, $lay, $t) {
         elseif ($all -match 'PAGAD') { $FV['tasa'] = 'Sí' }
     }
     if ($notes.Count) { $FV['obs'] = ($notes | Select-Object -Unique) -join ' · ' }
+    Update-ReqDeadline $t $FV
     return $FV
 }
 function ConvertFrom-HandSheet($cells, $t) {
@@ -1439,7 +1533,7 @@ function Sync-HandmadeTabs([switch]$Force) {
             if (-not $s -and $recs.Count -eq 0) { continue }
             if (-not $s) { $s = New-EmptyStore $t $null }
             # clientes de la pestaña hecha a mano que ya se editaron en GESTEM: ahora son de GESTEM, no se vuelven a leer
-            $adoptedKeys = @(@($s.Adopted) | ForEach-Object { ConvertTo-HandKey "$_" })
+            $adoptedKeys = @(@($s.Adopted) | ForEach-Object { ConvertTo-HandKey "$_" }) + @(@($s.HandDel) | Where-Object { $_ -and $_.On } | ForEach-Object { $_.Key })
             if ($adoptedKeys.Count) {
                 $f2 = New-Object System.Collections.Generic.List[object]
                 foreach ($c in $recs) { if ($adoptedKeys -notcontains (ConvertTo-HandKey "$($c.F['name'])")) { $f2.Add($c) } }
@@ -1575,7 +1669,7 @@ function Read-TramiteData($h) {
         if ($T.StatusColors.ContainsKey($status)) { $color = $T.StatusColors[$status] }
         $rows.Add([pscustomobject]@{
             Row = $rec.Row; Id = "$($vals[$i, (ColNum $T.IdCol)])"; Name = $name; Doc = "$($rec['doc'])"
-            Tipo = $(if ($rec.ContainsKey('tipo')) { "$($rec['tipo'])" } else { "$($rec['xF'])" }); Status = $status; Color = $color; Pay = "$($rec['paystate'])"
+            Tipo = $(if ($rec.ContainsKey('tipo')) { "$($rec['tipo'])" } else { $(if ($rec['xF'] -is [DateTime]) { $rec['xF'].ToString('dd/MM/yyyy') } else { "$($rec['xF'])" }) }); Status = $status; Color = $color; Pay = "$($rec['paystate'])"
             Pending = $(if ($pend -is [double]) { $pend } else { 0 })
             PendingText = $(if ($pend -is [double] -and $pend -gt 0) { Format-Money $pend } else { '' })
             Days = $(if ($days -is [double]) { [int]$days } else { '' })
@@ -2104,24 +2198,48 @@ function Read-Store($t) {
     if ($j.meta.tariffNet) { foreach ($pr in $j.meta.tariffNet.PSObject.Properties) { $meta.TariffNet[$pr.Name] = [double]$pr.Value } }
     if ($null -ne $j.meta.defaultPrice) { $meta.DefaultPrice = [double]$j.meta.defaultPrice }
     $clients = New-Object System.Collections.Generic.List[object]
+    $md5 = [Security.Cryptography.MD5]::Create(); $seen = New-Object System.Collections.Generic.HashSet[string]
     foreach ($c in @($j.clients)) {
         if (-not $c) { continue }
         $FV = @{}
         foreach ($f in $t.Fields) { $FV[$f.Key] = ConvertFrom-StoreValue $f $c.f.($f.Key) }
-        $clients.Add(@{ Row = [int]$c.row; Id = "$($c.id)"; F = $FV; Sync = [bool]$c.sync; New = [bool]$c.nuevo; Updated = "$($c.updated)"; By = "$($c.by)" })
+        # id único para Firebase; los clientes de antes de Firebase lo sacan de su nº, así todos los PC dan el mismo
+        $row = [int]$c.row; $uid = "$($c.uid)"; $h = $null
+        if ($row -lt $script:HandRowBase) {
+            if (-not $uid) { $uid = $(if ("$($c.id)") { "$($t.Id)-$($c.id)" } else { "$($t.Id)-r$row" }) -replace '[^\w-]', '_' }
+            if (-not $seen.Add($uid)) { $uid = [guid]::NewGuid().ToString('N') }
+            $h = Get-FbHash $md5 (Get-FbKey $c.id $c.borrado) @(foreach ($f in (Get-FbFields $t)) { $c.f.($f.Key) })
+        }
+        $del = $null; if ($c.borrado) { $del = @{ By = "$($c.borrado.by)"; At = "$($c.borrado.at)" } }    # eliminado: se queda como marca (no vuelve)
+        $clients.Add(@{ Row = $row; Id = "$($c.id)"; Uid = $uid; H = $h; F = $FV; Sync = [bool]$c.sync; New = [bool]$c.nuevo; Updated = "$($c.updated)"; By = "$($c.by)"; Del = $del })
     }
     $adopted = New-Object System.Collections.Generic.List[string]
     foreach ($a in @($j.adoptados)) { if ("$a".Trim()) { $adopted.Add("$a") } }
-    return @{ Meta = $meta; Clients = $clients; Adopted = $adopted }
+    # clientes de pestañas hechas a mano eliminados en GESTEM (por nombre); On = $false si se deshizo
+    $handDel = @(foreach ($e in @($j.borradosMano)) { if ($e -and $e.uid) { @{ Uid = "$($e.uid)"; Key = "$($e.key)"; Name = "$($e.name)"; On = [bool]$e.on; By = "$($e.by)"; At = "$($e.at)" } } })    # array: @() sobre una List vacía falla en PS 5.1
+    return @{ Meta = $meta; Clients = $clients; Adopted = $adopted; HandDel = $handDel }
 }
 function Write-Store($t, $store) {
     $p = Get-StorePath $t
-    $fields = @{}
     $list = New-Object System.Collections.Generic.List[object]
+    $md5 = [Security.Cryptography.MD5]::Create(); $prev = $null; $st = $null
     foreach ($c in ($store.Clients | Sort-Object { $_.Row })) {
-        $o = [ordered]@{}
-        foreach ($f in $t.Fields) { $o[$f.Key] = ConvertTo-StoreValue $f $c.F[$f.Key] }
-        $list.Add([ordered]@{ row = $c.Row; id = $c.Id; sync = [bool]$c.Sync; nuevo = [bool]$c.New; updated = $c.Updated; by = $c.By; f = $o })
+        $o = Get-StoreFields $t $c
+        if ([int]$c.Row -lt $script:HandRowBase) {
+            if (-not $c.Uid) {
+                # cliente nuevo o vuelto a importar del Excel: conserva el id si es el mismo cliente en la misma fila
+                if ($null -eq $prev) { $prev = @{}; try { $ps = Read-Store $t; if ($ps) { foreach ($x in $ps.Clients) { $prev[[int]$x.Row] = $x } } } catch { } }
+                $x = $prev[[int]$c.Row]
+                if ($x -and $x.Uid -and "$($x.F['name'])" -eq "$($c.F['name'])") { $c.Uid = $x.Uid; $c.H = $x.H } else { $c.Uid = [guid]::NewGuid().ToString('N') }
+            }
+            # cambiado en este PC: queda «por enviar» a Firebase (lo que llega de Firebase no se reenvía)
+            $h = Get-FbHash $md5 (Get-FbKey $c.Id $c.Del) @(foreach ($f in (Get-FbFields $t)) { $o[$f.Key] })
+            if ($h -ne $c.H -and -not $script:FbApplying) { if ($null -eq $st) { $st = Get-FbState }; $st.Pend[$c.Uid] = @{ T = $t.Id; H = $h; N = ($st.Pend.ContainsKey($c.Uid) -and $st.Pend[$c.Uid].N) } }
+            $c.H = $h
+        }
+        $o2 = [ordered]@{ row = $c.Row; id = $c.Id; uid = $c.Uid; sync = [bool]$c.Sync; nuevo = [bool]$c.New; updated = $c.Updated; by = $c.By; f = $o }
+        if ($c.Del) { $o2.borrado = [ordered]@{ by = $c.Del.By; at = $c.Del.At } }
+        $list.Add($o2)
     }
     $m = $store.Meta
     $obj = [ordered]@{
@@ -2129,6 +2247,7 @@ function Write-Store($t, $store) {
         meta = [ordered]@{ idPrefix = $m.IdPrefix; idWidth = $m.IdWidth; defaultPrice = $m.DefaultPrice; tariff = $m.Tariff; tariffNet = $m.TariffNet; lists = $m.Lists }
         clients = $list.ToArray()
         adoptados = @($store.Adopted | Where-Object { "$_".Trim() })
+        borradosMano = @(foreach ($e in @($store.HandDel)) { if ($e) { [ordered]@{ uid = $e.Uid; key = $e.Key; name = $e.Name; on = [bool]$e.On; by = $e.By; at = $e.At } } })
     }
     $json = $obj | ConvertTo-Json -Depth 8
     $tmp = "$p.tmp"
@@ -2144,10 +2263,26 @@ function Write-Store($t, $store) {
     } else {
         Move-Item -LiteralPath $tmp -Destination $p -Force
     }
+    if ($st) { Save-FbState $st }
+}
+function Get-StoreFields($t, $c, [switch]$Fb) { $o = [ordered]@{}; foreach ($f in $(if ($Fb) { Get-FbFields $t } else { $t.Fields })) { $o[$f.Key] = ConvertTo-StoreValue $f $c.F[$f.Key] }; return $o }
+function Get-FbFields($t) { return @($t.Fields | Where-Object { -not $_.Local }) }    # lo que se sube a Firebase (sin contraseñas)
+function Get-FbKey($id, $del) { if ($del) { return "$id" + [char]30 + 'BORRADO' }; return "$id" }    # el nº + si está eliminado, para la huella
+function Add-FbPend($t, [string]$uid, [string]$h) { $st = Get-FbState; $st.Pend[$uid] = @{ T = $t.Id; H = $h; N = $false }; Save-FbState $st }
+function Get-HandDelUid($t, [string]$key, [string]$prefix = 'hand-') {
+    # id en Firebase de un cliente de una pestaña hecha a mano (eliminado: hand-, pasado a GESTEM al unirse: mano-): el mismo en todos los PC (trámite + nombre)
+    $md5 = [Security.Cryptography.MD5]::Create()
+    return $prefix + $t.Id + '-' + (($md5.ComputeHash([Text.Encoding]::UTF8.GetBytes($key)) | ForEach-Object { $_.ToString('x2') }) -join '')
+}
+function Get-FbHash($md5, $id, $vals) {
+    # huella del cliente (nº + datos): si cambia, hay que enviarlo
+    $s = "$id" + [char]31 + (@($vals) -join [char]31)
+    return [Convert]::ToBase64String($md5.ComputeHash([Text.Encoding]::UTF8.GetBytes($s)))
 }
 
 # --- valores que en el Excel calculan sus fórmulas ---
 function Resolve-Record($t, [hashtable]$FV, $meta) {
+    Update-ReqDeadline $t $FV
     $natF = $t.Fields | Where-Object { $_.Role -eq 'nationality' } | Select-Object -First 1
     if ($natF -and -not "$($FV[$natF.Key])".Trim() -and "$($FV['name'])".Trim()) { $FV[$natF.Key] = $t.DefaultNationality }
     $tipo = "$($FV['tipo'])"
@@ -2182,7 +2317,7 @@ function New-RowObject($t, $c, $meta) {
     if ($t.StatusColors.ContainsKey($status)) { $color = $t.StatusColors[$status] }
     return [pscustomobject]@{
         Row = $c.Row; Id = $c.Id; Name = "$($FV['name'])"; Doc = "$($FV['doc'])"
-        Tipo = $(if ($FV.ContainsKey('tipo')) { "$($FV['tipo'])" } else { "$($FV['xF'])" }); Status = $status; Color = $color; Pay = $ps
+        Tipo = $(if ($FV.ContainsKey('tipo')) { "$($FV['tipo'])" } else { $(if ($FV['xF'] -is [DateTime]) { $FV['xF'].ToString('dd/MM/yyyy') } else { "$($FV['xF'])" }) }); Status = $status; Color = $color; Pay = $ps
         Pending = $pend
         PendingText = $(if ($pend -gt 0) { Format-Money $pend } else { '' })
         Days = $days
@@ -2204,7 +2339,9 @@ function Build-TramiteData($t, $store) {
     $used = New-Object System.Collections.Generic.HashSet[int]
     $payExtra = New-Object System.Collections.Generic.HashSet[string]
     foreach ($c in ($store.Clients | Sort-Object { $_.Row })) {
-        $rows.Add((New-RowObject $t $c $meta)); [void]$used.Add([int]$c.Row)
+        [void]$used.Add([int]$c.Row)
+        if ($c.Del) { continue }    # eliminado: no se ve, pero su nº no se vuelve a usar
+        $rows.Add((New-RowObject $t $c $meta))
         if ("$($c.F['forma'])".Trim()) { [void]$payExtra.Add("$($c.F['forma'])".Trim()) }
     }
     $firstEmpty = $null
@@ -2273,7 +2410,7 @@ function Import-TramiteFromExcel($h, $t) {
     if ((Test-GenTramite $t) -and -not (Invoke-Excel { Find-TramiteSheet $h.Wb $t })) {
         # el Excel no tiene esta pestaña: se empieza vacío (sin aviso) y la pestaña se crea al guardar el primer cliente
         $store = New-EmptyStore $t $h
-        try { $old = Read-Store $t; if ($old) { $store.Adopted = @($old.Adopted) } } catch { }
+        try { $old = Read-Store $t; if ($old) { $store.Adopted = @($old.Adopted); $store.HandDel = @($old.HandDel) } } catch { }
         Write-Store $t $store
         Write-Log ("sin pestaña en el Excel, trámite empezado vacío: {0}" -f $t.Sheet)
         return (Read-Store $t)
@@ -2286,11 +2423,21 @@ function Import-TramiteFromExcel($h, $t) {
         foreach ($f in $t.Fields) { $FV[$f.Key] = $r.Data[$f.Key] }
         $clients.Add(@{ Row = [int]$r.Row; Id = "$($r.Id)"; F = $FV; Sync = $true; Updated = (Get-Date).ToString('s'); By = 'Excel' })
     }
-    $adopted = @(); try { $old = Read-Store $t; if ($old) { $adopted = @($old.Adopted) } } catch { }
-    $store = @{ Meta = $meta; Clients = $clients; Adopted = $adopted }
+    $adopted = @(); $handDel = @(); $old = $null; try { $old = Read-Store $t; if ($old) { $adopted = @($old.Adopted); $handDel = @($old.HandDel) } } catch { }
+    if ($old) { Merge-StoreDeleted $clients $old }
+    $store = @{ Meta = $meta; Clients = $clients; Adopted = $adopted; HandDel = $handDel }
     Write-Store $t $store
     Write-Log ("importó del Excel: {0} ({1} clientes)" -f $t.Sheet, $clients.Count)
     return (Read-Store $t)    # mismos valores que se guardaron (fechas e importes ya convertidos)
+}
+function Merge-StoreDeleted($clients, $old) {
+    # lo eliminado en GESTEM no vuelve con el Excel: mismo cliente (fila y nombre) sigue eliminado; si ya no está en el Excel, se queda la marca
+    $byRow = @{}; foreach ($c in $clients) { $byRow[[int]$c.Row] = $c }
+    foreach ($x in @($old.Clients | Where-Object { $_.Del -and [int]$_.Row -lt $script:HandRowBase })) {
+        $c = $byRow[[int]$x.Row]
+        if ($c -and (ConvertTo-SheetKey "$($c.F['name'])") -eq (ConvertTo-SheetKey "$($x.F['name'])")) { $c.Del = $x.Del; $c.Updated = $x.Updated; $c.By = $x.By }
+        elseif (-not $c) { $clients.Add($x) }
+    }
 }
 function Update-StoreMeta($h, $t) {
     # vuelve a leer del Excel solo las listas y los precios (los clientes no se tocan)
@@ -2351,6 +2498,7 @@ function Save-ClientStore([hashtable]$vals, $editRow) {
     return @{ Id = $rec.Id; Synced = $synced }
 }
 function Sync-RecordToExcel($t, $rec, $h, [switch]$FileOnly) {
+    return $true    # desde Firebase el Excel solo se lee (importar); GESTEM ya no escribe en él
     $prevT = $script:T; $prevTar = $script:Tariff
     try {
         $script:T = $t
@@ -2411,6 +2559,7 @@ function Save-PendingBatchToFile($t, $recs) {
 function Repair-TotalsFormulas {
     # una vez: las versiones anteriores, al guardar con Excel, copiaban en «Importe pagado» (y a veces el precio)
     # la fórmula SUM(...) de la fila de totales. Se cambia por el valor guardado en GESTEM, solo en esas celdas.
+    return    # el Excel solo se lee: ya no se repara escribiendo en él
     if ($script:Cfg.SumsRepaired) { return }
     $ok = $true; $prevT = $script:T; $prevTar = $script:Tariff
     try {
@@ -2433,6 +2582,7 @@ function Repair-TotalsFormulas {
     if ($ok) { $script:Cfg.SumsRepaired = $true; Save-Config }
 }
 function Sync-PendingToExcel {
+    return 0    # el Excel solo se lee: no hay nada pendiente de escribir en él
     # clientes guardados en GESTEM que todavía no están en el Excel
     $todo = @()
     foreach ($t in $script:Tramites) {
@@ -2462,6 +2612,7 @@ function Sync-PendingToExcel {
     return $n
 }
 function Get-PendingSyncCount {
+    return 0    # el Excel solo se lee
     $n = 0
     foreach ($t in $script:Tramites) { if ($script:Cache.ContainsKey($t.Id)) { foreach ($r in $script:Cache[$t.Id].Rows) { if (-not $r.Sync) { $n++ } } } }
     return $n
@@ -2668,6 +2819,7 @@ function Load-Data([switch]$All, [switch]$Quiet) {
         $script:Cache = $newCache
         $script:CacheStamp = Get-FileStamp
         Use-TramiteData $script:Cache[$cur.Id]
+        try { Update-ReqBadge } catch { Write-Log "aviso de requerimientos: $($_.Exception.Message)" }
         return $true
     } catch {
         $script:T = $cur
@@ -2732,6 +2884,7 @@ function Invoke-LiveRefresh {
         $script:LiveTick++
         $own = $false
         try { [void](Sync-HandmadeTabs) } catch { Write-Log "pestañas propias: $($_.Exception.Message)" }    # ¿se guardó el Excel? se vuelven a leer sus pestañas
+        try { Step-FbSync } catch { Write-Log "firebase: $($_.Exception.Message)" }    # lo recibido cambia los datos: la lista se recarga abajo
         if ($script:LiveTick % 9 -eq 0 -and (Get-PendingSyncCount) -gt 0 -and (Test-ExcelFree)) {
             if ((Sync-PendingToExcel) -gt 0) { $own = $true; $script:CacheStamp = -1 }
         }
@@ -2968,6 +3121,343 @@ function Ask-GestemKey {
         Show-Error (L 'keyBad')
     }
 }
+# ---------- Firebase: datos compartidos de la gestoría (Firestore en Madrid) ----------
+# la clave de API es pública (solo dice qué proyecto es); los datos los protegen las reglas de Firestore + la clave de GESTEM
+$script:FbProject = 'gestemgestem'
+$script:FbApiKey  = 'AIzaSyBHdQjaQUCezvGtWB9G_KXaMigp8tj89Mo'
+$script:FbEmail   = 'elmahi@gestem.app'
+$script:FbGest    = 'elmahi'
+$script:FbAuth    = $null
+function Invoke-FbJson([string]$method, [string]$uri, $body, [hashtable]$headers = @{}) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $p = @{ Method = $method; Uri = $uri; ContentType = 'application/json; charset=utf-8'; Headers = $headers; TimeoutSec = 15 }
+    if ($null -ne $body) { $p.Body = [Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Depth 30 -Compress)) }
+    return Invoke-RestMethod @p
+}
+function Connect-Firebase([switch]$Create) {
+    # entra con la clave de GESTEM; el token dura 1 hora y se renueva solo
+    $a = $script:FbAuth
+    if ($a -and (Get-Date) -lt $a.Until) { return $a }
+    if ($a -and $a.Refresh) {
+        try {
+            $r = Invoke-RestMethod -Method Post -Uri "https://securetoken.googleapis.com/v1/token?key=$($script:FbApiKey)" -Body @{ grant_type = 'refresh_token'; refresh_token = $a.Refresh } -TimeoutSec 15
+            $script:FbAuth = @{ Id = $r.id_token; Refresh = $r.refresh_token; Uid = $r.user_id; Until = (Get-Date).AddSeconds([int]$r.expires_in - 120) }
+            return $script:FbAuth
+        } catch { }
+    }
+    $k = Get-GestemKey; if (-not $k) { throw 'falta la clave de GESTEM' }
+    $op = $(if ($Create) { 'signUp' } else { 'signInWithPassword' })
+    $r = Invoke-FbJson Post "https://identitytoolkit.googleapis.com/v1/accounts:$($op)?key=$($script:FbApiKey)" @{ email = $script:FbEmail; password = $k; returnSecureToken = $true }
+    $script:FbAuth = @{ Id = $r.idToken; Refresh = $r.refreshToken; Uid = $r.localId; Until = (Get-Date).AddSeconds([int]$r.expiresIn - 120) }
+    return $script:FbAuth
+}
+function Invoke-Fs([string]$method, [string]$path, $body) {
+    # Firestore REST, siempre dentro de gestorias/<gestoría>/
+    $a = Connect-Firebase
+    $u = "https://firestore.googleapis.com/v1/projects/$($script:FbProject)/databases/(default)/documents/gestorias/$($script:FbGest)/$path"
+    return Invoke-FbJson $method $u $body @{ Authorization = "Bearer $($a.Id)" }
+}
+# ---------- Firebase paso 2: sincronizar clientes (gestorias/<gestoría>/clientes/<uid>) ----------
+# Write-Store apunta lo cambiado en %APPDATA%\GESTEM\firebase.json; cada 20 s se envía y se recibe en segundo plano
+$script:FbStatePath = Join-Path $script:DataDir 'firebase.json'
+$script:FbApplying = $false
+$script:FbJob = $null
+$script:FbLastErr = ''
+function Get-FbState {
+    # Joined: '' = aún no se ha unido (primero se recibe todo), 'push' = unido, falta enviar lo suyo, 'yes' = normal
+    $s = @{ LastMod = ''; Joined = ''; Pend = @{} }
+    if (Test-Path -LiteralPath $script:FbStatePath) {
+        # si no se puede leer, mejor fallar que perder lo pendiente de enviar
+        $j = [IO.File]::ReadAllText($script:FbStatePath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        $s.LastMod = "$($j.lastMod)"; $s.Joined = "$($j.joined)"
+        if ($j.pend) { foreach ($pr in $j.pend.PSObject.Properties) { $s.Pend[$pr.Name] = @{ T = "$($pr.Value.t)"; H = "$($pr.Value.h)"; N = [bool]$pr.Value.n } } }
+    }
+    return $s
+}
+function Save-FbState($s) {
+    $pend = [ordered]@{}
+    foreach ($k in $s.Pend.Keys) { $pend[$k] = [ordered]@{ t = $s.Pend[$k].T; h = $s.Pend[$k].H; n = [bool]$s.Pend[$k].N } }
+    $tmp = "$($script:FbStatePath).tmp"
+    [IO.File]::WriteAllText($tmp, ([ordered]@{ lastMod = $s.LastMod; joined = $s.Joined; pend = $pend } | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding($true)))
+    Move-Item -LiteralPath $tmp -Destination $script:FbStatePath -Force
+}
+# lo que hace el segundo plano (sin ventana): entrar, recibir lo cambiado desde la última vez, enviar lo pendiente
+$script:FbSyncScript = {
+    param($in)
+    $ErrorActionPreference = 'Stop'
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    function J($m, $u, $b, $h = @{}) {
+        $p = @{ Method = $m; Uri = $u; ContentType = 'application/json; charset=utf-8'; Headers = $h; TimeoutSec = 20 }
+        if ($null -ne $b) { $p.Body = [Text.Encoding]::UTF8.GetBytes(($b | ConvertTo-Json -Depth 30 -Compress)) }
+        return Invoke-RestMethod @p
+    }
+    $out = @{ Auth = $in.Auth; Pulled = @(); Pushed = @(); Mod = ''; Err = '' }
+    try {
+        $a = $in.Auth
+        if (-not $a -or (Get-Date) -ge $a.Until) {
+            $r = J Post "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$($in.ApiKey)" @{ email = $in.Email; password = $in.Key; returnSecureToken = $true }
+            $a = @{ Id = $r.idToken; Refresh = $r.refreshToken; Uid = $r.localId; Until = (Get-Date).AddSeconds([int]$r.expiresIn - 120) }
+            $out.Auth = $a
+        }
+        $hd = @{ Authorization = "Bearer $($a.Id)" }
+        $root = "projects/$($in.Project)/databases/(default)/documents"
+        $q = @{ from = @(@{ collectionId = 'clientes' }); orderBy = @(@{ field = @{ fieldPath = 'mod' }; direction = 'ASCENDING' }) }
+        if ($in.LastMod) { $q.where = @{ fieldFilter = @{ field = @{ fieldPath = 'mod' }; op = 'GREATER_THAN'; value = @{ timestampValue = $in.LastMod } } } }
+        $res = J Post "https://firestore.googleapis.com/v1/$root/gestorias/$($in.Gest):runQuery" @{ structuredQuery = $q } $hd
+        $pulled = New-Object System.Collections.Generic.List[object]
+        foreach ($x in @($res)) {
+            if (-not $x.document) { continue }
+            $f = $x.document.fields
+            $pulled.Add(@{ Uid = ($x.document.name -split '/')[-1]; T = "$($f.t.stringValue)"; Id = "$($f.id.stringValue)"; Datos = "$($f.datos.stringValue)"
+                           Updated = "$($f.updated.stringValue)"; By = "$($f.by.stringValue)"; Pc = "$($f.pc.stringValue)"; Deleted = [bool]$f.deleted.booleanValue })
+            $out.Mod = "$($f.mod.timestampValue)"
+        }
+        $out.Pulled = $pulled.ToArray()
+        # no se envía lo que otro PC cambió después (gana el último cambio) ni un cliente nuevo cuyo nº ya trae otro PC (se renumera antes)
+        $newer = @{}; $ids = @{}
+        foreach ($d in $pulled) { if ($d.Pc -ne $in.Pc) { $newer[$d.Uid] = $d.Updated; if ($d.Id) { $ids["$($d.T)|$($d.Id)"] = $d.Uid } } }
+        $todo = @($in.Push | Where-Object {
+            -not ($newer.ContainsKey($_.Uid) -and $newer[$_.Uid] -gt $_.Updated) -and
+            -not ($_.Id -and $ids.ContainsKey("$($_.T)|$($_.Id)") -and $ids["$($_.T)|$($_.Id)"] -ne $_.Uid) })
+        for ($i = 0; $i -lt $todo.Count; $i += 400) {
+            $chunk = @($todo[$i..([Math]::Min($i + 399, $todo.Count - 1))])
+            $w = @(foreach ($d in $chunk) {
+                $x = @{ update = @{ name = "$root/gestorias/$($in.Gest)/clientes/$($d.Uid)"
+                                    fields = @{ t = @{ stringValue = $d.T }; id = @{ stringValue = $d.Id }; datos = @{ stringValue = $d.Datos }
+                                                updated = @{ stringValue = $d.Updated }; by = @{ stringValue = $d.By }; pc = @{ stringValue = $in.Pc }
+                                                deleted = @{ booleanValue = [bool]$d.Deleted } } }
+                        updateTransforms = @(@{ fieldPath = 'mod'; setToServerValue = 'REQUEST_TIME' }) }
+                # cliente nuevo: si otro PC ya subió uno con ese id entretanto, falla todo y este PC se vuelve a unir (recibe primero)
+                if ($d.N) { $x.currentDocument = @{ exists = $false } }
+                $x
+            })
+            [void](J Post "https://firestore.googleapis.com/v1/$($root):commit" @{ writes = $w } $hd)
+            $out.Pushed += @($chunk | ForEach-Object { @{ Uid = $_.Uid; H = $_.H } })
+        }
+    } catch {
+        $m = "$($_.Exception.Message)"; try { if ($_.ErrorDetails.Message) { $m += ' · ' + $_.ErrorDetails.Message } } catch { }
+        $out.Err = $m -replace '\s+', ' '
+    }
+    return $out
+}
+function Step-FbSync {
+    # llamado por el temporizador de 20 s: recoge el resultado de la vuelta anterior y lanza la siguiente
+    if (-not $script:Cfg.FbSync) { return }    # sincronización apagada en este PC (Ajustes de admin): no envía ni recibe nada
+    $j = $script:FbJob
+    if ($j) {
+        if (-not $j.H.IsCompleted) { return }
+        $script:FbJob = $null
+        $r = $null
+        try { $r = @($j.PS.EndInvoke($j.H))[0] } finally { $j.PS.Dispose() }
+        if ($r) {
+            if ($r.Auth) { $script:FbAuth = $r.Auth }
+            if ("$($r.Err)" -ne $script:FbLastErr) { $script:FbLastErr = "$($r.Err)"; Write-Log $(if ($r.Err) { "firebase: $($r.Err)" } else { 'firebase: conectado' }) }
+            if ($j.Join) {
+                if (-not $r.Err) { Join-FbDocs @($r.Pulled) "$($r.Mod)" }
+            } else {
+                if (@($r.Pulled).Count) { Receive-FbDocs @($r.Pulled) }
+                $st = Get-FbState
+                foreach ($p in @($r.Pushed)) { if ($st.Pend.ContainsKey($p.Uid) -and $st.Pend[$p.Uid].H -eq $p.H) { $st.Pend.Remove($p.Uid) } }
+                if ($r.Mod) { $st.LastMod = $r.Mod }
+                if ($st.Joined -eq 'push') {
+                    # lo suyo no se pudo subir (p. ej. otro PC subió antes el mismo nº): se vuelve a unir, recibiendo primero
+                    if ($r.Err) { $st.Joined = ''; Write-Log 'firebase: unión no terminada, se repite' }
+                    elseif (-not @($st.Pend.Values | Where-Object { $_.N }).Count) { $st.Joined = 'yes'; Write-Log 'firebase: este PC ya está unido' }
+                }
+                Save-FbState $st
+                if (@($r.Pushed).Count) { Write-Log ("firebase: enviados {0} cliente(s)" -f @($r.Pushed).Count) }
+            }
+        }
+    }
+    $k = Get-GestemKey; if (-not $k) { return }
+    $st = Get-FbState; $push = New-Object System.Collections.Generic.List[object]; $drop = $false
+    # primera vez de este PC (o unión sin terminar): solo se recibe todo; no se envía nada hasta compararlo
+    $join = $st.Joined -ne 'push' -and $st.Joined -ne 'yes'
+    if (-not $join) { foreach ($g in @(@($st.Pend.Keys) | Group-Object { $st.Pend[$_].T })) {
+        $t = $script:Tramites | Where-Object { $_.Id -eq $g.Name } | Select-Object -First 1
+        $s = $null; if ($t) { $s = Read-Store $t }
+        if (-not $s) { continue }    # sin datos de este trámite ahora mismo: se queda pendiente
+        $byUid = @{}; foreach ($c in $s.Clients) { if ($c.Uid) { $byUid[$c.Uid] = $c } }
+        foreach ($uid in $g.Group) {
+            $c = $byUid[$uid]
+            $e = $null; if (-not $c) { $e = @($s.HandDel) | Where-Object { $_ -and $_.Uid -eq $uid } | Select-Object -First 1 }
+            if ($e) {
+                # cliente de una pestaña hecha a mano eliminado (o vuelto a poner): solo el nombre
+                $push.Add(@{ Uid = $uid; T = $t.Id; Id = ''; Datos = (@{ name = $e.Name } | ConvertTo-Json -Compress); Updated = "$($e.At)"; By = "$($e.By)"
+                             H = $st.Pend[$uid].H; N = $false; Deleted = [bool]$e.On })
+                continue
+            }
+            if (-not $c) { $st.Pend.Remove($uid); $drop = $true; continue }    # ya no existe (p. ej. pasó a otra fila)
+            $push.Add(@{ Uid = $uid; T = $t.Id; Id = "$($c.Id)"; Datos = ((Get-StoreFields $t $c -Fb) | ConvertTo-Json -Compress -Depth 4)
+                         Updated = "$($c.Updated)"; By = "$($c.By)"; H = $st.Pend[$uid].H; N = [bool]$st.Pend[$uid].N; Deleted = [bool]$c.Del })
+        }
+    } }
+    if ($drop) { Save-FbState $st }
+    $ps = [powershell]::Create()
+    [void]$ps.AddScript($script:FbSyncScript).AddArgument(@{ Key = $k; ApiKey = $script:FbApiKey; Email = $script:FbEmail; Project = $script:FbProject; Gest = $script:FbGest
+                                                             Auth = $script:FbAuth; LastMod = $(if ($join) { '' } else { $st.LastMod }); Push = $push.ToArray(); Pc = $env:COMPUTERNAME })
+    $script:FbJob = @{ PS = $ps; H = $ps.BeginInvoke(); Join = $join }
+}
+function Test-FbSamePerson($F, $o) {
+    # mismo cliente si coincide el NIE/pasaporte; si alguno no lo tiene, el nombre (sin tildes, mayúsculas ni espacios de más)
+    $a = (ConvertTo-SheetKey "$($F['doc'])") -replace '[^A-Z0-9]', ''; $b = (ConvertTo-SheetKey "$($o.doc)") -replace '[^A-Z0-9]', ''
+    if ($a -and $b) { return $a -eq $b }
+    return (ConvertTo-SheetKey "$($F['name'])") -eq (ConvertTo-SheetKey "$($o.name)")
+}
+function Get-FbWantRow($t, $meta, [string]$id) {
+    # fila que corresponde a un nº de expediente (PREFIJO + número)
+    if ($meta.IdPrefix -and $id -match ('^' + [regex]::Escape($meta.IdPrefix) + '(\d+)$')) {
+        $w = $t.FirstRow + [int]$Matches[1] - 1
+        if ($w -le $t.LastRow) { return $w }
+    }
+    return $null
+}
+function Join-FbDocs($docs, [string]$mod) {
+    # primera sincronización de este PC: ya se recibió todo lo de Firebase; se compara con lo de este PC antes de enviar nada.
+    # mismo id y misma persona = el mismo cliente; mismo nº pero otra persona = el de este PC pasa a un nº libre
+    $st = Get-FbState; $st.Pend.Clear(); $md5 = [Security.Cryptography.MD5]::Create()
+    $all = @($docs)
+    foreach ($t in $script:Tramites) {
+        $cloud = @($all | Where-Object { $_.T -eq $t.Id })
+        $lk = Enter-StoreLock
+        try {
+            $s = Read-Store $t
+            if (-not $s) { if ($cloud.Count) { Write-Log ("firebase: sin datos de {0}, {1} cliente(s) no aplicados" -f $t.Sheet, $cloud.Count) }; continue }
+            $byUid = @{}; $byId = @{}; $want = New-Object System.Collections.Generic.HashSet[int]
+            foreach ($d in $cloud) {
+                $d.O = $d.Datos | ConvertFrom-Json; $byUid[$d.Uid] = $d
+                if ($d.Id) { $byId[$d.Id] = $d }
+                $w = Get-FbWantRow $t $s.Meta $d.Id; if ($w) { [void]$want.Add($w) }
+            }
+            # clientes de pestañas hechas a mano: una sola vez, al unirse, pasan a ser de GESTEM (nº libre, que no use Firebase) y se suben;
+            # el id sale del trámite + nombre, así otro PC con la misma pestaña no los duplica. Después la pestaña ya no los vuelve a leer.
+            # shortcut: lo que se añada a mano a la pestaña después de unirse se queda solo en ese PC (como antes); pasarlo a GESTEM editándolo
+            $hand = @($s.Clients | Where-Object { [int]$_.Row -ge $script:HandRowBase } | Sort-Object { [int]$_.Row })
+            if ($hand.Count) {
+                $used = New-Object System.Collections.Generic.HashSet[int]($want)
+                foreach ($x in $s.Clients) { if ([int]$x.Row -lt $script:HandRowBase) { [void]$used.Add([int]$x.Row) } }
+                $uids = New-Object System.Collections.Generic.HashSet[string]; $n = 0
+                foreach ($c in $hand) {
+                    $row = $null; for ($r = $t.FirstRow; $r -le $t.LastRow; $r++) { if (-not $used.Contains($r)) { $row = $r; break } }
+                    if (-not $row) { Write-Log ("firebase: {0} lleno, quedan clientes de la pestaña a mano sin subir" -f $t.Sheet); break }
+                    $key = ConvertTo-HandKey "$($c.F['name'])"
+                    $uid = Get-HandDelUid $t $key 'mano-'; $k2 = 2; while (-not $uids.Add($uid)) { $uid = (Get-HandDelUid $t $key 'mano-') + "-$k2"; $k2++ }
+                    [void]$used.Add($row)
+                    $c.Row = $row; $c.Id = Get-RowId $t $s.Meta $row; $c.Uid = $uid; $c.Sync = $true; $c.New = $false; $c.H = $null
+                    $s.Adopted = @(@($s.Adopted) + "$($c.F['name'])" | Where-Object { "$_".Trim() } | Select-Object -Unique)
+                    $n++
+                }
+                if ($n) { Write-Log ("firebase: {0}: {1} cliente(s) de la pestaña hecha a mano pasan a GESTEM" -f $t.Sheet, $n) }
+            }
+            $taken = New-Object System.Collections.Generic.HashSet[string]; $clash = New-Object System.Collections.Generic.List[object]
+            foreach ($c in @($s.Clients | Where-Object { [int]$_.Row -lt $script:HandRowBase })) {
+                $d = $byUid[$c.Uid]; if (-not $d -and $c.Id) { $d = $byId[$c.Id] }
+                if (-not $d) { $st.Pend[$c.Uid] = @{ T = $t.Id; H = 'nuevo'; N = $true }; continue }    # solo en este PC: se sube
+                if ((Test-FbSamePerson $c.F $d.O) -and $taken.Add($d.Uid)) {
+                    $c.Uid = $d.Uid
+                    # distinto en los dos sitios: gana el cambio más reciente (si es el de Firebase, lo aplica Receive-FbDocs abajo)
+                    if ($c.H -ne (Get-FbHash $md5 (Get-FbKey $d.Id $d.Deleted) @(foreach ($f in (Get-FbFields $t)) { $d.O.($f.Key) })) -and "$($c.Updated)" -gt "$($d.Updated)") {
+                        $st.Pend[$c.Uid] = @{ T = $t.Id; H = 'mas reciente'; N = $false }
+                    }
+                    continue
+                }
+                $clash.Add($c)
+            }
+            foreach ($e in @($s.HandDel)) { if ($e) { $st.Pend[$e.Uid] = @{ T = $t.Id; H = 'mano'; N = $false } } }    # eliminados de pestañas a mano: se suben (gana el más reciente)
+            foreach ($c in $clash) {
+                # mismo nº que otro cliente de Firebase: el de este PC pasa al siguiente nº libre (que no sea de nadie en Firebase)
+                $used = New-Object System.Collections.Generic.HashSet[int]($want)
+                foreach ($x in $s.Clients) { if ($x -ne $c) { [void]$used.Add([int]$x.Row) } }
+                $row = $null; for ($r = $t.FirstRow; $r -le $t.LastRow; $r++) { if (-not $used.Contains($r)) { $row = $r; break } }
+                if (-not $row) { throw (L 'errFull') }
+                $old = $c.Id
+                $c.Uid = [guid]::NewGuid().ToString('N'); $c.Row = $row; $c.Id = Get-RowId $t $s.Meta $row; $c.Sync = $false
+                $st.Pend[$c.Uid] = @{ T = $t.Id; H = 'renumerado'; N = $true }
+                Write-Log ("firebase: nº {0} es otro cliente en Firebase; {1} de este PC pasa a {2}" -f $old, "$($c.F['name'])", $c.Id)
+                try { Show-Toast ((L 'fbClash') -f $old, $c.Id, "$($c.F['name'])") '' $null 15 } catch { }
+            }
+            $script:FbApplying = $true; Write-Store $t $s
+        } finally { $script:FbApplying = $false; Exit-StoreLock $lk }
+    }
+    Save-FbState $st
+    Receive-FbDocs $all -All    # lo de Firebase que falta o es más reciente
+    $st = Get-FbState; $st.Joined = 'push'; if ($mod) { $st.LastMod = $mod }; Save-FbState $st
+    Write-Log ("firebase: unión, recibidos {0} y por subir {1} cliente(s)" -f $all.Count, $st.Pend.Count)
+}
+function Get-FbRow($t, $s, $c, [string]$id, $st) {
+    # fila para un cliente que llega de otro PC: la de su nº si está libre
+    $byRow = @{}; foreach ($x in $s.Clients) { if ($x -ne $c) { $byRow[[int]$x.Row] = $x } }
+    $free = $null; for ($r = $t.FirstRow; $r -le $t.LastRow; $r++) { if (-not $byRow.ContainsKey($r)) { $free = $r; break } }
+    $want = Get-FbWantRow $t $s.Meta $id
+    if (-not $want) { if ($c) { return [int]$c.Row }; return $free }
+    $x = $byRow[$want]
+    if (-not $x) { return $want }
+    if ($x.Id -eq $id -and $x.Uid -and $st.Pend.ContainsKey($x.Uid)) {
+        # dos clientes nuevos con el mismo nº creados sin internet: el de este PC (el segundo en llegar) pasa al siguiente nº libre
+        if (-not $free) { throw (L 'errFull') }
+        $x.Row = $free; $x.Id = Get-RowId $t $s.Meta $free
+        $st.Pend[$x.Uid].H = 'renumerado'    # se vuelve a enviar con el nº nuevo
+        Write-Log ("firebase: nº {0} repetido con otro PC, el cliente de este PC pasa a {1}" -f $id, $x.Id)
+        try { Show-Toast ((L 'fbRenum') -f $id, $x.Id) '' $null 15 } catch { }
+        return $want
+    }
+    if ($c) { return [int]$c.Row }
+    Write-Log ("firebase: nº {0} ya lo tiene otro cliente, el que llega va a la fila {1}" -f $id, $free)
+    return $free
+}
+function Receive-FbDocs($docs, [switch]$All) {
+    # aplica lo que cambiaron otros PC; si este PC también lo cambió sin enviarlo todavía, gana el cambio más reciente
+    # -All: al unirse también lo que subió antes este mismo PC (p. ej. si se borró su firebase.json)
+    $st = Get-FbState; $md5 = [Security.Cryptography.MD5]::Create()
+    foreach ($g in @($docs | Where-Object { $All -or $_.Pc -ne $env:COMPUTERNAME } | Group-Object { $_.T })) {
+        $t = $script:Tramites | Where-Object { $_.Id -eq $g.Name } | Select-Object -First 1
+        if (-not $t) { Write-Log "firebase: trámite desconocido $($g.Name)"; continue }
+        $lk = Enter-StoreLock
+        try {
+            $s = Read-Store $t
+            # shortcut: sin datos de este trámite en este PC no se aplica (se pierde hasta que el cliente vuelva a cambiar); arreglar si aparece en el registro
+            if (-not $s) { Write-Log "firebase: sin datos de $($t.Sheet), cambios no aplicados"; continue }
+            $dirty = $false
+            foreach ($d in $g.Group) {
+                $o = $d.Datos | ConvertFrom-Json
+                if ($d.Uid -like 'hand-*') {
+                    # cliente de una pestaña hecha a mano eliminado (o vuelto a poner) en otro PC
+                    $e = @($s.HandDel) | Where-Object { $_ -and $_.Uid -eq $d.Uid } | Select-Object -First 1
+                    if ($e -and [bool]$e.On -eq [bool]$d.Deleted) { continue }
+                    if ($e -and "$($e.At)" -ge $d.Updated) { continue }    # el cambio de este PC es más reciente
+                    $st.Pend.Remove($d.Uid)
+                    if (-not $e) { $e = @{ Uid = $d.Uid; Key = (ConvertTo-HandKey "$($o.name)"); Name = "$($o.name)" }; $s.HandDel = @(@($s.HandDel) + $e) }
+                    $e.On = [bool]$d.Deleted; $e.By = $d.By; $e.At = $d.Updated
+                    if ($e.On) { $s.Clients = [System.Collections.Generic.List[object]]@($s.Clients | Where-Object { [int]$_.Row -lt $script:HandRowBase -or (ConvertTo-HandKey "$($_.F['name'])") -ne $e.Key }) }
+                    else { $script:HandStamp = 0 }    # vuelve: se vuelve a leer la pestaña
+                    $dirty = $true
+                    Write-Log ("firebase: {0} {1} (pestaña a mano) de {2}" -f $(if ($e.On) { 'eliminado' } else { 'recuperado' }), $e.Name, $d.Pc)
+                    continue
+                }
+                $c = $s.Clients | Where-Object { $_.Uid -eq $d.Uid } | Select-Object -First 1
+                if ($c -and $c.H -eq (Get-FbHash $md5 (Get-FbKey $d.Id $d.Deleted) @(foreach ($f in (Get-FbFields $t)) { $o.($f.Key) }))) { continue }    # ya está igual
+                if ($c -and $st.Pend.ContainsKey($d.Uid)) {
+                    if ($d.Updated -le "$($c.Updated)") { continue }    # el cambio de este PC es más reciente: se enviará
+                    $st.Pend.Remove($d.Uid)
+                    Write-Log ("firebase: {0} cambiado en 2 PC, gana el de {1} ({2})" -f $d.Id, $d.By, $d.Updated)
+                }
+                # las contraseñas no vienen de Firebase: se queda la de este PC
+                $FV = @{}; foreach ($f in $t.Fields) { $FV[$f.Key] = $(if ($f.Local) { if ($c) { $c.F[$f.Key] } } else { ConvertFrom-StoreValue $f $o.($f.Key) }) }
+                Update-ReqDeadline $t $FV    # el plazo se calcula aquí (otro PC puede mandar solo las fechas)
+                $row = Get-FbRow $t $s $c $d.Id $st
+                if (-not $row) { throw (L 'errFull') }
+                if (-not $c) { $c = @{ Uid = $d.Uid; New = $false }; $s.Clients.Add($c) }
+                # Sync = $true: el Excel lo actualiza el PC donde se hizo el cambio
+                $c.Row = $row; $c.Id = $d.Id; $c.F = $FV; $c.Updated = $d.Updated; $c.By = $d.By; $c.Sync = $true
+                $c.Del = $(if ($d.Deleted) { @{ By = $d.By; At = $d.Updated } } else { $null })
+                $dirty = $true
+                Write-Log ("firebase: recibido {0} de {1}{2}" -f $d.Id, $d.Pc, $(if ($d.Deleted) { ' (eliminado)' } else { '' }))
+            }
+            if ($dirty) { $script:FbApplying = $true; Write-Store $t $s }
+        } finally { $script:FbApplying = $false; Exit-StoreLock $lk }
+    }
+    Save-FbState $st
+}
 function Start-UpdateCheckAsync {
     # mira si hay versión nueva sin congelar la ventana. Si no hay nada a medias, se actualiza sola como siempre.
     # (HttpClient: la respuesta llega en segundo plano aunque la ventana esté ocupada cargando)
@@ -3137,7 +3627,7 @@ function Set-Status([string]$msg) {
     $script:Win.Dispatcher.Invoke([Action]{}, [Windows.Threading.DispatcherPriority]::Background)
 }
 function Update-StatusLine {
-    if (-not $script:Rows) { return }
+    if ($null -eq $script:Rows) { return }
     $debt = @($script:Rows | Where-Object { $_.Pending -gt 0 })
     $sum = ($debt | Measure-Object -Property Pending -Sum).Sum
     Set-Status ((L 'ready') -f $script:Rows.Count, $debt.Count, (Format-Money $sum))
@@ -3839,6 +4329,9 @@ $xaml = @'
         <StackPanel>
           <RadioButton x:Name="NavNew" Style="{StaticResource Nav}" GroupName="nav" IsChecked="True" Tag="&#xE8FA;"/>
           <RadioButton x:Name="NavClients" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE716;"/>
+          <Border x:Name="ReqBadge" Visibility="Collapsed" CornerRadius="10" Margin="16,0,16,6" Padding="10,4" Cursor="Hand" Background="#B54708">
+            <TextBlock x:Name="ReqBadgeText" Foreground="White" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          </Border>
           <RadioButton x:Name="NavStats" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE9D2;"/>
           <RadioButton x:Name="NavColab" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE716;"/>
           <RadioButton x:Name="NavSettings" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE713;"/>
@@ -3968,6 +4461,7 @@ $xaml = @'
                 <MenuItem x:Name="CmEdit"/>
                 <MenuItem x:Name="CmReceipt"/>
                 <MenuItem x:Name="CmDocs"/>
+                <MenuItem x:Name="CmDelete"/>
               </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.ColumnHeaderStyle>
@@ -4205,7 +4699,7 @@ $xaml = @'
                     <TextBox x:Name="FilePathBox" IsReadOnly="True" Background="#F8F6F6"/>
                   </DockPanel>
                   <DockPanel Margin="0,10,0,0">
-                    <Button x:Name="ImportXlBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                    <Button x:Name="ImportXlBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0" Visibility="Collapsed"/>
                     <TextBlock x:Name="DataNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
                   </DockPanel>
                   <TextBlock x:Name="SetNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" Margin="1,10,0,0"/>
@@ -4932,6 +5426,8 @@ $xaml = @'
               <CheckBox x:Name="AdmLockAll" Content="Ocultar Ajustes por completo"/>
               <CheckBox x:Name="AdmIgnorePause" Content="Ignorar la pausa remota en este PC"/>
               <CheckBox x:Name="AdmOwnerPC" Content="Este PC es mío: todo lo que se haga aquí cuenta como admin"/>
+              <CheckBox x:Name="AdmFbSync" Content="Sincronizar los clientes con los otros PCs (Firebase) en este PC"/>
+              <TextBlock x:Name="AdmFbState" Foreground="#8A7F81" FontSize="12.5" TextWrapping="Wrap" Margin="24,2,0,0"/>
               <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                 <Button x:Name="AdmSaveLocks" Style="{StaticResource Primary}" Height="40" Padding="22,0" FontSize="14" Content="Guardar bloqueos"/>
                 <TextBlock x:Name="AdmLocksMsg" Foreground="#1B7F45" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0"/>
@@ -5137,6 +5633,7 @@ function Build-Form {
             }
         }
         $c.Tag = $f.Key
+        if ($f.ReadOnly) { $c.IsEnabled = $false }    # calculado por GESTEM (fecha límite)
         $script:Ctl[$f.Key] = $c
         $box = New-FieldBox $f $c
         if ($span -eq 2) { if ($col -eq 1) { $col = 0 }; Add-ToGrid $box 0 2; $col = 0 }
@@ -5223,6 +5720,10 @@ function On-FieldChanged($sender) {
     $script:FormDirty = $true
     $key = "$($sender.Tag)"
     if ($key -eq 'price') { $script:PriceTouched = $true }
+    if (($key -eq 'xF' -or $key -eq 'xG') -and $script:Ctl.ContainsKey('flim')) {
+        $lim = Get-ReqDeadline (Get-FieldValue ($script:T.Fields | Where-Object { $_.Key -eq 'xG' })) (Get-FieldValue ($script:T.Fields | Where-Object { $_.Key -eq 'xF' }))
+        $script:Filling = $true; Set-FieldValue ($script:T.Fields | Where-Object { $_.Key -eq 'flim' }) $lim; $script:Filling = $false
+    }
     if ($key -eq 'tipo' -and -not $script:PriceTouched) {
         $tipo = Get-FieldValue ($script:T.Fields | Where-Object { $_.Key -eq 'tipo' })
         $script:Filling = $true
@@ -5516,11 +6017,71 @@ function Undo-RespBulk($u) {
         Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
     } finally { $script:Busy = $false; $script:Win.Cursor = $null; Set-Status '' }
 }
+function Set-ClientDeleted($t, $u, [bool]$on) {
+    # eliminar (o volver a poner) un cliente sin borrarlo: queda una marca que se sincroniza y que el Excel no deshace
+    # $u: @{ Hand; Uid; Name } (Hand = de una pestaña hecha a mano: se oculta por su nombre)
+    $who = $(if ($script:User) { $script:User } else { 'ADMIN' }); $now = (Get-Date).ToString('s')
+    $lk = Enter-StoreLock
+    try {
+        $s = Read-Store $t
+        if (-not $s) { throw (L 'errNoStore') }
+        if ($u.Hand) {
+            $key = ConvertTo-HandKey $u.Name; $uid = Get-HandDelUid $t $key
+            $e = @($s.HandDel) | Where-Object { $_ -and $_.Uid -eq $uid } | Select-Object -First 1
+            if (-not $e) { $e = @{ Uid = $uid; Key = $key; Name = $u.Name }; $s.HandDel = @(@($s.HandDel) + $e) }
+            $e.On = $on; $e.By = $who; $e.At = $now
+            if ($on) { $s.Clients = [System.Collections.Generic.List[object]]@($s.Clients | Where-Object { [int]$_.Row -lt $script:HandRowBase -or (ConvertTo-HandKey "$($_.F['name'])") -ne $key }) }
+            Write-Store $t $s
+            Add-FbPend $t $uid "$on|$now"
+        } else {
+            $c = $s.Clients | Where-Object { $_.Uid -eq $u.Uid } | Select-Object -First 1
+            if (-not $c) { throw (L 'cmUndoFail') }
+            $c.Del = $(if ($on) { @{ By = $who; At = $now } } else { $null }); $c.Updated = $now; $c.By = $who
+            Write-Store $t $s    # cambia la huella: queda por enviar a Firebase
+        }
+    } finally { Exit-StoreLock $lk }
+    if ($u.Hand -and -not $on) { try { [void](Sync-HandmadeTabs -Force) } catch { Write-Log "pestañas propias: $($_.Exception.Message)" } }
+}
+function Remove-Client($r) {
+    $t = $script:T
+    $name = "$($r.Name)"; $id = $(if ("$($r.Id)") { "$($r.Id)" } else { '—' })
+    $ans = [Windows.MessageBox]::Show($script:Win, ((L 'delAsk') -f $name, $id), $script:AppName, 'YesNo', 'Warning')
+    if ("$ans" -ne 'Yes') { return }
+    try {
+        $u = @{ Kind = 'delete'; T = $t; Hand = ([int]$r.Row -ge $script:HandRowBase); Name = $name; Id = "$($r.Id)"; Uid = $null }
+        if (-not $u.Hand) {
+            $s = Read-Store $t
+            $c = $s.Clients | Where-Object { [int]$_.Row -eq [int]$r.Row } | Select-Object -First 1
+            if (-not $c) { throw (L 'cmUndoFail') }
+            $u.Uid = $c.Uid
+        }
+        Set-ClientDeleted $t $u $true
+        Write-Log ("eliminó el cliente {0} {1} · {2}" -f $id, $name, $t.Title['es'])
+        [void](Load-Data)
+        $script:UndoInfo = $u
+        Show-Toast ((L 'delDone') -f $name) (L 'cmUndo') { Invoke-QuickUndo } 15
+    } catch {
+        Write-Log "eliminar cliente: $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    }
+}
+function Undo-RemoveClient($u) {
+    try {
+        Set-ClientDeleted $u.T $u $false
+        Write-Log ("deshizo eliminar el cliente {0} {1} · {2}" -f $u.Id, $u.Name, $u.T.Title['es'])
+        [void](Load-Data)
+        Show-Toast (L 'cmUndone')
+    } catch {
+        Write-Log "deshacer eliminar: $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    }
+}
 function Invoke-QuickUndo {
     $u = $script:UndoInfo; $script:UndoInfo = $null
     if (-not $u) { Show-Toast (L 'undoNone'); return }
     if ($u.Kind -eq 'resp') { Undo-RespBulk $u; return }
     if ($u.Kind -eq 'colab') { Undo-ColabPaid $u; return }
+    if ($u.Kind -eq 'delete') { Undo-RemoveClient $u; return }
     if ($script:T.Id -ne $u.Tramite) { $script:UndoInfo = $u; Show-Toast (L 'undoOther'); return }
     $r = @($script:Rows | Where-Object { [int]$_.Row -eq $u.Row })[0]
     if (-not $r) { Show-Toast (L 'cmUndoFail'); return }
@@ -5704,7 +6265,7 @@ function Hide-Toast {
 
 function Refresh-ClientGrid {
     $ui = $script:UI
-    if (-not $ui -or -not $script:Rows) { return }
+    if (-not $ui -or $null -eq $script:Rows) { return }    # lista vacía (trámite sin clientes) también se pinta
     $q = "$($ui.SearchBox.Text)".Trim().ToLower()
     $st = "$($ui.FilterBox.SelectedItem)"
     $onlyDebt = [bool]$ui.OnlyDebt.IsChecked
@@ -6474,7 +7035,7 @@ function Apply-Language {
     $ui.DocsCol.Header = L 'colDocs'
     $ui.DocsBtn.Content = L 'btnDocs'; $ui.ReceiptBtn.Content = L 'btnReceipt'; $ui.ExportBtn.Content = (L 'btnExport') + '  ' + [char]0x25BE
     $ui.ExpPdf.Header = L 'expPdf'; $ui.ExpCsv.Header = L 'expCsv'
-    $ui.CmEdit.Header = L 'btnEdit'; $ui.CmReceipt.Header = L 'btnReceipt'; $ui.CmDocs.Header = L 'btnDocs'
+    $ui.CmEdit.Header = L 'btnEdit'; $ui.CmReceipt.Header = L 'btnReceipt'; $ui.CmDocs.Header = L 'btnDocs'; $ui.CmDelete.Header = L 'cmDelete'
     Set-CmHeaders
     $ui.DocsAddBtn.Content = L 'docsAdd'; $ui.DocsOpenBtn.Content = L 'docsOpen'; $ui.DocsRemoveBtn.Content = L 'docsRemove'; $ui.DocsFolderBtn.Content = L 'docsFolder'
     $ui.DocsEmptyT.Text = L 'docsEmpty'; $ui.DocsDropT.Text = L 'docsDrop'; $ui.DocsClose.ToolTip = L 'docsClose'
@@ -7099,6 +7660,11 @@ $script:IsAdmin = $false
 $script:AdmLogFilter = 'all'
 $script:LockKeys = @('File', 'Ext', 'Comp', 'Team', 'Pref', 'Help', 'All')
 $script:AdmTr = @{
+ 'Sincronizar los clientes con los otros PCs (Firebase) en este PC' = @{ en = 'Sync clients with the other PCs (Firebase) on this PC'; fr = 'Synchroniser les clients avec les autres PC (Firebase) sur ce PC'; ar = 'مزامنة العملاء مع الأجهزة الأخرى (Firebase) على هذا الجهاز' }
+ 'Apagada: este PC no envía ni recibe clientes.' = @{ en = 'Off: this PC neither sends nor receives clients.'; fr = 'Désactivée : ce PC n''envoie ni ne reçoit de clients.'; ar = 'متوقفة: هذا الجهاز لا يرسل ولا يستقبل العملاء.' }
+ 'Activada · error: {0}' = @{ en = 'On · error: {0}'; fr = 'Activée · erreur : {0}'; ar = 'مفعّلة · خطأ: {0}' }
+ 'Activada · unido · {0} cambio(s) por enviar' = @{ en = 'On · joined · {0} change(s) to send'; fr = 'Activée · connecté · {0} modification(s) à envoyer'; ar = 'مفعّلة · متصل · {0} تغيير(ات) للإرسال' }
+ 'Activada · primera sincronización pendiente' = @{ en = 'On · first sync pending'; fr = 'Activée · première synchronisation en attente'; ar = 'مفعّلة · المزامنة الأولى قيد الانتظار' }
  'GESTEM está en pausa' = @{ en = 'GESTEM is paused'; fr = 'GESTEM est en pause'; ar = 'GESTEM متوقف مؤقتًا' }
  'Contacta con Yano.' = @{ en = 'Contact Yano.'; fr = 'Contactez Yano.'; ar = 'تواصل مع Yano.' }
  'Administrador' = @{ en = 'Administrator'; fr = 'Administrateur'; ar = 'المسؤول' }
@@ -7350,6 +7916,8 @@ function Open-AdminPanel {
     foreach ($k in $script:LockKeys) { $ui["AdmLock$k"].IsChecked = (Get-LockSet $k) }
     $ui.AdmIgnorePause.IsChecked = [bool]$script:Admin.IgnorePause
     $ui.AdmOwnerPC.IsChecked = [bool]$script:IsOwnerPC
+    $ui.AdmFbSync.IsChecked = [bool]$script:Cfg.FbSync
+    Update-AdmFbState
     $ui.AdmLocksMsg.Text = ''; $ui.AdmPwMsg.Text = ''
     $ui.AdmInfo.Text = (AdmT 'Versión {0} · datos: {1} · programa: {2}') -f $script:AppVersion, $script:DataDir, $script:AppDir
     Update-RemoteText
@@ -7424,10 +7992,25 @@ function Save-AdminLocks {
     $script:Admin.IgnorePause = [bool]$ui.AdmIgnorePause.IsChecked
     $script:Admin.OwnerPC = [bool]$ui.AdmOwnerPC.IsChecked
     $script:IsOwnerPC = Test-OwnerPC
+    if ([bool]$ui.AdmFbSync.IsChecked -ne [bool]$script:Cfg.FbSync) {
+        Set-FbSyncSwitch ([bool]$ui.AdmFbSync.IsChecked)
+        Write-Log $(if ($script:Cfg.FbSync) { 'admin: sincronización con Firebase activada en este PC' } else { 'admin: sincronización con Firebase apagada en este PC' })
+    }
+    Update-AdmFbState
     Save-Admin
     Apply-Locks
     Write-Log ('admin: bloqueos guardados (' + (@($script:LockKeys | Where-Object { Get-LockSet $_ }) -join ', ') + ')')
     $ui.AdmLocksMsg.Text = AdmT '✓ Guardado'
+}
+function Update-AdmFbState {
+    # estado de la sincronización de este PC, debajo de su casilla
+    $txt = AdmT 'Apagada: este PC no envía ni recibe clientes.'
+    if ($script:Cfg.FbSync) {
+        $st = $null; try { $st = Get-FbState } catch { }
+        $n = $(if ($st) { $st.Pend.Count } else { 0 })
+        $txt = $(if ($script:FbLastErr) { (AdmT 'Activada · error: {0}') -f $script:FbLastErr } elseif ($st -and $st.Joined -eq 'yes') { (AdmT 'Activada · unido · {0} cambio(s) por enviar') -f $n } else { AdmT 'Activada · primera sincronización pendiente' })
+    }
+    $script:UI.AdmFbState.Text = $txt
 }
 function Change-AdminPw {
     $ui = $script:UI
@@ -7561,7 +8144,7 @@ try {
 } catch { Write-Log "icono: $($_.Exception.Message)" }
 
 $script:UI = @{}
-foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings','NavAbout','StatusText','FileText',
+foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','ReqBadge','ReqBadgeText','NavSettings','NavAbout','StatusText','FileText',
                  'PanelForm','FormTitle','FormGrid','CardTag','CardId','CardName','CardSub','CardTipo','CardStatusB','CardStatus',
                  'Toast','ToastText','ToastBtn','ToastClose','SumPriceL','SumPrice','SumIva','SumMargin','SumPaidL','SumPaid','SumPendL','SumPend','DupWarn','SaveBtn','ClearBtn',
                  'PanelClients','RefreshBtn','OpenExcelBtn','EditBtn','SearchBox','SearchHint','FilterBox','OnlyDebt','ClientsGrid',
@@ -7574,8 +8157,8 @@ foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings'
                  'SecFileT','SecFileD','SecCompT','SecCompD','SecTeamT','SecTeamD','SecPrefT','SecPrefD','SecHelpT','SecHelpD',
                  'ChartDay','ChartWeek','ChartMonth','ChartTitle','ChartSub','ChartLegPaid','ChartLegPend','ChartGrid',
                  'ChartCanvas','ChartLabels','ChartDelta','ChartDeltaB','ChartLegMoney',
-                 'DocsBtn','ReceiptBtn','ExportBtn','ExpPdf','ExpCsv','CmEdit','CmReceipt','CmDocs','DocsCol','PanelDocs','DocsCard','DocsClose','DocsTitle','DocsSub','DocsOpenBtn','DocsRemoveBtn','DocsFolderBtn','DocsAddBtn','DocsCount','DocsMsg','DocsList','DocsEmpty','DocsEmptyT','DocsDrop','DocsDropT',
-                 'PanelPaused','PausedText','PanelAdminLogin','AdmLoginHint','AdmKeyHint','AdmPw','AdmPw2','AdmLoginMsg','AdmLoginCancel','AdmLoginBtn','PanelAdmin','AdmLogout','AdmClose','AdmTabLocks','AdmTabLog','AdmLogErr','AdmTabTools','AdmPageLocks','AdmPageLog','AdmPageTools','AdmLockFile','AdmLockExt','AdmLockComp','AdmLockTeam','AdmLockPref','AdmLockHelp','AdmLockAll','AdmIgnorePause','AdmOwnerPC','AdmSaveLocks','AdmLocksMsg','AdmLogRefresh','AdmLogAll','AdmLogTeam','AdmLogAdmin','AdmLogTitle','AdmLog','AdmRemoteTxt','AdmUpdate','AdmOpenData','AdmOpenApp','AdmShowAll','AdmInfo','AdmNewPw','AdmNewPw2','AdmChangePw','AdmPwMsg','SecFileBox','SecExtBox','SecCompBox','SecTeamBox','SecPrefBox','SecHelpBox',
+                 'DocsBtn','ReceiptBtn','ExportBtn','ExpPdf','ExpCsv','CmEdit','CmReceipt','CmDocs','CmDelete','DocsCol','PanelDocs','DocsCard','DocsClose','DocsTitle','DocsSub','DocsOpenBtn','DocsRemoveBtn','DocsFolderBtn','DocsAddBtn','DocsCount','DocsMsg','DocsList','DocsEmpty','DocsEmptyT','DocsDrop','DocsDropT',
+                 'PanelPaused','PausedText','PanelAdminLogin','AdmLoginHint','AdmKeyHint','AdmPw','AdmPw2','AdmLoginMsg','AdmLoginCancel','AdmLoginBtn','PanelAdmin','AdmLogout','AdmClose','AdmTabLocks','AdmTabLog','AdmLogErr','AdmTabTools','AdmPageLocks','AdmPageLog','AdmPageTools','AdmLockFile','AdmLockExt','AdmLockComp','AdmLockTeam','AdmLockPref','AdmLockHelp','AdmLockAll','AdmIgnorePause','AdmOwnerPC','AdmFbSync','AdmFbState','AdmSaveLocks','AdmLocksMsg','AdmLogRefresh','AdmLogAll','AdmLogTeam','AdmLogAdmin','AdmLogTitle','AdmLog','AdmRemoteTxt','AdmUpdate','AdmOpenData','AdmOpenApp','AdmShowAll','AdmInfo','AdmNewPw','AdmNewPw2','AdmChangePw','AdmPwMsg','SecFileBox','SecExtBox','SecCompBox','SecTeamBox','SecPrefBox','SecHelpBox',
                  'TopBar','StatsScope','StatsAllBtn','StatsAllTxt','NavStats','PanelStats','StatsWho','StatsPeriod','StatsRefresh','StatsTitle','StatsSub','StatsTable','StatsGrid',
                  'KpiBillL','KpiBill','KpiBillF','KpiPaidL','KpiPaid','KpiPaidTrack','KpiPaidF','KpiPendL','KpiPend','KpiPendF','KpiNetL','KpiNet','KpiNetF',
                  'SideLogo','SideCompany','SessLogo','SessCompany','AboutImg','AboutCompany','SetCompanyL','CompanyBox','InvSecL','InvHintL','InvNameL','InvNameBox','InvActL','InvActBox','InvNifL','InvNifBox','InvIbanL','InvIbanBox','InvDomL','InvDomBox','InvPobL','InvPobBox','InvNextL','InvNextBox','TasasL','TasasBox','NavColab','PanelColab','ColabTitle','ColabHint','ColabList','ColabOnlyPend','ColabPaidBtn','ColabName','ColabEmpty','ColabGrid',
@@ -7584,7 +8167,7 @@ foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings'
 }
 # menús y columnas no siempre se encuentran por nombre: se toman directamente
 if (-not $script:UI.ExpPdf) { $script:UI.ExpPdf = $script:UI.ExportBtn.ContextMenu.Items[0]; $script:UI.ExpCsv = $script:UI.ExportBtn.ContextMenu.Items[1] }
-if (-not $script:UI.CmEdit) { $cm = $script:UI.ClientsGrid.ContextMenu; $script:UI.CmEdit = $cm.Items[0]; $script:UI.CmReceipt = $cm.Items[1]; $script:UI.CmDocs = $cm.Items[2] }
+if (-not $script:UI.CmEdit) { $cm = $script:UI.ClientsGrid.ContextMenu; $script:UI.CmEdit = $cm.Items[0]; $script:UI.CmReceipt = $cm.Items[1]; $script:UI.CmDocs = $cm.Items[2]; $script:UI.CmDelete = $cm.Items[3] }
 if (-not $script:UI.DocsCol) { $script:UI.DocsCol = $script:UI.ClientsGrid.Columns[$script:UI.ClientsGrid.Columns.Count - 1] }
 # menú del clic derecho en la lista: más atajos (con icono)
 $cmMenu = $script:UI.ClientsGrid.ContextMenu
@@ -7596,7 +8179,7 @@ function New-CmItem([int]$glyph) {
     $m.Icon = $tb
     return $m
 }
-foreach ($pair in @(@($script:UI.CmEdit, 0xE70F), @($script:UI.CmReceipt, 0xE8A5), @($script:UI.CmDocs, 0xE723))) {
+foreach ($pair in @(@($script:UI.CmEdit, 0xE70F), @($script:UI.CmReceipt, 0xE8A5), @($script:UI.CmDocs, 0xE723), @($script:UI.CmDelete, 0xE74D))) {
     $tb = New-Object Windows.Controls.TextBlock
     $tb.Text = [string][char]$pair[1]; $tb.FontFamily = 'Segoe Fluent Icons, Segoe MDL2 Assets'; $tb.FontSize = 13; $tb.Foreground = (Brush '#9E1820')
     $pair[0].Icon = $tb
@@ -7621,6 +8204,20 @@ $ui = $script:UI
 
 # navegación
 $ui.NavNew.Add_Checked({ Show-Panel 'PanelForm' })
+function Update-ReqBadge {
+    # requerimientos abiertos que vencen en ≤3 días hábiles o ya vencidos; rojo si alguno venció
+    $b = $script:UI.ReqBadge; if (-not $b) { return }
+    $a = @{ Due = 0; Late = 0 }
+    if ($script:Cache -and $script:Cache.ContainsKey('requerimiento')) { $a = Get-ReqAlerts $script:Cache['requerimiento'].Rows ([DateTime]::Today) }
+    if (-not ($a.Due + $a.Late)) { $b.Visibility = 'Collapsed'; return }
+    $script:UI.ReqBadgeText.Text = $(if ($a.Late) { (L 'reqBadgeLate') -f $a.Late, $a.Due } else { (L 'reqBadge') -f $a.Due })
+    $b.Background = Brush $(if ($a.Late) { '#B42318' } else { '#B54708' })
+    $b.Visibility = 'Visible'
+}
+$ui.ReqBadge.Add_MouseLeftButtonUp({
+    $script:UI.TramiteBox.SelectedIndex = [array]::IndexOf(@($script:Tramites | ForEach-Object { $_.Id }), 'requerimiento')
+    $script:UI.NavClients.IsChecked = $true
+})
 $ui.NavClients.Add_Checked({ Show-Panel 'PanelClients'; Refresh-ClientGrid; $script:UI.SearchBox.Focus() | Out-Null })
 $ui.HelpBtn.Add_Click({ $script:UI.PanelHelp.Visibility = 'Visible' })
 $ui.HelpClose.Add_Click({ $script:UI.PanelHelp.Visibility = 'Collapsed' })
@@ -7711,6 +8308,7 @@ $ui.ExpCsv.Add_Click({ Export-ClientsCsv })
 $ui.CmEdit.Add_Click({ Edit-Selected })
 $ui.CmReceipt.Add_Click({ $r = Get-SelectedClient; if ($r) { New-ClientInvoice $r } })
 $ui.CmDocs.Add_Click({ $r = Get-SelectedClient; if ($r) { Open-DocsPanel $r } })
+$ui.CmDelete.Add_Click({ $r = Get-SelectedClient; if ($r) { Remove-Client $r } })
 $ui.CmFolder.Add_Click({ $r = Get-SelectedClient; if ($r) { $script:DocsRow = $r; Open-DocsFolder } })
 $ui.CmPaid.Add_Click({ Quick-SetField 'paystate' 'Pagado' })
 $ui.CmCopyName.Add_Click({ $r = Get-SelectedClient; if ($r) { Copy-ClientText "$($r.Name)" } })
@@ -7765,6 +8363,7 @@ $ui.RefreshBtn.Add_Click({
     if (-not $script:EditRow) { try { Build-Form; Reset-Form } catch { Write-Log "formulario: $($_.Exception.Message)" } }    # listas nuevas del Excel (Pasos, Tipo…) también en el formulario
     $script:Win.Cursor = $null
 })
+# oculto: el Excel ya no se actualiza, volver a importarlo pisaría los datos de GESTEM (y de Firebase) con datos viejos
 $ui.ImportXlBtn.Add_Click({ Import-AllFromExcel })
 $ui.OpenExcelBtn.Add_Click({
     $sel = $script:UI.ClientsGrid.SelectedItem
