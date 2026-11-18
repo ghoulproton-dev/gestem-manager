@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.8.0'
+$script:AppVersion = '1.8.1'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -2740,7 +2740,7 @@ $script:LiveTimer.Interval = [TimeSpan]::FromSeconds(20)
 $script:LiveTimer.Add_Tick({ Invoke-LiveRefresh })
 
 # nube de la empresa: primero OneDrive de empresa (Microsoft 365), luego Google Drive, luego OneDrive personal
-function Find-CompanyCloud {
+function Get-CloudRoots {
     $cands = @()
     if ($env:OneDriveCommercial) { $cands += $env:OneDriveCommercial }
     foreach ($d in [IO.DriveInfo]::GetDrives()) {
@@ -2751,8 +2751,31 @@ function Find-CompanyCloud {
     $cands += (Join-Path $env:USERPROFILE 'Google Drive\Mi unidad'); $cands += (Join-Path $env:USERPROFILE 'Google Drive')
     if ($env:OneDrive) { $cands += $env:OneDrive }
     if ($env:OneDriveConsumer) { $cands += $env:OneDriveConsumer }
-    foreach ($c in $cands) { if ($c -and (Test-Path -LiteralPath $c)) { return (Join-Path $c 'GESTEM copias') } }
+    return @($cands | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique)
+}
+function Find-CompanyCloud {
+    $c = @(Get-CloudRoots)[0]
+    if ($c) { return (Join-Path $c 'GESTEM copias') }
     return $null
+}
+function Find-ExcelAuto {
+    # el Excel se movió o este PC es nuevo: se busca la carpeta «GESTEM datos» (los datos de la gestoría) y el Excel de al lado
+    $old = "$($script:Cfg.ExcelPath)"; if ($old) { $old = Split-Path -Leaf $old }
+    $roots = @(Get-CloudRoots) + @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('MyDocuments'), (Join-Path $env:USERPROFILE 'Downloads'))
+    $best = $null; $bestT = [DateTime]::MinValue
+    foreach ($r in @($roots | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique)) {
+        foreach ($d in @(Get-ChildItem -LiteralPath $r -Directory -Recurse -Depth 3 -Filter 'GESTEM datos' -ErrorAction SilentlyContinue)) {
+            $xs = @(Get-ChildItem -LiteralPath $d.Parent.FullName -Filter '*.xlsx' -File -ErrorAction SilentlyContinue | Where-Object { -not $_.Name.StartsWith('~$') })
+            if (-not $xs.Count) { continue }
+            $x = @($xs | Where-Object { $_.Name -eq $old })[0]
+            if (-not $x) { $x = @($xs | Sort-Object LastWriteTime -Descending)[0] }
+            # varias carpetas: la que tiene los datos más recientes
+            $t = @(Get-ChildItem -LiteralPath $d.FullName -Filter '*.json' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)[0]
+            $tt = $(if ($t) { $t.LastWriteTime } else { $x.LastWriteTime })
+            if ($tt -gt $bestT) { $best = $x.FullName; $bestT = $tt }
+        }
+    }
+    return $best
 }
 # registro de actividad legible en la carpeta de la copia externa (nube de la empresa):
 # un archivo por PC, lo más reciente arriba, SIN nombres de clientes (solo nº de expediente y trámite)
@@ -3033,7 +3056,7 @@ function Get-List([string]$name) {
     $out = New-Object System.Collections.Generic.List[string]
     if ($name -like 'fixed:*') { return ,@($name.Substring(6).Split('|') | Where-Object { $_ }) }
     if ($name -eq 'collaborators') { return ,(Get-CollaboratorNames) }
-    foreach ($x in @($script:Lists[$name])) { if ($null -ne $x -and "$x".Trim()) { $out.Add("$x") } }
+    foreach ($x in @($script:Lists[$name])) { if ($null -ne $x -and "$x".Trim() -and -not $out.Contains("$x")) { $out.Add("$x") } }    # sin repetidos
     return ,$out.ToArray()
 }
 function Brush([string]$hex) { return (New-Object Windows.Media.BrushConverter).ConvertFromString($hex) }
@@ -7787,6 +7810,10 @@ $script:Win.Add_ContentRendered({
     $flag = Join-Path $script:DataDir 'actualizado.txt'
     if (Test-Path $flag) { $v = (Get-Content -Raw $flag).Trim(); Remove-Item $flag -Force; $script:UpdatedMsg = ((L 'updated') -f $v) }
     if (-not (Test-ExcelInstalled)) { Show-Error (L 'errNoExcel') }
+    if (-not $script:Cfg.ExcelPath -or -not (Test-Path -LiteralPath $script:Cfg.ExcelPath)) {
+        $auto = $null; try { $auto = Find-ExcelAuto } catch { Write-Log "buscar Excel: $($_.Exception.Message)" }
+        if ($auto) { Write-Log "Excel encontrado solo: $auto (antes: $($script:Cfg.ExcelPath))"; $script:Cfg.ExcelPath = $auto; Save-Config }
+    }
     if (-not $script:Cfg.ExcelPath -or -not (Test-Path -LiteralPath $script:Cfg.ExcelPath)) {
         Set-Status (L 'noFile')
         $script:UI.NavSettings.IsChecked = $true
