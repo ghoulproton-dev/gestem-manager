@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.9.0'
+$script:AppVersion = '1.9.1'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:RepoApi    = 'https://api.github.com/repos/ghoulproton-dev/gestem-manager'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -258,6 +258,7 @@ $script:Text = @{
   chDay='Día'; chWeek='Semana'; chMonth='Mes'; chTitleD='Actividad por día'; chTitleW='Actividad por semana'; chTitleM='Actividad por mes'; chSubD='Últimos 14 días · {0} expedientes · {1}'; chSubW='Últimas 12 semanas · {0} expedientes · {1}'; chSubM='Últimos 12 meses · {0} expedientes · {1}'; chPaid='Sube'; chPend='Baja'; chMoney='facturado (debajo)'; chPrevD='ayer'; chPrevW='la semana anterior'; chPrevM='el mes anterior'; chDeltaTxt='{0} expedientes vs {1}'; chTip='{0}: {1} expedientes · facturado {2} · cobrado {3}'; chWeekL='S{0}'
   btnHelp='Manual de uso'
   navStats='Resumen'; statsTitle='Resumen económico'; statsSub='{0} trámites · {1} expedientes · actualizado a las {2}'; statsTable='Por trámite'; kpiBill='Facturado'; kpiPaid='Cobrado'; kpiPend='Pendiente de cobro'; kpiNet='Beneficio neto'; kpiBillF='{0} expedientes'; kpiPaidF='{0} % de lo facturado'; kpiPendF='{0} clientes con pago pendiente'; kpiNetF='Margen {0} %'; stTramite='Trámite'; stExp='Exped.'; stBill='Facturado'; stPaid='Cobrado'; stPend='Pendiente'; stNet='Neto'; stMargin='Margen'; stShare='Peso en la facturación'; stTotal='TOTAL'; whoAll='Todo el equipo'; perAll='Todo el tiempo'; perMonth='Este mes'; perPrev='Mes anterior'; perYear='Este año'
+  setDocs='Carpeta de documentos'; docsChoose='Elige dónde guardar los documentos de los clientes (mejor en OneDrive o Google Drive, para que la vean todos los PCs)'; docsNote='Ponla en OneDrive o Google Drive: los otros PCs la encuentran solos y todos ven los mismos documentos. Al cambiarla, los documentos pasan a la nueva sin sobrescribir ninguno.'; docsMoved='{0} documento(s) pasados a la carpeta compartida: {1}'
   setTitle='Ajustes'; setFile='Archivo Excel de clientes'; btnChange='Cambiar…'; setLang='Idioma'
   setNat='Nacionalidad por defecto en clientes nuevos'; setBackup='Hacer una copia de seguridad del Excel antes de cada guardado'
   setOpen='Abrir Excel después de guardar un cliente'; btnBackups='Abrir carpeta de copias'; btnSaveSettings='Guardar ajustes'
@@ -298,6 +299,7 @@ $script:Text = @{
   chDay='Day'; chWeek='Week'; chMonth='Month'; chTitleD='Activity per day'; chTitleW='Activity per week'; chTitleM='Activity per month'; chSubD='Last 14 days · {0} cases · {1}'; chSubW='Last 12 weeks · {0} cases · {1}'; chSubM='Last 12 months · {0} cases · {1}'; chPaid='Up'; chPend='Down'; chMoney='billed (below)'; chPrevD='yesterday'; chPrevW='last week'; chPrevM='last month'; chDeltaTxt='{0} cases vs {1}'; chTip='{0}: {1} cases · billed {2} · collected {3}'; chWeekL='W{0}'
   btnHelp='User manual'
   navStats='Summary'; statsTitle='Financial summary'; statsSub='{0} procedures · {1} cases · updated at {2}'; statsTable='By procedure'; kpiBill='Billed'; kpiPaid='Collected'; kpiPend='Outstanding'; kpiNet='Net profit'; kpiBillF='{0} cases'; kpiPaidF='{0} % of billed'; kpiPendF='{0} clients with payment due'; kpiNetF='Margin {0} %'; stTramite='Procedure'; stExp='Cases'; stBill='Billed'; stPaid='Collected'; stPend='Outstanding'; stNet='Net'; stMargin='Margin'; stShare='Share of billing'; stTotal='TOTAL'; whoAll='Whole team'; perAll='All time'; perMonth='This month'; perPrev='Last month'; perYear='This year'
+  setDocs='Documents folder'; docsChoose='Choose where to keep client documents (ideally in OneDrive or Google Drive, so every PC sees it)'; docsNote='Put it in OneDrive or Google Drive: the other PCs find it on their own and everyone sees the same documents. When you change it, documents move to the new one without overwriting any.'; docsMoved='{0} document(s) moved to the shared folder: {1}'
   setTitle='Settings'; setFile='Client Excel file'; btnChange='Change…'; setLang='Language'
   setNat='Default nationality for new clients'; setBackup='Back up the Excel file before every save'
   setOpen='Open Excel after saving a client'; btnBackups='Open backups folder'; btnSaveSettings='Save settings'
@@ -338,6 +340,7 @@ $script:Text = @{
   chDay='Jour'; chWeek='Semaine'; chMonth='Mois'; chTitleD='Activité par jour'; chTitleW='Activité par semaine'; chTitleM='Activité par mois'; chSubD='14 derniers jours · {0} dossiers · {1}'; chSubW='12 dernières semaines · {0} dossiers · {1}'; chSubM='12 derniers mois · {0} dossiers · {1}'; chPaid='Hausse'; chPend='Baisse'; chMoney='facturé (dessous)'; chPrevD='hier'; chPrevW='la semaine dernière'; chPrevM='le mois dernier'; chDeltaTxt='{0} dossiers vs {1}'; chTip='{0} : {1} dossiers · facturé {2} · encaissé {3}'; chWeekL='S{0}'
   btnHelp='Mode d''emploi'
   navStats='Résumé'; statsTitle='Résumé financier'; statsSub='{0} démarches · {1} dossiers · mis à jour à {2}'; statsTable='Par démarche'; kpiBill='Facturé'; kpiPaid='Encaissé'; kpiPend='Reste à encaisser'; kpiNet='Bénéfice net'; kpiBillF='{0} dossiers'; kpiPaidF='{0} % du facturé'; kpiPendF='{0} clients avec paiement en attente'; kpiNetF='Marge {0} %'; stTramite='Démarche'; stExp='Dossiers'; stBill='Facturé'; stPaid='Encaissé'; stPend='Reste'; stNet='Net'; stMargin='Marge'; stShare='Part de la facturation'; stTotal='TOTAL'; whoAll='Toute l''équipe'; perAll='Depuis le début'; perMonth='Ce mois-ci'; perPrev='Mois dernier'; perYear='Cette année'
+  setDocs='Dossier des documents'; docsChoose='Choisissez où garder les documents des clients (de préférence dans OneDrive ou Google Drive, pour que tous les PC le voient)'; docsNote='Placez-le dans OneDrive ou Google Drive : les autres PC le trouvent seuls et tout le monde voit les mêmes documents. En le changeant, les documents passent dans le nouveau sans en écraser aucun.'; docsMoved='{0} document(s) déplacé(s) vers le dossier partagé : {1}'
   setTitle='Paramètres'; setFile='Fichier Excel des clients'; btnChange='Changer…'; setLang='Langue'
   setNat='Nationalité par défaut des nouveaux clients'; setBackup="Faire une copie de sécurité de l'Excel avant chaque enregistrement"
   setOpen="Ouvrir Excel après l'enregistrement d'un client"; btnBackups='Ouvrir le dossier des copies'; btnSaveSettings='Enregistrer les paramètres'
@@ -378,6 +381,7 @@ $script:Text = @{
   chDay='يوم'; chWeek='أسبوع'; chMonth='شهر'; chTitleD='النشاط حسب اليوم'; chTitleW='النشاط حسب الأسبوع'; chTitleM='النشاط حسب الشهر'; chSubD='آخر 14 يومًا · {0} ملفات · {1}'; chSubW='آخر 12 أسبوعًا · {0} ملفات · {1}'; chSubM='آخر 12 شهرًا · {0} ملفات · {1}'; chPaid='صعود'; chPend='هبوط'; chMoney='المفوتر (بالأسفل)'; chPrevD='أمس'; chPrevW='الأسبوع الماضي'; chPrevM='الشهر الماضي'; chDeltaTxt='{0} ملفات مقارنة بـ {1}'; chTip='{0}: {1} ملفات · مفوتر {2} · محصّل {3}'; chWeekL='أ{0}'
   btnHelp='دليل الاستخدام'
   navStats='الملخص'; statsTitle='الملخص المالي'; statsSub='{0} إجراءات · {1} ملفات · آخر تحديث {2}'; statsTable='حسب الإجراء'; kpiBill='المفوتر'; kpiPaid='المحصّل'; kpiPend='المتبقي للتحصيل'; kpiNet='صافي الربح'; kpiBillF='{0} ملفات'; kpiPaidF='{0} % من المفوتر'; kpiPendF='{0} عملاء عليهم دفع'; kpiNetF='الهامش {0} %'; stTramite='الإجراء'; stExp='الملفات'; stBill='المفوتر'; stPaid='المحصّل'; stPend='المتبقي'; stNet='الصافي'; stMargin='الهامش'; stShare='الحصة من الفوترة'; stTotal='المجموع'; whoAll='كل الفريق'; perAll='كل الفترات'; perMonth='هذا الشهر'; perPrev='الشهر الماضي'; perYear='هذه السنة'
+  setDocs='مجلد المستندات'; docsChoose='اختر مكان حفظ مستندات العملاء (يفضّل في OneDrive أو Google Drive لتراه كل الأجهزة)'; docsNote='ضعه في OneDrive أو Google Drive: تجده الأجهزة الأخرى تلقائيًا ويرى الجميع المستندات نفسها. عند تغييره تنتقل المستندات إلى المجلد الجديد دون استبدال أي منها.'; docsMoved='تم نقل {0} مستند(ات) إلى المجلد المشترك: {1}'
   setTitle='الإعدادات'; setFile='ملف Excel للعملاء'; btnChange='تغيير…'; setLang='اللغة'
   setNat='الجنسية الافتراضية للعملاء الجدد'; setBackup='عمل نسخة احتياطية من ملف Excel قبل كل حفظ'
   setOpen='فتح Excel بعد حفظ العميل'; btnBackups='فتح مجلد النسخ'; btnSaveSettings='حفظ الإعدادات'
@@ -982,7 +986,7 @@ function Get-FieldLabel($field) { $l = $field.Label[$script:Cfg.Language]; if (-
 #  AJUSTES DEL PROGRAMA (config.json)
 # =====================================================================
 function Load-Config {
-    $cfg = [ordered]@{ FbSync = $true; ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = ''
+    $cfg = [ordered]@{ FbSync = $true; DocsDir = ''; ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = ''
              InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = ''; SumsRepaired = $false; ExcelRepaired = $false; TasasCanje = 'B=33; C=100; D=100'; TradProfit = [double]3; Collaborators = @(); UpdateKey = '' }    # emisor por defecto de las facturas: la gestora
     if (Test-Path $script:CfgPath) {
         try {
@@ -4698,6 +4702,12 @@ $xaml = @'
                     <Button x:Name="ChangeFileBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
                     <TextBox x:Name="FilePathBox" IsReadOnly="True" Background="#F8F6F6"/>
                   </DockPanel>
+                  <TextBlock x:Name="SetDocsL" Style="{StaticResource FieldLabel}" Margin="0,14,0,0"/>
+                  <DockPanel>
+                    <Button x:Name="ChangeDocsBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                    <TextBox x:Name="DocsDirBox" IsReadOnly="True" Background="#F8F6F6"/>
+                  </DockPanel>
+                  <TextBlock x:Name="DocsNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" Margin="1,6,0,0"/>
                   <DockPanel Margin="0,10,0,0">
                     <Button x:Name="ImportXlBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0" Visibility="Collapsed"/>
                     <TextBlock x:Name="DataNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
@@ -6303,9 +6313,92 @@ $script:DocsRow = $null
 
 function Get-SafeName([string]$s) { return (("$s" -replace '[\\/:*?"<>|]', ' ') -replace '\s+', ' ').Trim().TrimEnd('.') }
 function Get-DocsRoot {
+    # la carpeta elegida en Ajustes (o encontrada sola en la nube); si no, la de al lado del Excel
+    if ("$($script:Cfg.DocsDir)") { return "$($script:Cfg.DocsDir)" }
+    return (Get-LocalDocsRoot)
+}
+function Get-LocalDocsRoot {
     $x = "$($script:Cfg.ExcelPath)"
     if (-not $x) { return $null }
     return (Join-Path (Split-Path -Parent $x) 'GESTEM documentos')
+}
+function Find-CloudDocsDir {
+    # una carpeta «GESTEM documentos» en OneDrive / Google Drive (la de los otros PCs); si hay varias, la usada más recientemente
+    $best = $null
+    foreach ($r in @(Get-CloudRoots)) {
+        foreach ($d in @(Get-ChildItem -LiteralPath $r -Directory -Recurse -Depth 3 -Filter 'GESTEM documentos' -ErrorAction SilentlyContinue)) {
+            if (-not $best -or $d.LastWriteTime -gt $best.LastWriteTime) { $best = $d }
+        }
+    }
+    return $(if ($best) { $best.FullName } else { $null })
+}
+function Merge-DocsFolder([string]$from, [string]$to, [switch]$Copy) {
+    # pasa los documentos de $from a $to sin sobrescribir nunca: mismo nombre y mismo contenido -> ya estaba (se quita el de $from);
+    # mismo nombre y distinto contenido -> se guardan los dos («nombre (2).pdf»). Lo que no se pueda mover se queda en $from.
+    # -Copy: copia y deja $from como estaba (cuando $from la usan otros PCs)
+    $res = @{ Moved = 0; Same = 0; Renamed = 0; Failed = 0 }
+    if (-not $from -or -not (Test-Path -LiteralPath $from)) { return $res }
+    $src = (Resolve-Path -LiteralPath $from).ProviderPath.TrimEnd('\')
+    if (-not (Test-Path -LiteralPath $to)) { New-Item -ItemType Directory -Force -Path $to | Out-Null }
+    $dst = (Resolve-Path -LiteralPath $to).ProviderPath.TrimEnd('\')
+    if ($src -ieq $dst -or $dst.StartsWith($src + '\', [StringComparison]::OrdinalIgnoreCase)) { return $res }
+    foreach ($f in @(Get-ChildItem -LiteralPath $src -Recurse -File -Force -ErrorAction SilentlyContinue)) {
+        try {
+            $rel = $f.FullName.Substring($src.Length + 1)
+            $target = Join-Path $dst $rel
+            $dir = Split-Path -Parent $target
+            if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+            if (Test-Path -LiteralPath $target) {
+                if ((Get-Item -LiteralPath $target).Length -eq $f.Length -and (Get-FileHash -LiteralPath $target).Hash -eq (Get-FileHash -LiteralPath $f.FullName).Hash) {
+                    if (-not $Copy) { Remove-Item -LiteralPath $f.FullName -Force }; $res.Same++; continue
+                }
+                $base = [IO.Path]::GetFileNameWithoutExtension($f.Name); $ext = $f.Extension; $n = 2
+                do { $target = Join-Path $dir ("{0} ({1}){2}" -f $base, $n, $ext); $n++ } while (Test-Path -LiteralPath $target)
+                $res.Renamed++
+            }
+            if ($Copy) { Copy-Item -LiteralPath $f.FullName -Destination $target } else { Move-Item -LiteralPath $f.FullName -Destination $target }
+            $res.Moved++
+        } catch { $res.Failed++; Write-Log "documentos: no se pudo pasar $($f.FullName): $($_.Exception.Message)" }
+    }
+    if ($Copy) { Write-Log ("documentos: copiados de {0} a {1}: {2} ({3} con otro nombre), {4} ya estaban, {5} sin copiar" -f $src, $dst, $res.Moved, $res.Renamed, $res.Same, $res.Failed); return $res }
+    # carpetas que quedaron vacías
+    foreach ($d in @(Get-ChildItem -LiteralPath $src -Recurse -Directory -Force -ErrorAction SilentlyContinue | Sort-Object { $_.FullName.Length } -Descending)) {
+        if (-not @(Get-ChildItem -LiteralPath $d.FullName -Force -ErrorAction SilentlyContinue).Count) { Remove-Item -LiteralPath $d.FullName -Force -ErrorAction SilentlyContinue }
+    }
+    if (-not @(Get-ChildItem -LiteralPath $src -Force -ErrorAction SilentlyContinue).Count) { Remove-Item -LiteralPath $src -Force -ErrorAction SilentlyContinue }
+    Write-Log ("documentos: de {0} a {1}: {2} pasados ({3} con otro nombre porque ya había uno distinto), {4} ya estaban, {5} sin pasar" -f $src, $dst, $res.Moved, $res.Renamed, $res.Same, $res.Failed)
+    return $res
+}
+function Set-DocsRoot([string]$new) {
+    # cambia la carpeta de documentos llevando a la nueva los que había en la anterior:
+    # se mueven si estaban en la carpeta de este PC (al lado del Excel); de otra carpeta (quizá compartida) solo se copian
+    $old = Get-DocsRoot
+    $r = Merge-DocsFolder $old $new -Copy:("$old" -ne "$(Get-LocalDocsRoot)")
+    $script:Cfg.DocsDir = $new; Save-Config
+    Update-DocsMap
+    return $r
+}
+function Initialize-DocsFolder {
+    # al abrir, si aún no hay carpeta elegida: si los otros PCs ya tienen «GESTEM documentos» en la nube, se usa esa
+    # y los documentos de este PC pasan allí (una vez). No en un PC con la sincronización apagada (datos de prueba).
+    # shortcut: se mueven en el hilo de la ventana; con miles de archivos la primera vez tarda, pasarlo a segundo plano si molesta
+    if ("$($script:Cfg.DocsDir)" -or -not $script:Cfg.FbSync) { return }
+    $cloud = Find-CloudDocsDir
+    if (-not $cloud) { return }
+    $r = Set-DocsRoot $cloud
+    Write-Log "documentos: carpeta compartida encontrada: $cloud"
+    if ($r.Moved + $r.Same) { try { Show-Toast ((L 'docsMoved') -f ($r.Moved + $r.Same), $cloud) '' $null 12 } catch { } }
+}
+function Choose-DocsFolder {
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dlg.Description = L 'docsChoose'
+    $dlg.ShowNewFolderButton = $true
+    if ($script:UI.DocsDirBox.Text) { $dlg.SelectedPath = $script:UI.DocsDirBox.Text }
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        $p = $dlg.SelectedPath
+        if ((Split-Path -Leaf $p) -ne 'GESTEM documentos') { $p = Join-Path $p 'GESTEM documentos' }    # con este nombre los otros PCs la encuentran solos
+        $script:UI.DocsDirBox.Text = $p
+    }
 }
 function Get-TramiteDocsDir { $r = Get-DocsRoot; if (-not $r) { return $null }; return (Join-Path $r (Get-SafeName $script:T.Sheet)) }
 function Get-ClientDocsDir($r, [switch]$Create) {
@@ -7040,6 +7133,7 @@ function Apply-Language {
     $ui.DocsAddBtn.Content = L 'docsAdd'; $ui.DocsOpenBtn.Content = L 'docsOpen'; $ui.DocsRemoveBtn.Content = L 'docsRemove'; $ui.DocsFolderBtn.Content = L 'docsFolder'
     $ui.DocsEmptyT.Text = L 'docsEmpty'; $ui.DocsDropT.Text = L 'docsDrop'; $ui.DocsClose.ToolTip = L 'docsClose'
     $ui.SetTitle.Text = L 'setTitle'; $ui.SetFileL.Text = L 'setFile'; $ui.ChangeFileBtn.Content = L 'btnChange'
+    $ui.SetDocsL.Text = L 'setDocs'; $ui.ChangeDocsBtn.Content = L 'btnChange'; $ui.DocsNote.Text = L 'docsNote'
     $ui.ImportXlBtn.Content = L 'btnImport'; $ui.DataNote.Text = L 'dataNote'
     $ui.SetLangL.Text = L 'setLang'; $ui.SetNatL.Text = L 'setNat'; $ui.BackupChk.Content = L 'setBackup'
     $ui.OpenAfterChk.Content = L 'setOpen'; $ui.SetNote.Text = L 'setNote'
@@ -7079,6 +7173,7 @@ function Show-Panel([string]$name) {
 function Load-SettingsPanel {
     $ui = $script:UI
     $ui.FilePathBox.Text = $script:Cfg.ExcelPath
+    $ui.DocsDirBox.Text = "$(Get-DocsRoot)"
     $ui.LangBox.Items.Clear()
     foreach ($k in $script:Langs.Keys) { [void]$ui.LangBox.Items.Add($script:Langs[$k]) }
     $ui.LangBox.SelectedIndex = [array]::IndexOf(@($script:Langs.Keys), $script:Cfg.Language)
@@ -7232,6 +7327,10 @@ function Save-Settings {
     if ($extChanged) { $script:Cfg.LastExtBackup = ''; if ($newExt) { [void](Backup-External) } }
     $script:Cfg.Backup = [bool]$ui.BackupChk.IsChecked
     $script:Cfg.OpenAfterSave = [bool]$ui.OpenAfterChk.IsChecked
+    $newDocs = "$($ui.DocsDirBox.Text)".Trim()
+    if ($newDocs -and $newDocs -ne "$(Get-DocsRoot)") {
+        try { [void](Set-DocsRoot $newDocs); Write-Log "documentos: carpeta cambiada a $newDocs" } catch { Write-Log "documentos: $($_.Exception.Message)"; Show-Error $_.Exception.Message }
+    }
     Save-Config
     if ($script:Cfg.ExcelPath -ne $oldPath) { [void](Load-Data -All) }
     Apply-Language
@@ -8148,7 +8247,7 @@ foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','ReqBadge','R
                  'PanelForm','FormTitle','FormGrid','CardTag','CardId','CardName','CardSub','CardTipo','CardStatusB','CardStatus',
                  'Toast','ToastText','ToastBtn','ToastClose','SumPriceL','SumPrice','SumIva','SumMargin','SumPaidL','SumPaid','SumPendL','SumPend','DupWarn','SaveBtn','ClearBtn',
                  'PanelClients','RefreshBtn','OpenExcelBtn','EditBtn','SearchBox','SearchHint','FilterBox','OnlyDebt','ClientsGrid',
-                 'PanelSettings','SetTitle','WelcomeText','SetFileL','ChangeFileBtn','FilePathBox','SetLangL','LangBox','SetNatL','NatBox',
+                 'PanelSettings','SetTitle','WelcomeText','SetFileL','ChangeFileBtn','FilePathBox','SetDocsL','ChangeDocsBtn','DocsDirBox','DocsNote','SetLangL','LangBox','SetNatL','NatBox',
                  'BackupChk','OpenAfterChk','SetNote','SaveSettingsBtn','BackupsBtn','UpdateBtn',
                  'PanelAbout','AboutLogo','AboutVer','AboutText','AboutBy','EasterEgg',
                  'UserBtn','OnlyMine','SetCollL','ColleaguesBox','PanelSession','SessTitle','SessHint','SessNames','SessGo','SessNew','SessNewHint',
@@ -8372,6 +8471,7 @@ $ui.OpenExcelBtn.Add_Click({
 
 # ajustes
 $ui.ChangeFileBtn.Add_Click({ [void](Choose-ExcelFile) })
+$ui.ChangeDocsBtn.Add_Click({ Choose-DocsFolder })
 $ui.LogoBtn.Add_Click({ Choose-Logo })
 $ui.LogoClearBtn.Add_Click({ $script:PendingLogo = ''; $script:UI.LogoPreview.Fill = (Get-LogoBrush '') })
 $ui.SaveSettingsBtn.Add_Click({ Save-Settings })
@@ -8487,6 +8587,7 @@ $script:Win.Add_ContentRendered({
         return
     }
     $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    try { Initialize-DocsFolder } catch { Write-Log "documentos: $($_.Exception.Message)" }
     try { Repair-ExcelFile } catch { Write-Log "reparar Excel: $($_.Exception.Message)" }
     try { [void](Sync-HandmadeTabs -Force) } catch { Write-Log "pestañas propias: $($_.Exception.Message)" }
     if (Load-Data -All) {
