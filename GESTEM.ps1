@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.7.4'
+$script:AppVersion = '1.8.0'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
@@ -119,6 +119,14 @@ $script:Tramites = @(
                Label=@{ es='Ha pagado (€) — solo si es parcial'; en='Amount paid (€) — partial only'; fr='Montant payé (€) — si partiel'; ar='المبلغ المدفوع (€) — عند الدفع الجزئي' } }
             @{ Key='forma'; Col='S'; Type='ComboEdit'; Section='pay'; List='payments'
                Label=@{ es='Forma de pago'; en='Payment method'; fr='Mode de paiement'; ar='طريقة الدفع' } }
+            @{ Key='colab'; Col=$null; Type='ComboEdit'; Section='colab'; List='collaborators'
+               Label=@{ es='Colaborador / abogado'; en='Partner / lawyer'; fr='Collaborateur / avocat'; ar='المتعاون / المحامي' } }
+            @{ Key='comtipo'; Col=$null; Type='Combo'; Section='colab'; List='fixed:%|€'; Default='%'
+               Label=@{ es='Comisión en'; en='Commission in'; fr='Commission en'; ar='العمولة بـ' } }
+            @{ Key='comval'; Col=$null; Type='Money'; Section='colab'
+               Label=@{ es='Comisión (% o €)'; en='Commission (% or €)'; fr='Commission (% ou €)'; ar='العمولة (% أو €)' } }
+            @{ Key='compag'; Col=$null; Type='Combo'; Section='colab'; List='fixed:Pendiente|Pagada'
+               Label=@{ es='Comisión pagada al colaborador'; en='Commission paid to partner'; fr='Commission payée au collaborateur'; ar='العمولة المدفوعة للمتعاون' } }
             @{ Key='obs'; Col='R'; Type='Multiline'; Section='notes'; Span=2
                Label=@{ es='Observaciones'; en='Notes'; fr='Observations'; ar='ملاحظات' } }
         )
@@ -152,6 +160,11 @@ function New-GenTramite([string]$Id, [string]$Sheet, [hashtable]$Title, [array]$
     $list.Add(@{ Key='paid'; Col='K'; Type='Money'; Section='pay'; Role='paid'; Label=(New-Label 'Ha pagado (€) — solo si es parcial' 'Amount paid (€) — partial only' 'Montant payé (€) — si partiel' 'المبلغ المدفوع (€) — عند الدفع الجزئي') })
     $list.Add(@{ Key='gastos'; Col='V'; Type='Money'; Section='pay'; Label=(New-Label 'Gastos: tasa, traducción… (€)' 'Costs: fees, translation… (€)' 'Frais : taxe, traduction… (€)' 'المصاريف: رسوم، ترجمة… (€)') })
     $list.Add(@{ Key='forma'; Col='S'; Type='ComboEdit'; Section='pay'; List='payments'; Label=(New-Label 'Forma de pago' 'Payment method' 'Mode de paiement' 'طريقة الدفع') })
+    # colaborador o abogado de esta gestión y su comisión (solo en GESTEM, no hay columna en el Excel)
+    $list.Add(@{ Key='colab'; Col=$null; Type='ComboEdit'; Section='colab'; List='collaborators'; Label=(New-Label 'Colaborador / abogado' 'Partner / lawyer' 'Collaborateur / avocat' 'المتعاون / المحامي') })
+    $list.Add(@{ Key='comtipo'; Col=$null; Type='Combo'; Section='colab'; List='fixed:%|€'; Default='%'; Label=(New-Label 'Comisión en' 'Commission in' 'Commission en' 'العمولة بـ') })
+    $list.Add(@{ Key='comval'; Col=$null; Type='Money'; Section='colab'; Label=(New-Label 'Comisión (% o €)' 'Commission (% or €)' 'Commission (% ou €)' 'العمولة (% أو €)') })
+    $list.Add(@{ Key='compag'; Col=$null; Type='Combo'; Section='colab'; List='fixed:Pendiente|Pagada'; Label=(New-Label 'Comisión pagada al colaborador' 'Commission paid to partner' 'Commission payée au collaborateur' 'العمولة المدفوعة للمتعاون') })
     $list.Add(@{ Key='obs'; Col='R'; Type='Multiline'; Section='notes'; Span=2; Label=(New-Label 'Observaciones' 'Notes' 'Observations' 'ملاحظات') })
     return @{ Id = $Id; Title = $Title; Sheet = $Sheet; FirstRow = 11; LastRow = 1009; LastCol = 'W'; NetCol = 'W'; IdCol = 'A'; NameCol = 'B'
               DocCol = 'D'; StatusCol = 'N'; PayCol = 'M'; PendCol = 'L'; DaysCol = 'T'; TipoCol = $null; PriceKey = $Title['es']
@@ -183,9 +196,22 @@ $script:Tramites += New-GenTramite 'visado' 'VISADO ESTUDIOS' (New-Label 'Visado
 $tasasT = New-GenTramite 'tasas' 'TASA' (New-Label 'Tasas' 'Fees (tasas)' 'Taxes (tasas)' 'الرسوم') @(
     @('Tipo de tasa', 'DT21|Larga duración|Hijo de residente|Otro'), @('Pagada', ''), @('Presentada', ''), @('Quién la pagó', 'Gestoría|Cliente'))
 $tasasT.NoStats = $true; $tasasT.PriceKey = $null
+$tasasT.Fields = @($tasasT.Fields | Where-Object { $_.Section -ne 'colab' })
 # la pestaña TASA no tiene cabecera: A nombre, B fecha, C estado, D pagada (quién/cuándo), E tipo de tasa o fecha, F notas
 $tasasT.HandCols = @{ 2 = 'fsol'; 3 = 'status'; 4 = 'xG'; 5 = 'tipoOrDate'; 6 = 'obs' }
 $script:Tramites += $tasasT
+# Traducciones juradas: presupuesto de la traductora (gastos) y presupuesto al cliente (precio); beneficio fijo por documento
+$trT = $script:Tramites | Where-Object { $_.Id -eq 'traduccion' }
+foreach ($f in $trT.Fields) {
+    if ($f.Key -eq 'price') { $f.Label = New-Label 'Presupuesto al cliente (€)' 'Quote to the client (€)' 'Devis au client (€)' 'السعر المعروض على العميل (€)' }
+    if ($f.Key -eq 'gastos') { $f.Label = New-Label 'Presupuesto de la traductora (€)' "Translator's quote (€)" 'Devis de la traductrice (€)' 'سعر المترجمة (€)' }
+}
+$trFields = New-Object System.Collections.Generic.List[object]
+foreach ($f in $trT.Fields) {
+    $trFields.Add($f)
+    if ($f.Key -eq 'gastos') { $trFields.Add(@{ Key='ndocs'; Col=$null; Type='Money'; Section='pay'; Default=[double]1; Label=(New-Label 'Nº de documentos traducidos' 'Documents translated' 'Documents traduits' 'عدد الوثائق المترجمة') }) }
+}
+$trT.Fields = $trFields.ToArray()
 
 # =====================================================================
 #  IDIOMAS
@@ -785,6 +811,102 @@ $script:TextMore = @{
  }
 }
 foreach ($lg in $script:TextMore.Keys) { foreach ($k in $script:TextMore[$lg].Keys) { $script:Text[$lg][$k] = $script:TextMore[$lg][$k] } }
+# 1.8: tasas DGT sin IVA, traducciones, colaboradores y abogados
+$script:Text18 = @{
+ es = @{
+  seccolab = 'Colaborador'
+  sumIvaTasas = 'Tasas DGT {2} (sin IVA)  ·  Base {0}  ·  IVA 21 % {1}'
+  sumMargin = 'Margen {0} ({1})'
+  sumMarginCom = 'Margen {0} ({1})  ·  comisión {2}'
+  trProfitOk = 'Beneficio {0} ✓'
+  trProfitBad = 'Beneficio {0} — debería ser {1} ({2} € × {3} doc.)'
+  navColab = 'Colaboradores'
+  colTitle = 'Colaboradores y abogados'
+  colHint = 'Trámites con un colaborador o abogado en su ficha (sección «Colaborador»), de todos los trámites.'
+  colAll = 'Todos'
+  colNone = 'Todavía no hay trámites con colaborador. Asígnalo en la ficha del cliente, sección «Colaborador».'
+  colItem = '{0} trámite(s) · por pagar {1}'
+  colIncome = 'Ingresos'; colCollected = 'Cobrado'; colToCollect = 'Pendiente de cobro'
+  colCom = 'Comisiones'; colComPaid = 'Comisión pagada'; colComPend = 'Comisión por pagar'
+  colPaidBtn = 'Marcar comisión como pagada'; colOnlyPend = 'Solo comisiones por pagar'; colStPaid = 'Pagada'; colStPend = 'Por pagar'
+  colHTram = 'Trámite'; colHId = 'Expediente'; colHName = 'Cliente'; colHDate = 'Fecha'; colHStatus = 'Estado'
+  colHPrice = 'Precio'; colHPaid = 'Cobrado'; colHPend = 'Pendiente'; colHCom = 'Comisión'; colHComSt = 'Pago comisión'
+  colPaidDone = '{0} comisión(es) marcada(s) como pagada(s)'
+  colSelFirst = 'Selecciona uno o varios trámites de la lista.'
+  tasasL = 'Tasas DGT del canje, sin IVA (tipo=€)'
+  rcTotalTasas = 'Total (incl. tasas DGT {0})'
+ }
+ en = @{
+  seccolab = 'Partner'
+  sumIvaTasas = 'DGT fees {2} (no VAT)  ·  Base {0}  ·  VAT (IVA) 21 % {1}'
+  sumMargin = 'Margin {0} ({1})'
+  sumMarginCom = 'Margin {0} ({1})  ·  commission {2}'
+  trProfitOk = 'Profit {0} ✓'
+  trProfitBad = 'Profit {0} — should be {1} ({2} € × {3} doc.)'
+  navColab = 'Partners'
+  colTitle = 'Partners and lawyers'
+  colHint = 'Procedures with a partner or lawyer set in the client form ("Partner" section), across all procedures.'
+  colAll = 'All'
+  colNone = 'No procedures with a partner yet. Set one in the client form, "Partner" section.'
+  colItem = '{0} procedure(s) · to pay {1}'
+  colIncome = 'Income'; colCollected = 'Collected'; colToCollect = 'To collect'
+  colCom = 'Commissions'; colComPaid = 'Commission paid'; colComPend = 'Commission to pay'
+  colPaidBtn = 'Mark commission as paid'; colOnlyPend = 'Only unpaid commissions'; colStPaid = 'Paid'; colStPend = 'To pay'
+  colHTram = 'Procedure'; colHId = 'Case'; colHName = 'Client'; colHDate = 'Date'; colHStatus = 'Status'
+  colHPrice = 'Price'; colHPaid = 'Collected'; colHPend = 'Outstanding'; colHCom = 'Commission'; colHComSt = 'Commission paid'
+  colPaidDone = '{0} commission(s) marked as paid'
+  colSelFirst = 'Select one or more procedures in the list.'
+  tasasL = 'Canje DGT fees, no VAT (type=€)'
+  rcTotalTasas = 'Total (incl. DGT fees {0})'
+ }
+ fr = @{
+  seccolab = 'Collaborateur'
+  sumIvaTasas = 'Taxes DGT {2} (sans IVA)  ·  HT {0}  ·  IVA 21 % {1}'
+  sumMargin = 'Marge {0} ({1})'
+  sumMarginCom = 'Marge {0} ({1})  ·  commission {2}'
+  trProfitOk = 'Bénéfice {0} ✓'
+  trProfitBad = 'Bénéfice {0} — devrait être {1} ({2} € × {3} doc.)'
+  navColab = 'Collaborateurs'
+  colTitle = 'Collaborateurs et avocats'
+  colHint = 'Démarches avec un collaborateur ou un avocat dans la fiche (section « Collaborateur »), toutes démarches confondues.'
+  colAll = 'Tous'
+  colNone = 'Aucune démarche avec collaborateur pour l''instant. Indiquez-le dans la fiche du client, section « Collaborateur ».'
+  colItem = '{0} démarche(s) · à payer {1}'
+  colIncome = 'Recettes'; colCollected = 'Encaissé'; colToCollect = 'À encaisser'
+  colCom = 'Commissions'; colComPaid = 'Commission payée'; colComPend = 'Commission à payer'
+  colPaidBtn = 'Marquer la commission comme payée'; colOnlyPend = 'Seulement les commissions à payer'; colStPaid = 'Payée'; colStPend = 'À payer'
+  colHTram = 'Démarche'; colHId = 'Dossier'; colHName = 'Client'; colHDate = 'Date'; colHStatus = 'État'
+  colHPrice = 'Prix'; colHPaid = 'Encaissé'; colHPend = 'Reste'; colHCom = 'Commission'; colHComSt = 'Paiement commission'
+  colPaidDone = '{0} commission(s) marquée(s) comme payée(s)'
+  colSelFirst = 'Sélectionnez une ou plusieurs démarches dans la liste.'
+  tasasL = 'Taxes DGT du canje, sans IVA (type=€)'
+  rcTotalTasas = 'Total (taxes DGT {0} incluses)'
+ }
+ ar = @{
+  seccolab = 'المتعاون'
+  sumIvaTasas = 'رسوم DGT ‏{2} (بدون IVA)  ·  الأساس {0}  ·  IVA ‏21 % {1}'
+  sumMargin = 'الهامش {0} ({1})'
+  sumMarginCom = 'الهامش {0} ({1})  ·  العمولة {2}'
+  trProfitOk = 'الربح {0} ✓'
+  trProfitBad = 'الربح {0} — يجب أن يكون {1} ({2} € × {3} وثيقة)'
+  navColab = 'المتعاونون'
+  colTitle = 'المتعاونون والمحامون'
+  colHint = 'المعاملات التي لها متعاون أو محامٍ في بطاقة العميل (قسم «المتعاون»)، في كل المعاملات.'
+  colAll = 'الكل'
+  colNone = 'لا توجد بعد معاملات مع متعاون. حدّده في بطاقة العميل، قسم «المتعاون».'
+  colItem = '{0} معاملة · للدفع {1}'
+  colIncome = 'المداخيل'; colCollected = 'المحصَّل'; colToCollect = 'المتبقي للتحصيل'
+  colCom = 'العمولات'; colComPaid = 'العمولة المدفوعة'; colComPend = 'العمولة المستحقة'
+  colPaidBtn = 'تعليم العمولة كمدفوعة'; colOnlyPend = 'العمولات غير المدفوعة فقط'; colStPaid = 'مدفوعة'; colStPend = 'للدفع'
+  colHTram = 'المعاملة'; colHId = 'الملف'; colHName = 'العميل'; colHDate = 'التاريخ'; colHStatus = 'الحالة'
+  colHPrice = 'السعر'; colHPaid = 'المحصَّل'; colHPend = 'المتبقي'; colHCom = 'العمولة'; colHComSt = 'دفع العمولة'
+  colPaidDone = 'تم تعليم {0} عمولة كمدفوعة'
+  colSelFirst = 'اختر معاملة أو أكثر من القائمة.'
+  tasasL = 'رسوم DGT للتبديل، بدون IVA (النوع=€)'
+  rcTotalTasas = 'المجموع (شامل رسوم DGT ‏{0})'
+ }
+}
+foreach ($lg in $script:Text18.Keys) { foreach ($k in $script:Text18[$lg].Keys) { $script:Text[$lg][$k] = $script:Text18[$lg][$k] } }
 function L([string]$key) {
     $t = $script:Text[$script:Cfg.Language]
     if ($t -and $t.ContainsKey($key)) { return $t[$key] }
@@ -797,7 +919,7 @@ function Get-FieldLabel($field) { $l = $field.Label[$script:Cfg.Language]; if (-
 # =====================================================================
 function Load-Config {
     $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = ''
-             InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = ''; SumsRepaired = $false; ExcelRepaired = $false }    # emisor por defecto de las facturas: la gestora
+             InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = ''; SumsRepaired = $false; ExcelRepaired = $false; TasasCanje = 'B=33; C=100; D=100'; TradProfit = [double]3; Collaborators = @() }    # emisor por defecto de las facturas: la gestora
     if (Test-Path $script:CfgPath) {
         try {
             $j = Get-Content -Raw -Path $script:CfgPath -Encoding UTF8 | ConvertFrom-Json
@@ -962,7 +1084,7 @@ function New-TramiteSheet($h, $t) {
     $ws.Range('A2').Value2 = 'Pestaña creada por GESTEM MANAGER'
     $hr = $t.FirstRow - 1
     $heads = @{ A = 'ID Expediente'; L = 'Pendiente (€)'; T = 'Días'; W = 'Neto (€)' }
-    foreach ($f in $t.Fields) { $heads[$f.Col] = "$($f.Label['es'])" }
+    foreach ($f in $t.Fields) { if ($f.Col) { $heads[$f.Col] = "$($f.Label['es'])" } }
     foreach ($k in $heads.Keys) { $ws.Range("$k$hr").Value2 = $heads[$k] }
     $hdr = $ws.Range("A$($hr):$($t.LastCol)$hr"); $hdr.Font.Bold = $true; $hdr.Interior.Color = 14277081
     $f1 = $t.FirstRow; $l1 = $t.LastRow
@@ -1423,6 +1545,7 @@ function Read-TramiteData($h) {
         }
         $rec = @{ Row = $T.FirstRow + $i - 1 }
         foreach ($f in $T.Fields) {
+            if (-not $f.Col) { $rec[$f.Key] = $null; continue }      # campo solo de GESTEM (colaborador…)
             $v = $vals[$i, (ColNum $f.Col)]
             if ($f.Type -eq 'Date' -and $v -is [double]) { $v = [DateTime]::FromOADate($v) }
             $rec[$f.Key] = $v
@@ -1530,6 +1653,7 @@ function Get-ClientOps([hashtable]$vals) {
     $ops = New-Object System.Collections.Generic.List[object]
     foreach ($f in $T.Fields) {
         $v = $vals[$f.Key]
+        if (-not $f.Col) { continue }      # campo solo de GESTEM (colaborador, comisión…): no va al Excel
         $op = @{ Col = $f.Col; Kind = 'value'; Value = $null; Type = 'Text' }
         switch ($f.Role) {
             'nationality' {
@@ -2833,11 +2957,67 @@ function Check-Update([switch]$Manual) {
 #  UTILIDADES
 # =====================================================================
 $script:IvaRate = 0.21    # los precios llevan el IVA incluido
-function Split-Iva($total) {
-    # total con IVA -> base e IVA (redondeados al céntimo)
-    $t = [double]$total
-    $base = [math]::Round($t / (1 + $script:IvaRate), 2, [MidpointRounding]::AwayFromZero)
-    return @{ Base = $base; Iva = [math]::Round($t - $base, 2, [MidpointRounding]::AwayFromZero) }
+function Split-Iva($total, $tasas = 0) {
+    # total con IVA -> base e IVA (redondeados al céntimo). Las tasas (DGT…) son un suplido: van aparte y sin IVA
+    $t = [double]$total; $tx = [double]$tasas
+    if ($tx -lt 0 -or $tx -gt $t) { $tx = 0 }
+    $hon = $t - $tx
+    $base = [math]::Round($hon / (1 + $script:IvaRate), 2, [MidpointRounding]::AwayFromZero)
+    return @{ Base = $base; Iva = [math]::Round($hon - $base, 2, [MidpointRounding]::AwayFromZero); Tasas = $tx }
+}
+function Get-CollaboratorNames {
+    # colaboradores y abogados: los de Ajustes y los que ya se han escrito en cualquier trámite
+    $set = New-Object System.Collections.Generic.List[string]
+    foreach ($c in @($script:Cfg.Collaborators)) { $x = "$c".Trim().ToUpper(); if ($x -and -not $set.Contains($x)) { $set.Add($x) } }
+    if ($script:Cache) {
+        foreach ($k in @($script:Cache.Keys)) {
+            foreach ($r in $script:Cache[$k].Rows) {
+                $x = "$($r.Data['colab'])".Trim().ToUpper()
+                if ($x -and -not $set.Contains($x)) { $set.Add($x) }
+            }
+        }
+    }
+    $arr = $set.ToArray(); [Array]::Sort($arr, [StringComparer]::CurrentCultureIgnoreCase)
+    return ,$arr
+}
+function Get-CanjeTasa([string]$tipo) {
+    # tasa DGT del tipo de permiso («B (Coche)» -> B), según Ajustes: «B=33; C=100; D=100»
+    $code = ''
+    if ("$tipo".Trim().ToUpper() -match '^([A-Z0-9+]+)') { $code = $Matches[1] }
+    if (-not $code) { return $null }
+    foreach ($p in ("$($script:Cfg.TasasCanje)" -split '[;\r\n]+')) {
+        if ($p -match '^\s*([A-Za-z0-9+]+)\s*[=:]\s*([\d.,]+)\s*€?\s*$') {
+            $k = $Matches[1].ToUpper(); $v = $Matches[2]
+            if ($k -eq $code) { return (Parse-Money $v) }
+        }
+    }
+    return $null
+}
+function Get-TasasFor($t, $vals) {
+    if (-not $t -or $t.Id -ne 'canje' -or -not $vals) { return [double]0 }
+    $x = Get-CanjeTasa "$($vals['tipo'])"
+    if ($null -eq $x) { return [double]0 }
+    return [double]$x
+}
+function Get-Commission($vals, $price) {
+    # comisión del colaborador en €: un % del precio o un importe fijo
+    if (-not $vals) { return [double]0 }
+    $n = ConvertTo-CellNumber $vals['comval']
+    if ($null -eq $n) { return [double]0 }
+    if ("$($vals['comtipo'])" -eq '%') {
+        if ($null -eq $price) { return [double]0 }
+        return [math]::Round([double]$price * [double]$n / 100, 2, [MidpointRounding]::AwayFromZero)
+    }
+    return [double]$n
+}
+function Get-Margin($t, $vals) {
+    # lo que queda: precio - tasas DGT - gastos - comisión del colaborador (IVA incluido)
+    $price = ConvertTo-CellNumber $vals['price']
+    if ($null -eq $price -or [double]$price -le 0) { return $null }
+    $g = ConvertTo-CellNumber $vals['gastos']; if ($null -eq $g) { $g = 0 }
+    $com = Get-Commission $vals $price
+    $m = [double]$price - (Get-TasasFor $t $vals) - [double]$g - $com
+    return @{ Margin = [math]::Round($m, 2); Pct = $m / [double]$price * 100; Com = $com }
 }
 function Format-Money($v) { if ($null -eq $v -or "$v" -eq '') { return '-' }; return ([double]$v).ToString('N2', $script:ES) + ' €' }
 function Parse-Money([string]$s) {
@@ -2852,6 +3032,7 @@ function Get-List([string]$name) {
     # devuelve la lista sin huecos (nunca un elemento vacío)
     $out = New-Object System.Collections.Generic.List[string]
     if ($name -like 'fixed:*') { return ,@($name.Substring(6).Split('|') | Where-Object { $_ }) }
+    if ($name -eq 'collaborators') { return ,(Get-CollaboratorNames) }
     foreach ($x in @($script:Lists[$name])) { if ($null -ne $x -and "$x".Trim()) { $out.Add("$x") } }
     return ,$out.ToArray()
 }
@@ -3569,6 +3750,7 @@ $xaml = @'
           <RadioButton x:Name="NavNew" Style="{StaticResource Nav}" GroupName="nav" IsChecked="True" Tag="&#xE8FA;"/>
           <RadioButton x:Name="NavClients" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE716;"/>
           <RadioButton x:Name="NavStats" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE9D2;"/>
+          <RadioButton x:Name="NavColab" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE716;"/>
           <RadioButton x:Name="NavSettings" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE713;"/>
           <RadioButton x:Name="NavAbout" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE946;"/>
         </StackPanel>
@@ -3638,14 +3820,15 @@ $xaml = @'
               <Border BorderBrush="#EEF0F3" BorderThickness="0,1,0,0" Padding="18,12,18,16">
                 <Grid>
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                   <TextBlock x:Name="SumPriceL" Foreground="#667085" Margin="0,4"/>
                   <TextBlock x:Name="SumPrice" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" Margin="0,4"/>
-                  <TextBlock x:Name="SumIva" Grid.Row="1" Grid.ColumnSpan="2" Foreground="#98A2B3" FontSize="12" Margin="0,0,0,4" Visibility="Collapsed"/>
+                  <TextBlock x:Name="SumIva" Grid.Row="1" Grid.ColumnSpan="2" Foreground="#98A2B3" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4" Visibility="Collapsed"/>
                   <TextBlock x:Name="SumPaidL" Grid.Row="2" Foreground="#667085" Margin="0,4"/>
                   <TextBlock x:Name="SumPaid" Grid.Row="2" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" Margin="0,4"/>
                   <TextBlock x:Name="SumPendL" Grid.Row="3" FontWeight="SemiBold" Margin="0,8,0,0" VerticalAlignment="Center"/>
                   <TextBlock x:Name="SumPend" Grid.Row="3" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="20" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                  <TextBlock x:Name="SumMargin" Grid.Row="4" Grid.ColumnSpan="2" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
                 </Grid>
               </Border>
             </StackPanel>
@@ -4007,6 +4190,7 @@ $xaml = @'
                     <StackPanel Grid.Row="2"><TextBlock x:Name="InvDomL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvDomBox"/></StackPanel>
                     <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock x:Name="InvPobL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvPobBox"/></StackPanel>
                     <StackPanel Grid.Row="3"><TextBlock x:Name="InvNextL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvNextBox"/></StackPanel>
+                    <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock x:Name="TasasL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TasasBox"/></StackPanel>
                   </Grid>
                 </StackPanel>
               </Grid>
@@ -4083,6 +4267,159 @@ $xaml = @'
           </Border>
         </StackPanel>
       </ScrollViewer>
+
+      <!-- COLABORADORES Y ABOGADOS -->
+      <Grid x:Name="PanelColab" Visibility="Collapsed">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="240"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Border Style="{StaticResource Card}" Padding="12,16" Margin="0,0,14,0">
+          <DockPanel>
+            <TextBlock x:Name="ColabTitle" DockPanel.Dock="Top" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="17" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="4,0,0,4"/>
+            <TextBlock x:Name="ColabHint" DockPanel.Dock="Top" Foreground="#8A7F81" FontSize="12" TextWrapping="Wrap" Margin="4,0,0,12"/>
+            <ListBox x:Name="ColabList" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                  <Setter Property="Padding" Value="0"/>
+                  <Setter Property="Margin" Value="0,0,0,6"/>
+                  <Setter Property="Cursor" Value="Hand"/>
+                  <Setter Property="Template">
+                    <Setter.Value>
+                      <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="bd" Background="#FAF8F8" BorderBrush="#EEE9EA" BorderThickness="1" CornerRadius="10" Padding="12,9">
+                          <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#F5EFF0"/></Trigger>
+                          <Trigger Property="IsSelected" Value="True"><Setter TargetName="bd" Property="Background" Value="#FBEDEE"/><Setter TargetName="bd" Property="BorderBrush" Value="#D8A7AB"/></Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Setter.Value>
+                  </Setter>
+                </Style>
+              </ListBox.ItemContainerStyle>
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel>
+                    <Border Width="34" Height="34" CornerRadius="17" Background="#FBEDEE" Margin="0,0,10,0">
+                      <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#1E1A1B" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Info}" Foreground="#8A7F81" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </Border>
+        <DockPanel Grid.Column="1">
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+              <CheckBox x:Name="ColabOnlyPend" VerticalAlignment="Center" Margin="0,0,14,0"/>
+              <Button x:Name="ColabPaidBtn" Style="{StaticResource Primary}" Height="38" FontSize="13" Padding="18,0"/>
+            </StackPanel>
+            <TextBlock x:Name="ColabName" Style="{StaticResource Heading}" VerticalAlignment="Center"/>
+          </DockPanel>
+          <UniformGrid DockPanel.Dock="Top" Columns="3" Margin="-6,0,-6,14">
+            <Border Style="{StaticResource Card}" Margin="6,0,6,12" Padding="18,14"><StackPanel><TextBlock x:Name="ColK1L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0,6,12" Padding="18,14"><StackPanel><TextBlock x:Name="ColK2L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK2" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0,6,12" Padding="18,14"><StackPanel><TextBlock x:Name="ColK3L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK3" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#B42318" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0" Padding="18,14"><StackPanel><TextBlock x:Name="ColK4L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK4" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0" Padding="18,14"><StackPanel><TextBlock x:Name="ColK5L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK5" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0" Padding="18,14"><StackPanel><TextBlock x:Name="ColK6L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK6" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#B42318" Margin="0,6,0,0"/></StackPanel></Border>
+          </UniformGrid>
+          <Border Style="{StaticResource Card}" Padding="16,12">
+            <Grid>
+              <TextBlock x:Name="ColabEmpty" Foreground="#8A7F81" TextWrapping="Wrap" Margin="6,10" Visibility="Collapsed"/>
+              <DataGrid x:Name="ColabGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
+                        HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEF0F3"
+                        RowHeight="38" Background="White" BorderThickness="0" CanUserAddRows="False" CanUserResizeRows="False"
+                        AlternatingRowBackground="#FAFBFC" Foreground="#17202E">
+                <DataGrid.ColumnHeaderStyle>
+                  <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="White"/>
+                    <Setter Property="Foreground" Value="#667085"/>
+                    <Setter Property="FontSize" Value="12"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Padding" Value="8,10"/>
+                    <Setter Property="BorderBrush" Value="#E4E7EC"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                  </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.RowStyle>
+                  <Style TargetType="DataGridRow">
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Style.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#F7F5F5"/></Trigger>
+                    </Style.Triggers>
+                  </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.CellStyle>
+                  <Style TargetType="DataGridCell">
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="6,0"/>
+                    <Setter Property="Template">
+                      <Setter.Value>
+                        <ControlTemplate TargetType="DataGridCell">
+                          <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                          </Border>
+                        </ControlTemplate>
+                      </Setter.Value>
+                    </Setter>
+                    <Style.Triggers>
+                      <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="#FBE3E4"/>
+                        <Setter Property="Foreground" Value="#7A0F15"/>
+                      </Trigger>
+                    </Style.Triggers>
+                  </Style>
+                </DataGrid.CellStyle>
+                <DataGrid.Columns>
+                  <DataGridTextColumn Binding="{Binding Tram}" Width="*" MinWidth="110"/>
+                  <DataGridTextColumn Binding="{Binding Id}" Width="118"/>
+                  <DataGridTextColumn Binding="{Binding Name}" Width="2*" MinWidth="160"/>
+                  <DataGridTextColumn Binding="{Binding Colab}" Width="*" MinWidth="100"/>
+                  <DataGridTextColumn Binding="{Binding FechaTxt}" Width="85"/>
+                  <DataGridTemplateColumn Width="130">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <Border Background="{Binding Color}" CornerRadius="11" Padding="10,2" Margin="0,6" HorizontalAlignment="Left">
+                          <TextBlock Text="{Binding Status}" Foreground="#2A2A2A" FontSize="12"/>
+                        </Border>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Binding="{Binding PriceTxt}" Width="85"/>
+                  <DataGridTextColumn Binding="{Binding PaidTxt}" Width="85"/>
+                  <DataGridTextColumn Binding="{Binding PendTxt}" Width="85">
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="#B42318"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTextColumn Binding="{Binding ComTxt}" Width="95"/>
+                  <DataGridTemplateColumn Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <Border Background="{Binding ComColor}" CornerRadius="11" Padding="10,2" Margin="0,6" HorizontalAlignment="Left">
+                          <TextBlock Text="{Binding ComStTxt}" Foreground="#2A2A2A" FontSize="12"/>
+                        </Border>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                </DataGrid.Columns>
+              </DataGrid>
+            </Grid>
+          </Border>
+        </DockPanel>
+      </Grid>
 
       <!-- ACERCA DE -->
       <Border x:Name="PanelAbout" Visibility="Collapsed" Style="{StaticResource Card}" Padding="38,32" HorizontalAlignment="Center" Width="620" VerticalAlignment="Top" Margin="0,30,0,0">
@@ -4803,6 +5140,16 @@ function On-FieldChanged($sender) {
         elseif (-not $tipo) { $script:Ctl['price'].Text = '' }
         $script:Filling = $false
     }
+    # traducciones: precio al cliente = presupuesto de la traductora + beneficio fijo por documento
+    if ($script:T.Id -eq 'traduccion' -and ($key -eq 'gastos' -or $key -eq 'ndocs') -and -not $script:PriceTouched) {
+        $g = Parse-Money "$($script:Ctl['gastos'].Text)"
+        $nd = Parse-Money "$($script:Ctl['ndocs'].Text)"; if ($null -eq $nd -or $nd -le 0) { $nd = [double]1 }
+        if ($null -ne $g) {
+            $script:Filling = $true
+            $script:Ctl['price'].Text = ([double]$g + [double]$script:Cfg.TradProfit * [double]$nd).ToString('0.##', $script:ES)
+            $script:Filling = $false
+        }
+    }
     Update-Preview
 }
 
@@ -4833,10 +5180,33 @@ function Update-Preview {
     $pend = $null
     if ($null -ne $price) { $pend = [Math]::Max(0, [double]$price - [double]$(if ($null -ne $paid) { $paid } else { 0 })) }
     $ui.SumPrice.Text = Format-Money $price
+    $tasas = Get-TasasFor $T $v
     if ($null -ne $price -and [double]$price -gt 0) {
-        $sp = Split-Iva $price
-        $ui.SumIva.Text = (L 'sumIva') -f (Format-Money $sp.Base), (Format-Money $sp.Iva); $ui.SumIva.Visibility = 'Visible'
+        $sp = Split-Iva $price $tasas
+        if ($sp.Tasas -gt 0) { $ui.SumIva.Text = (L 'sumIvaTasas') -f (Format-Money $sp.Base), (Format-Money $sp.Iva), (Format-Money $sp.Tasas) }
+        else { $ui.SumIva.Text = (L 'sumIva') -f (Format-Money $sp.Base), (Format-Money $sp.Iva) }
+        $ui.SumIva.Visibility = 'Visible'
     } else { $ui.SumIva.Visibility = 'Collapsed' }
+    # margen (precio - tasas - gastos - comisión) y, en traducciones, el beneficio fijo por documento
+    $ui.SumMargin.Foreground = Brush '#667085'
+    if ($T.Id -eq 'traduccion' -and $null -ne $price -and $null -ne $v.gastos) {
+        $nd = ConvertTo-CellNumber $v.ndocs; if ($null -eq $nd -or [double]$nd -le 0) { $nd = [double]1 }
+        $want = [double]$script:Cfg.TradProfit * [double]$nd
+        $got = [double]$price - [double]$v.gastos
+        if ([math]::Abs($got - $want) -lt 0.005) { $ui.SumMargin.Text = (L 'trProfitOk') -f (Format-Money $got); $ui.SumMargin.Foreground = Brush '#1E7B34' }
+        else {
+            $ui.SumMargin.Text = (L 'trProfitBad') -f (Format-Money $got), (Format-Money $want), ([double]$script:Cfg.TradProfit).ToString('0.##', $script:ES), ([double]$nd).ToString('0.##', $script:ES)
+            $ui.SumMargin.Foreground = Brush '#B42318'
+        }
+        $ui.SumMargin.Visibility = 'Visible'
+    } else {
+        $mg = Get-Margin $T $v
+        if ($mg) {
+            $pct = $mg.Pct.ToString('0.#', $script:ES) + ' %'
+            $ui.SumMargin.Text = $(if ($mg.Com -gt 0) { (L 'sumMarginCom') -f (Format-Money $mg.Margin), $pct, (Format-Money $mg.Com) } else { (L 'sumMargin') -f (Format-Money $mg.Margin), $pct })
+            $ui.SumMargin.Visibility = 'Visible'
+        } else { $ui.SumMargin.Visibility = 'Collapsed' }
+    }
     $ui.SumPaid.Text = Format-Money $(if ($null -ne $price) { $(if ($null -ne $paid) { $paid } else { 0 }) } else { $null })
     $ui.SumPend.Text = Format-Money $pend
     $ui.SumPend.Foreground = $(if ($pend -gt 0) { Brush '#B42318' } else { Brush '#1E7B34' })
@@ -5060,6 +5430,7 @@ function Invoke-QuickUndo {
     $u = $script:UndoInfo; $script:UndoInfo = $null
     if (-not $u) { Show-Toast (L 'undoNone'); return }
     if ($u.Kind -eq 'resp') { Undo-RespBulk $u; return }
+    if ($u.Kind -eq 'colab') { Undo-ColabPaid $u; return }
     if ($script:T.Id -ne $u.Tramite) { $script:UndoInfo = $u; Show-Toast (L 'undoOther'); return }
     $r = @($script:Rows | Where-Object { [int]$_.Row -eq $u.Row })[0]
     if (-not $r) { Show-Toast (L 'cmUndoFail'); return }
@@ -5071,6 +5442,148 @@ function Invoke-QuickUndo {
     }
     Show-Toast (L 'cmUndone')
 }
+# ---------- colaboradores y abogados: sus trámites, ingresos y comisiones (de todos los trámites) ----------
+function Get-ColabItems {
+    $items = New-Object System.Collections.Generic.List[object]
+    if (-not $script:Cache) { return ,$items.ToArray() }
+    foreach ($t in $script:Tramites) {
+        if (-not $script:Cache.ContainsKey($t.Id)) { continue }
+        if (-not @($t.Fields | Where-Object { $_.Key -eq 'colab' }).Count) { continue }
+        $title = $t.Title[$script:Cfg.Language]; if (-not $title) { $title = $t.Title['es'] }
+        foreach ($r in $script:Cache[$t.Id].Rows) {
+            $who = "$($r.Data['colab'])".Trim().ToUpper()
+            if (-not $who) { continue }
+            $price = [double]$r.PriceV; $pend = [double]$r.Pending
+            $com = Get-Commission $r.Data $price
+            $paidCom = ("$($r.Data['compag'])" -eq 'Pagada')
+            $items.Add([pscustomobject]@{
+                TramId = $t.Id; Tram = $title; Row = [int]$r.Row; Id = "$($r.Id)"; Name = "$($r.Name)"; Colab = $who
+                FechaV = $(if ($r.Fecha -is [DateTime]) { $r.Fecha } else { [DateTime]::MinValue })
+                FechaTxt = $(if ($r.Fecha -is [DateTime]) { $r.Fecha.ToString('dd/MM/yyyy') } else { '' })
+                Status = "$($r.Status)"; Color = $r.Color
+                Price = $price; Paid = [math]::Max([double]0, $price - $pend); Pend = $pend; Com = $com; ComPaid = $paidCom
+                PriceTxt = $(if ($price -gt 0) { Format-Money $price } else { '' })
+                PaidTxt = $(if ($price -gt 0) { Format-Money ([math]::Max([double]0, $price - $pend)) } else { '' })
+                PendTxt = $(if ($pend -gt 0) { Format-Money $pend } else { '' })
+                ComTxt = $(if ($com -gt 0) { Format-Money $com } else { '' })
+                ComStTxt = $(if ($com -le 0) { '' } elseif ($paidCom) { L 'colStPaid' } else { L 'colStPend' })
+                ComColor = $(if ($com -le 0) { 'Transparent' } elseif ($paidCom) { '#DCFAE6' } else { '#FEF0C7' })
+            })
+        }
+    }
+    return ,$items.ToArray()
+}
+function Load-ColabPanel {
+    $ui = $script:UI
+    $keep = $null; if ($ui.ColabList.SelectedItem) { $keep = $ui.ColabList.SelectedItem.Key }
+    $script:ColabItems = Get-ColabItems
+    $list = New-Object System.Collections.Generic.List[object]
+    $all = @($script:ColabItems)
+    $pendAll = 0.0; foreach ($x in $all) { if (-not $x.ComPaid) { $pendAll += $x.Com } }
+    $list.Add([pscustomobject]@{ Key = ''; Name = (L 'colAll'); Glyph = [string][char]0xE716; Info = ((L 'colItem') -f $all.Count, (Format-Money $pendAll)) })
+    foreach ($n in (Get-CollaboratorNames)) {
+        $mine = @($all | Where-Object { $_.Colab -eq $n })
+        $p = 0.0; foreach ($x in $mine) { if (-not $x.ComPaid) { $p += $x.Com } }
+        $list.Add([pscustomobject]@{ Key = $n; Name = $n; Glyph = [string][char]0xE77B; Info = ((L 'colItem') -f $mine.Count, (Format-Money $p)) })
+    }
+    $script:ColabFilling = $true
+    try {
+        $ui.ColabList.ItemsSource = $list.ToArray()
+        $sel = 0
+        if ($keep) { for ($i = 0; $i -lt $list.Count; $i++) { if ($list[$i].Key -eq $keep) { $sel = $i } } }
+        $ui.ColabList.SelectedIndex = $sel
+    } finally { $script:ColabFilling = $false }
+    Update-ColabView
+}
+function Update-ColabView {
+    $ui = $script:UI
+    if ($script:ColabFilling) { return }
+    $key = ''; if ($ui.ColabList.SelectedItem) { $key = "$($ui.ColabList.SelectedItem.Key)" }
+    $ui.ColabName.Text = $(if ($key) { $key } else { L 'colTitle' })
+    $mine = @($script:ColabItems | Where-Object { -not $key -or $_.Colab -eq $key })
+    $k = @{ Inc = 0.0; Col = 0.0; Pend = 0.0; Com = 0.0; ComP = 0.0; ComN = 0.0 }
+    foreach ($x in $mine) {
+        $k.Inc += $x.Price; $k.Col += $x.Paid; $k.Pend += $x.Pend; $k.Com += $x.Com
+        if ($x.ComPaid) { $k.ComP += $x.Com } else { $k.ComN += $x.Com }
+    }
+    $ui.ColK1.Text = Format-Money $k.Inc; $ui.ColK2.Text = Format-Money $k.Col; $ui.ColK3.Text = Format-Money $k.Pend
+    $ui.ColK4.Text = Format-Money $k.Com; $ui.ColK5.Text = Format-Money $k.ComP; $ui.ColK6.Text = Format-Money $k.ComN
+    $show = $mine
+    if ($ui.ColabOnlyPend.IsChecked) { $show = @($mine | Where-Object { $_.Com -gt 0 -and -not $_.ComPaid }) }
+    $show = @($show | Sort-Object FechaV -Descending)
+    $ui.ColabGrid.ItemsSource = $show
+    $ui.ColabEmpty.Text = L 'colNone'
+    $ui.ColabEmpty.Visibility = $(if (@($script:ColabItems).Count -eq 0) { 'Visible' } else { 'Collapsed' })
+    $ui.ColabGrid.Visibility = $(if (@($script:ColabItems).Count -eq 0) { 'Collapsed' } else { 'Visible' })
+}
+function Set-ColabComState($pairs, [switch]$Undo) {
+    # $pairs: @{ T; Row; Id; Value } -> cambia «Pago comisión» directamente en los datos de GESTEM (no va al Excel)
+    $done = New-Object System.Collections.ArrayList
+    foreach ($g in @($pairs | Group-Object { $_.T.Id })) {
+        $t = $g.Group[0].T
+        $lk = Enter-StoreLock
+        try {
+            $s = Read-Store $t
+            if (-not $s) { continue }
+            foreach ($p in $g.Group) {
+                $c = $null
+                if ([int]$p.Row -gt 0) { $c = $s.Clients | Where-Object { [int]$_.Row -eq [int]$p.Row } | Select-Object -First 1 }
+                if (-not $c -and $p.Id) { $c = $s.Clients | Where-Object { "$($_.Id)" -eq $p.Id } | Select-Object -First 1 }
+                if (-not $c) { continue }
+                [void]$done.Add(@{ T = $t; Row = [int]$c.Row; Id = "$($c.Id)"; Value = "$($c.F['compag'])" })
+                $c.F['compag'] = $(if ($p.Value) { $p.Value } else { $null })
+                $c.Updated = (Get-Date).ToString('s'); $c.By = $(if ($script:User) { $script:User } else { 'ADMIN' })
+            }
+            Write-Store $t $s
+        } finally { Exit-StoreLock $lk }
+    }
+    return ,$done.ToArray()
+}
+function Mark-ColabPaid {
+    $ui = $script:UI
+    $sel = @($ui.ColabGrid.SelectedItems | Where-Object { $_.Com -gt 0 -and -not $_.ComPaid })
+    if (-not $sel.Count) { Show-Info (L 'colSelFirst'); return }
+    $script:Busy = $true; $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    Set-Status (L 'savingMsg')
+    try {
+        $pairs = foreach ($x in $sel) { @{ T = @($script:Tramites | Where-Object { $_.Id -eq $x.TramId })[0]; Row = $x.Row; Id = $x.Id; Value = 'Pagada' } }
+        $old = Set-ColabComState @($pairs)
+        Write-Log ("comisión pagada: {0} trámite(s) · {1}" -f $old.Count, (($sel | ForEach-Object { $_.Colab } | Select-Object -Unique) -join ', '))
+        [void](Load-Data -All -Quiet)
+        Load-ColabPanel
+        $script:UndoInfo = @{ Kind = 'colab'; Items = @($old) }
+        Show-Toast ((L 'colPaidDone') -f $old.Count) (L 'cmUndo') { Invoke-QuickUndo } 15
+    } catch {
+        Write-Log "comisión pagada: $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    } finally { $script:Busy = $false; $script:Win.Cursor = $null; Set-Status '' }
+}
+function Undo-ColabPaid($u) {
+    $script:Busy = $true; $script:Win.Cursor = [Windows.Input.Cursors]::Wait
+    try {
+        $r = Set-ColabComState @($u.Items)
+        Write-Log ("deshizo comisión pagada: {0} trámite(s)" -f $r.Count)
+        [void](Load-Data -All -Quiet)
+        if ($script:UI.PanelColab.Visibility -eq 'Visible') { Load-ColabPanel }
+        Show-Toast (L 'cmUndone')
+    } catch {
+        Write-Log "deshacer comisión: $($_.Exception.Message)"
+        Show-Error ((L 'errGeneric') + [Environment]::NewLine + $_.Exception.Message)
+    } finally { $script:Busy = $false; $script:Win.Cursor = $null }
+}
+function Open-ColabItem($x) {
+    # doble clic: abre la ficha del cliente en su trámite
+    if (-not $x) { return }
+    $i = [array]::IndexOf(@($script:Tramites | ForEach-Object { $_.Id }), $x.TramId)
+    if ($i -lt 0) { return }
+    if ($script:T.Id -ne $x.TramId) { $script:UI.TramiteBox.SelectedIndex = $i }
+    if ($script:T.Id -ne $x.TramId) { return }
+    $r = @($script:Rows | Where-Object { [int]$_.Row -eq $x.Row })[0]
+    if (-not $r) { Show-Toast (L 'cmUndoFail'); return }
+    $script:UI.NavNew.IsChecked = $true
+    Fill-FormForEdit $r
+}
+
 function Copy-ClientText([string]$text) {
     $text = "$text".Trim()
     if (-not $text) { return }
@@ -5414,13 +5927,13 @@ function Draw-Receipt($g, $page) {
     }
     # importes (el precio lleva el IVA incluido)
     $by = 100
-    $sp = Split-Iva $d.Price
+    $sp = Split-Iva $d.Price $d.Tasas
     PdfRect $g $LE $by $W 70 '#F7F5F5' 3
     PdfText $g (L 'rcBase') ($LE + 8) ($by + 8) 100 9.5 'Regular' '#6E6466'
     PdfText $g (Format-Money $sp.Base) 110 ($by + 8) ($RE - 118) 9.5 'Regular' '#4B4345' 'Far'
     PdfText $g (L 'rcIva') ($LE + 8) ($by + 15.5) 100 9.5 'Regular' '#6E6466'
     PdfText $g (Format-Money $sp.Iva) 110 ($by + 15.5) ($RE - 118) 9.5 'Regular' '#4B4345' 'Far'
-    PdfText $g (L 'rcTotal') ($LE + 8) ($by + 24) 100 10 'Semibold' '#1E1A1B'
+    PdfText $g $(if ($sp.Tasas -gt 0) { (L 'rcTotalTasas') -f (Format-Money $sp.Tasas) } else { L 'rcTotal' }) ($LE + 8) ($by + 24) 100 10 'Semibold' '#1E1A1B'
     PdfText $g (Format-Money $d.Price) 110 ($by + 24) ($RE - 118) 10 'Semibold' '#1E1A1B' 'Far'
     PdfLine $g ($LE + 8) ($by + 32) ($RE - 8) ($by + 32) '#DDD6D7' 0.3
     PdfText $g (L 'rcPaid') ($LE + 8) ($by + 36) 100 10 'Regular' '#4B4345'
@@ -5465,6 +5978,7 @@ function New-ClientReceipt($r) {
             Tramite = $title; Tipo = "$($r.Tipo)"; Status = "$($r.Status)"; Resp = "$($r.Resp)"
             Fsol = $(if ($fs -is [DateTime]) { $fs.ToString('dd/MM/yyyy') } else { '' })
             Price = $price; Paid = $paid; Pend = $pend; Forma = "$($r.Data['forma'])"
+            Tasas = (Get-TasasFor $script:T $r.Data)
         }
         $file = Join-Path $dir ("Recibo {0} {1:yyyy-MM-dd}.pdf" -f (Get-SafeName $no), (Get-Date))
         Invoke-PdfPrint $file $false ${function:Draw-Receipt}
@@ -5594,19 +6108,39 @@ function Draw-Invoice($g, $page) {
     PdfText $g '1' ($LE + 100) ($ry + 2.5) 22 9.5 'Regular' $mid 'Center'
     PdfText $g (Format-Money $d.Base) ($LE + 122) ($ry + 2.5) 26 9.5 'Regular' $mid 'Far'
     PdfText $g (Format-Money $d.Base) ($LE + 148) ($ry + 2.5) ($W - 152) 9.5 'Semibold' $dark 'Far'
-    PdfLine $g $LE ($ry + 18) $RE ($ry + 18) '#EEE9EA' 0.3
+    # tasas DGT (canje): suplido pagado en nombre del cliente, sin IVA
+    $hasT = ($null -ne $d.Tasas -and [double]$d.Tasas -gt 0)
+    $ly2 = $ry + 18
+    if ($hasT) {
+        PdfLine $g $LE ($ry + 18) $RE ($ry + 18) '#EEE9EA' 0.3
+        $ry2 = $ry + 22
+        PdfText $g 'Tasas DGT (suplido)' ($LE + 4) $ry2 94 10 'Semibold' $dark
+        PdfText $g 'Pagadas a la DGT en nombre del cliente · sin IVA' ($LE + 4) ($ry2 + 5.5) 94 8 'Regular' '#6E6466'
+        PdfText $g '1' ($LE + 100) ($ry2 + 2.5) 22 9.5 'Regular' $mid 'Center'
+        PdfText $g (Format-Money $d.Tasas) ($LE + 122) ($ry2 + 2.5) 26 9.5 'Regular' $mid 'Far'
+        PdfText $g (Format-Money $d.Tasas) ($LE + 148) ($ry2 + 2.5) ($W - 152) 9.5 'Semibold' $dark 'Far'
+        $ly2 = $ry2 + 13
+    }
+    PdfLine $g $LE $ly2 $RE $ly2 '#EEE9EA' 0.3
     # importes
-    $by = $ry + 24
-    PdfRect $g $LE $by $W 46 '#F7F5F5' 3
+    $by = $ly2 + 6
+    $bh = $(if ($hasT) { 54 } else { 46 })
+    PdfRect $g $LE $by $W $bh '#F7F5F5' 3
     PdfText $g 'Base imponible' ($LE + 8) ($by + 8) 100 10 'Regular' $mid
     PdfText $g (Format-Money $d.Base) 110 ($by + 8) ($RE - 118) 10 'Semibold' $dark 'Far'
     PdfText $g 'IVA (21 %)' ($LE + 8) ($by + 16) 100 10 'Regular' $mid
     PdfText $g (Format-Money $d.Iva) 110 ($by + 16) ($RE - 118) 10 'Semibold' $dark 'Far'
-    PdfLine $g ($LE + 8) ($by + 26) ($RE - 8) ($by + 26) '#DDD6D7' 0.3
-    PdfText $g 'TOTAL FACTURA' ($LE + 8) ($by + 31) 100 12 'Semibold' $dark
-    PdfText $g (Format-Money $d.Total) 100 ($by + 30) ($RE - 108) 16 'Semibold' $red 'Far'
+    $tl = 26
+    if ($hasT) {
+        PdfText $g 'Suplidos: tasas DGT (sin IVA)' ($LE + 8) ($by + 24) 100 10 'Regular' $mid
+        PdfText $g (Format-Money $d.Tasas) 110 ($by + 24) ($RE - 118) 10 'Semibold' $dark 'Far'
+        $tl = 34
+    }
+    PdfLine $g ($LE + 8) ($by + $tl) ($RE - 8) ($by + $tl) '#DDD6D7' 0.3
+    PdfText $g 'TOTAL FACTURA' ($LE + 8) ($by + $tl + 5) 100 12 'Semibold' $dark
+    PdfText $g (Format-Money $d.Total) 100 ($by + $tl + 4) ($RE - 108) 16 'Semibold' $red 'Far'
     # forma de pago
-    $py = $by + 54
+    $py = $by + $bh + 8
     PdfText $g 'PAGO' $LE $py 80 7.5 'Semibold' $red
     $i = 0
     foreach ($ln in $d.PayLines) {
@@ -5643,7 +6177,7 @@ function New-ClientInvoice($r) {
         $t = $script:T
         $id = "$($r.Id)".Trim(); if (-not $id) { $id = "F$($r.Row)" }
         $inv = Get-InvoiceNumber ("{0}|{1}" -f $t.Id, $id)
-        $sp = Split-Iva $total
+        $sp = Split-Iva $total (Get-TasasFor $t $r.Data)
         $pend = [double]$r.Pending
         $forma = "$($r.Data['forma'])".Trim()
         $cash = ($forma -match '(?i)efectivo|cash|esp[eè]ces')
@@ -5664,7 +6198,7 @@ function New-ClientInvoice($r) {
             Issuer = "$($cfg.InvName)"; Activity = "$($cfg.InvActivity)"; IssuerLines = $issuerLines
             Client = "$($r.Name)"; ClientLines = $clientLines
             ConceptTitle = $c.Title; ConceptDesc = $c.Desc
-            Base = $sp.Base; Iva = $sp.Iva; Total = $total; Pend = $pend; PaidAmt = [math]::Max([double]0, $total - $pend)
+            Base = $sp.Base; Iva = $sp.Iva; Tasas = $sp.Tasas; Total = $total; Pend = $pend; PaidAmt = [math]::Max([double]0, $total - $pend)
             Company = $(if ("$($cfg.CompanyName)".Trim()) { "$($cfg.CompanyName)" } else { "$($cfg.InvName)" })
             PayLines = $pay.ToArray()
         }
@@ -5828,6 +6362,12 @@ function Apply-Language {
     $ui.KpiBillL.Text = L 'kpiBill'; $ui.KpiPaidL.Text = L 'kpiPaid'; $ui.KpiPendL.Text = L 'kpiPend'; $ui.KpiNetL.Text = L 'kpiNet'
     Fill-StatsFilters
     $ui.NavSettings.Content = L 'navSettings'; $ui.NavAbout.Content = L 'navAbout'
+    $ui.NavColab.Content = L 'navColab'; $ui.ColabTitle.Text = L 'colTitle'; $ui.ColabHint.Text = L 'colHint'
+    $ui.ColabPaidBtn.Content = L 'colPaidBtn'; $ui.ColabOnlyPend.Content = L 'colOnlyPend'
+    $ui.ColK1L.Text = L 'colIncome'; $ui.ColK2L.Text = L 'colCollected'; $ui.ColK3L.Text = L 'colToCollect'
+    $ui.ColK4L.Text = L 'colCom'; $ui.ColK5L.Text = L 'colComPaid'; $ui.ColK6L.Text = L 'colComPend'
+    $hk = 'colHTram', 'colHId', 'colHName', 'seccolab', 'colHDate', 'colHStatus', 'colHPrice', 'colHPaid', 'colHPend', 'colHCom', 'colHComSt'
+    for ($i = 0; $i -lt $hk.Count -and $i -lt $ui.ColabGrid.Columns.Count; $i++) { $ui.ColabGrid.Columns[$i].Header = L $hk[$i] }
     $ui.TramiteLabel.Text = L 'tramite'
     $ui.SumPriceL.Text = L 'sumPrice'; $ui.SumPaidL.Text = L 'sumPaid'; $ui.SumPendL.Text = L 'sumPend'
     $ui.SearchHint.Text = L 'search'; $ui.OnlyDebt.Content = L 'onlyDebt'
@@ -5836,6 +6376,7 @@ function Apply-Language {
     $heads = @('colId', 'colName', 'colDoc', 'colTipo', 'colStatus', 'colPay', 'colPend', 'colDays', 'colResp')
     $ui.OnlyMine.Content = L 'onlyMine'; $ui.SetCollL.Text = L 'setColleagues'
     $ui.InvSecL.Text = L 'invSec'; $ui.InvHintL.Text = L 'invHint'; $ui.InvNameL.Text = L 'invName'; $ui.InvActL.Text = L 'invAct'; $ui.InvNifL.Text = L 'invNif'
+    $ui.TasasL.Text = L 'tasasL'
     $ui.InvIbanL.Text = L 'invIban'; $ui.InvDomL.Text = L 'invDom'; $ui.InvPobL.Text = L 'invPob'; $ui.InvNextL.Text = L 'invNext'
     $ui.SetCompanyL.Text = L 'setCompany'; $ui.SetLogoL.Text = L 'setLogo'; $ui.LogoBtn.Content = L 'btnLogo'; $ui.LogoClearBtn.Content = L 'btnLogoClear'
     $ui.UserBtn.Content = $(if ($script:User) { (L 'userTip') -f $script:User } else { L 'sessGo' })
@@ -5873,7 +6414,7 @@ function Apply-Language {
 }
 
 function Show-Panel([string]$name) {
-    foreach ($p in @('PanelForm', 'PanelClients', 'PanelStats', 'PanelSettings', 'PanelAbout')) {
+    foreach ($p in @('PanelForm', 'PanelClients', 'PanelStats', 'PanelColab', 'PanelSettings', 'PanelAbout')) {
         $script:UI[$p].Visibility = $(if ($p -eq $name) { 'Visible' } else { 'Collapsed' })
     }
     # en Resumen el selector de arriba incluye «Todos los trámites»
@@ -5898,6 +6439,7 @@ function Load-SettingsPanel {
     $ui.InvNameBox.Text = "$($script:Cfg.InvName)"; $ui.InvActBox.Text = "$($script:Cfg.InvActivity)"; $ui.InvNifBox.Text = "$($script:Cfg.InvNif)"
     $ui.InvIbanBox.Text = "$($script:Cfg.InvIban)"; $ui.InvDomBox.Text = "$($script:Cfg.InvAddress)"; $ui.InvPobBox.Text = "$($script:Cfg.InvTown)"
     $ui.InvNextBox.Text = $(try { (Get-InvoiceBook).Next.ToString('000') } catch { '' })
+    $ui.TasasBox.Text = "$($script:Cfg.TasasCanje)"
     $script:PendingLogo = "$($script:Cfg.CompanyLogo)"
     $ui.LogoPreview.Fill = (Get-LogoBrush $script:PendingLogo)
     $ui.ExtDirBox.Text = "$($script:Cfg.ExtBackupDir)"
@@ -6027,6 +6569,7 @@ function Save-Settings {
     $script:Cfg.CompanyName = "$($ui.CompanyBox.Text)".Trim()
     $script:Cfg.InvName = "$($ui.InvNameBox.Text)".Trim(); $script:Cfg.InvActivity = "$($ui.InvActBox.Text)".Trim(); $script:Cfg.InvNif = "$($ui.InvNifBox.Text)".Trim().ToUpper()
     $script:Cfg.InvIban = "$($ui.InvIbanBox.Text)".Trim().ToUpper(); $script:Cfg.InvAddress = "$($ui.InvDomBox.Text)".Trim(); $script:Cfg.InvTown = "$($ui.InvPobBox.Text)".Trim()
+    $script:Cfg.TasasCanje = ("$($ui.TasasBox.Text)".Trim() -replace '\s*[;\r\n]+\s*', '; ')
     $nx = 0; if ([int]::TryParse("$($ui.InvNextBox.Text)".Trim(), [ref]$nx) -and $nx -gt 0) { try { Set-InvoiceNext $nx } catch { Write-Log "facturas: $($_.Exception.Message)" } }
     $script:Cfg.CompanyLogo = Save-CompanyLogo $script:PendingLogo
     Apply-Branding
@@ -6930,7 +7473,7 @@ try {
 $script:UI = @{}
 foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings','NavAbout','StatusText','FileText',
                  'PanelForm','FormTitle','FormGrid','CardTag','CardId','CardName','CardSub','CardTipo','CardStatusB','CardStatus',
-                 'Toast','ToastText','ToastBtn','ToastClose','SumPriceL','SumPrice','SumIva','SumPaidL','SumPaid','SumPendL','SumPend','DupWarn','SaveBtn','ClearBtn',
+                 'Toast','ToastText','ToastBtn','ToastClose','SumPriceL','SumPrice','SumIva','SumMargin','SumPaidL','SumPaid','SumPendL','SumPend','DupWarn','SaveBtn','ClearBtn',
                  'PanelClients','RefreshBtn','OpenExcelBtn','EditBtn','SearchBox','SearchHint','FilterBox','OnlyDebt','ClientsGrid',
                  'PanelSettings','SetTitle','WelcomeText','SetFileL','ChangeFileBtn','FilePathBox','SetLangL','LangBox','SetNatL','NatBox',
                  'BackupChk','OpenAfterChk','SetNote','SaveSettingsBtn','BackupsBtn','UpdateBtn',
@@ -6945,7 +7488,8 @@ foreach ($n in @('TramiteLabel','TramiteBox','NavNew','NavClients','NavSettings'
                  'PanelPaused','PausedText','PanelAdminLogin','AdmLoginHint','AdmKeyHint','AdmPw','AdmPw2','AdmLoginMsg','AdmLoginCancel','AdmLoginBtn','PanelAdmin','AdmLogout','AdmClose','AdmTabLocks','AdmTabLog','AdmLogErr','AdmTabTools','AdmPageLocks','AdmPageLog','AdmPageTools','AdmLockFile','AdmLockExt','AdmLockComp','AdmLockTeam','AdmLockPref','AdmLockHelp','AdmLockAll','AdmIgnorePause','AdmOwnerPC','AdmSaveLocks','AdmLocksMsg','AdmLogRefresh','AdmLogAll','AdmLogTeam','AdmLogAdmin','AdmLogTitle','AdmLog','AdmRemoteTxt','AdmUpdate','AdmOpenData','AdmOpenApp','AdmShowAll','AdmInfo','AdmNewPw','AdmNewPw2','AdmChangePw','AdmPwMsg','SecFileBox','SecExtBox','SecCompBox','SecTeamBox','SecPrefBox','SecHelpBox',
                  'TopBar','StatsScope','StatsAllBtn','StatsAllTxt','NavStats','PanelStats','StatsWho','StatsPeriod','StatsRefresh','StatsTitle','StatsSub','StatsTable','StatsGrid',
                  'KpiBillL','KpiBill','KpiBillF','KpiPaidL','KpiPaid','KpiPaidTrack','KpiPaidF','KpiPendL','KpiPend','KpiPendF','KpiNetL','KpiNet','KpiNetF',
-                 'SideLogo','SideCompany','SessLogo','SessCompany','AboutImg','AboutCompany','SetCompanyL','CompanyBox','InvSecL','InvHintL','InvNameL','InvNameBox','InvActL','InvActBox','InvNifL','InvNifBox','InvIbanL','InvIbanBox','InvDomL','InvDomBox','InvPobL','InvPobBox','InvNextL','InvNextBox','SetLogoL','LogoPreview','LogoBtn','LogoClearBtn')) {
+                 'SideLogo','SideCompany','SessLogo','SessCompany','AboutImg','AboutCompany','SetCompanyL','CompanyBox','InvSecL','InvHintL','InvNameL','InvNameBox','InvActL','InvActBox','InvNifL','InvNifBox','InvIbanL','InvIbanBox','InvDomL','InvDomBox','InvPobL','InvPobBox','InvNextL','InvNextBox','TasasL','TasasBox','NavColab','PanelColab','ColabTitle','ColabHint','ColabList','ColabOnlyPend','ColabPaidBtn','ColabName','ColabEmpty','ColabGrid',
+                 'ColK1L','ColK1','ColK2L','ColK2','ColK3L','ColK3','ColK4L','ColK4','ColK5L','ColK5','ColK6L','ColK6','SetLogoL','LogoPreview','LogoBtn','LogoClearBtn')) {
     $script:UI[$n] = $script:Win.FindName($n)
 }
 # menús y columnas no siempre se encuentran por nombre: se toman directamente
@@ -7043,6 +7587,11 @@ $ui.StatsPeriod.Add_SelectionChanged({ if ($script:UI.PanelStats.Visibility -eq 
 $ui.StatsRefresh.Add_Click({ $script:Win.Cursor = [Windows.Input.Cursors]::Wait; [void](Load-Data -All); Fill-StatsFilters; Update-Stats; $script:Win.Cursor = $null })
 $ui.NavSettings.Add_Checked({ Load-SettingsPanel; Show-Panel 'PanelSettings' })
 $ui.NavAbout.Add_Checked({ Show-Panel 'PanelAbout' })
+$ui.NavColab.Add_Checked({ Show-Panel 'PanelColab'; Load-ColabPanel })
+$ui.ColabList.Add_SelectionChanged({ Update-ColabView })
+$ui.ColabOnlyPend.Add_Click({ Update-ColabView })
+$ui.ColabPaidBtn.Add_Click({ Mark-ColabPaid })
+$ui.ColabGrid.Add_MouseDoubleClick({ Open-ColabItem $script:UI.ColabGrid.SelectedItem })
 
 # formulario
 $ui.SaveBtn.Add_Click({
@@ -7211,6 +7760,7 @@ $ui.ToastClose.Add_Click({ Hide-Toast })
 $script:Win.Dispatcher.Add_UnhandledException({
     $m = "$($_.Exception.Message)`r`n$($_.Exception.InnerException)"
     Write-Log "UI ERROR: $($_.Exception.ToString())"
+    try { $er = $_.Exception.ErrorRecord; if ($er) { Write-Log ("UI ERROR en: línea {0} · {1}" -f $er.InvocationInfo.ScriptLineNumber, ("$($er.ScriptStackTrace)" -replace "[\r\n]+", " | ")) } } catch { }
     [void][Windows.MessageBox]::Show($m, 'GESTEM MANAGER - error', 'OK', 'Error')
     $_.Handled = $true
 })
