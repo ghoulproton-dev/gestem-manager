@@ -38,6 +38,7 @@ try {
 $script:AppName    = 'GESTEM MANAGER'
 $script:AppVersion = '1.8.1'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
+$script:RepoApi    = 'https://api.github.com/repos/ghoulproton-dev/gestem-manager'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir    = Join-Path $env:APPDATA 'GESTEM'
 $script:CfgPath    = Join-Path $script:DataDir 'config.json'
@@ -829,6 +830,10 @@ $script:Text18 = @{
   colIncome = 'Ingresos'; colCollected = 'Cobrado'; colToCollect = 'Pendiente de cobro'
   colCom = 'Comisiones'; colComPaid = 'Comisión pagada'; colComPend = 'Comisión por pagar'
   colPaidBtn = 'Marcar comisión como pagada'; colOnlyPend = 'Solo comisiones por pagar'; colStPaid = 'Pagada'; colStPend = 'Por pagar'
+  keyAsk = 'Escribe la clave de GESTEM (te la da Yano). Solo se pide una vez en este PC.'
+  keyOk = 'Clave guardada. Este PC recibirá las actualizaciones.'
+  keyBad = 'La clave no es válida. Revísala o pide otra a Yano.'
+  keyOffline = 'No hay internet para comprobar la clave. Se pedirá otra vez al abrir GESTEM.'
   colHTram = 'Trámite'; colHId = 'Expediente'; colHName = 'Cliente'; colHDate = 'Fecha'; colHStatus = 'Estado'
   colHPrice = 'Precio'; colHPaid = 'Cobrado'; colHPend = 'Pendiente'; colHCom = 'Comisión'; colHComSt = 'Pago comisión'
   colPaidDone = '{0} comisión(es) marcada(s) como pagada(s)'
@@ -852,6 +857,10 @@ $script:Text18 = @{
   colIncome = 'Income'; colCollected = 'Collected'; colToCollect = 'To collect'
   colCom = 'Commissions'; colComPaid = 'Commission paid'; colComPend = 'Commission to pay'
   colPaidBtn = 'Mark commission as paid'; colOnlyPend = 'Only unpaid commissions'; colStPaid = 'Paid'; colStPend = 'To pay'
+  keyAsk = 'Type the GESTEM key (Yano gives it to you). It is only asked once on this PC.'
+  keyOk = 'Key saved. This PC will receive updates.'
+  keyBad = 'The key is not valid. Check it or ask Yano for a new one.'
+  keyOffline = 'No internet to check the key. It will be asked again next time GESTEM opens.'
   colHTram = 'Procedure'; colHId = 'Case'; colHName = 'Client'; colHDate = 'Date'; colHStatus = 'Status'
   colHPrice = 'Price'; colHPaid = 'Collected'; colHPend = 'Outstanding'; colHCom = 'Commission'; colHComSt = 'Commission paid'
   colPaidDone = '{0} commission(s) marked as paid'
@@ -875,6 +884,10 @@ $script:Text18 = @{
   colIncome = 'Recettes'; colCollected = 'Encaissé'; colToCollect = 'À encaisser'
   colCom = 'Commissions'; colComPaid = 'Commission payée'; colComPend = 'Commission à payer'
   colPaidBtn = 'Marquer la commission comme payée'; colOnlyPend = 'Seulement les commissions à payer'; colStPaid = 'Payée'; colStPend = 'À payer'
+  keyAsk = 'Saisissez la clé GESTEM (donnée par Yano). Elle n''est demandée qu''une fois sur ce PC.'
+  keyOk = 'Clé enregistrée. Ce PC recevra les mises à jour.'
+  keyBad = 'La clé n''est pas valide. Vérifiez-la ou demandez-en une nouvelle à Yano.'
+  keyOffline = 'Pas d''internet pour vérifier la clé. Elle sera redemandée à la prochaine ouverture de GESTEM.'
   colHTram = 'Démarche'; colHId = 'Dossier'; colHName = 'Client'; colHDate = 'Date'; colHStatus = 'État'
   colHPrice = 'Prix'; colHPaid = 'Encaissé'; colHPend = 'Reste'; colHCom = 'Commission'; colHComSt = 'Paiement commission'
   colPaidDone = '{0} commission(s) marquée(s) comme payée(s)'
@@ -898,6 +911,10 @@ $script:Text18 = @{
   colIncome = 'المداخيل'; colCollected = 'المحصَّل'; colToCollect = 'المتبقي للتحصيل'
   colCom = 'العمولات'; colComPaid = 'العمولة المدفوعة'; colComPend = 'العمولة المستحقة'
   colPaidBtn = 'تعليم العمولة كمدفوعة'; colOnlyPend = 'العمولات غير المدفوعة فقط'; colStPaid = 'مدفوعة'; colStPend = 'للدفع'
+  keyAsk = 'اكتب مفتاح GESTEM (يعطيك إياه Yano). يُطلب مرة واحدة فقط على هذا الحاسوب.'
+  keyOk = 'تم حفظ المفتاح. سيتلقى هذا الحاسوب التحديثات.'
+  keyBad = 'المفتاح غير صالح. تحقق منه أو اطلب مفتاحاً جديداً من Yano.'
+  keyOffline = 'لا يوجد اتصال بالإنترنت للتحقق من المفتاح. سيُطلب مرة أخرى عند فتح GESTEM.'
   colHTram = 'المعاملة'; colHId = 'الملف'; colHName = 'العميل'; colHDate = 'التاريخ'; colHStatus = 'الحالة'
   colHPrice = 'السعر'; colHPaid = 'المحصَّل'; colHPend = 'المتبقي'; colHCom = 'العمولة'; colHComSt = 'دفع العمولة'
   colPaidDone = 'تم تعليم {0} عمولة كمدفوعة'
@@ -919,7 +936,7 @@ function Get-FieldLabel($field) { $l = $field.Label[$script:Cfg.Language]; if (-
 # =====================================================================
 function Load-Config {
     $cfg = [ordered]@{ ExcelPath = ''; Language = 'es'; DefaultNationality = 'MARROQUI'; Backup = $true; OpenAfterSave = $false; Tramite = 'canje'; TabsChecked = @(); Colleagues = @('SAFAE', 'CHAYMAE'); LastUser = ''; CompanyName = ''; CompanyLogo = ''; ExtBackupDir = ''; LastExtBackup = ''
-             InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = ''; SumsRepaired = $false; ExcelRepaired = $false; TasasCanje = 'B=33; C=100; D=100'; TradProfit = [double]3; Collaborators = @() }    # emisor por defecto de las facturas: la gestora
+             InvName = 'El Mahi Hmidat Chaymae'; InvActivity = 'Gestión de Trámites Administrativos'; InvNif = '55141554C'; InvAddress = 'Calle Los Albaladejos, 2'; InvTown = '30700 Torre Pacheco (Murcia)'; InvIban = ''; SumsRepaired = $false; ExcelRepaired = $false; TasasCanje = 'B=33; C=100; D=100'; TradProfit = [double]3; Collaborators = @(); UpdateKey = '' }    # emisor por defecto de las facturas: la gestora
     if (Test-Path $script:CfgPath) {
         try {
             $j = Get-Content -Raw -Path $script:CfgPath -Encoding UTF8 | ConvertFrom-Json
@@ -2903,6 +2920,54 @@ function Test-FormHasWork {
     if ($script:EditRow) { return $true }
     try { return [bool]"$($script:Ctl['name'].Text)".Trim() } catch { return $false }
 }
+# clave de GESTEM: se escribe una vez por PC y abre las actualizaciones del GitHub privado (guardada cifrada para este usuario de Windows)
+function Get-GestemKey {
+    $e = "$($script:Cfg.UpdateKey)"; if (-not $e) { return '' }
+    try { return [Text.Encoding]::UTF8.GetString([Security.Cryptography.ProtectedData]::Unprotect([Convert]::FromBase64String($e), $null, 'CurrentUser')) } catch { return '' }
+}
+function Set-GestemKey([string]$k) {
+    $script:Cfg.UpdateKey = $(if ($k) { [Convert]::ToBase64String([Security.Cryptography.ProtectedData]::Protect([Text.Encoding]::UTF8.GetBytes($k), $null, 'CurrentUser')) } else { '' })
+    Save-Config
+}
+function Get-RepoFile([string]$name, [string]$outFile, [int]$timeout = 5) {
+    # con clave: API de GitHub (sirve con el repositorio privado); sin clave: como antes
+    $k = Get-GestemKey; $h = @{}
+    if ($k) { $uri = "$($script:RepoApi)/contents/$($name)?ref=main"; $h = @{ Authorization = "Bearer $k"; Accept = 'application/vnd.github.raw' } }
+    else { $uri = "$($script:UpdateBase)/$($name)?t=$([DateTime]::UtcNow.Ticks)" }
+    $tmp = $outFile; if (-not $tmp) { $tmp = [IO.Path]::GetTempFileName() }
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri $uri -Headers $h -OutFile $tmp -TimeoutSec $timeout
+    } catch {
+        $code = $null; try { $code = [int]$_.Exception.Response.StatusCode } catch { }
+        if ($k -and $code -eq 401) { Set-GestemKey ''; Write-Log 'clave de GESTEM rechazada por GitHub: se pedirá otra' }
+        throw
+    }
+    if ($outFile) { return }
+    try { return [IO.File]::ReadAllText($tmp, [Text.Encoding]::UTF8) } finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+}
+function Test-GestemKey([string]$k) {
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        [void](Invoke-WebRequest -UseBasicParsing -Uri $script:RepoApi -Headers @{ Authorization = "Bearer $k" } -TimeoutSec 10)
+        return 'ok'
+    } catch {
+        $code = $null; try { $code = [int]$_.Exception.Response.StatusCode } catch { }
+        if ($code -in 401, 403, 404) { return 'bad' }
+        return 'offline'
+    }
+}
+function Ask-GestemKey {
+    # una sola vez por PC; si se cancela, se vuelve a pedir al abrir la próxima vez
+    Add-Type -AssemblyName Microsoft.VisualBasic
+    for ($i = 0; $i -lt 3; $i++) {
+        $k = [Microsoft.VisualBasic.Interaction]::InputBox((L 'keyAsk'), $script:AppName, '').Trim()
+        if (-not $k) { return }
+        $r = Test-GestemKey $k
+        if ($r -eq 'ok') { Set-GestemKey $k; Write-Log 'clave de GESTEM guardada'; Show-Toast (L 'keyOk'); return }
+        if ($r -eq 'offline') { Show-Error (L 'keyOffline'); return }
+        Show-Error (L 'keyBad')
+    }
+}
 function Start-UpdateCheckAsync {
     # mira si hay versión nueva sin congelar la ventana. Si no hay nada a medias, se actualiza sola como siempre.
     # (HttpClient: la respuesta llega en segundo plano aunque la ventana esté ocupada cargando)
@@ -2912,7 +2977,11 @@ function Start-UpdateCheckAsync {
         $hc = New-Object Net.Http.HttpClient
         $hc.Timeout = [TimeSpan]::FromSeconds(20)
         $script:UpdClient = $hc
-        $script:UpdTask = $hc.GetStringAsync("$($script:UpdateBase)/version.txt?t=$([DateTime]::UtcNow.Ticks)")
+        $k = Get-GestemKey
+        if ($k) {
+            $hc.DefaultRequestHeaders.Add('Authorization', "Bearer $k"); $hc.DefaultRequestHeaders.Add('Accept', 'application/vnd.github.raw'); $hc.DefaultRequestHeaders.Add('User-Agent', 'GESTEM')
+            $script:UpdTask = $hc.GetStringAsync("$($script:RepoApi)/contents/version.txt?ref=main")
+        } else { $script:UpdTask = $hc.GetStringAsync("$($script:UpdateBase)/version.txt?t=$([DateTime]::UtcNow.Ticks)") }
         $script:UpdTicks = 0
         $script:UpdTimer = New-Object Windows.Threading.DispatcherTimer
         $script:UpdTimer.Interval = [TimeSpan]::FromMilliseconds(300)
@@ -2942,9 +3011,7 @@ function Check-Update([switch]$Manual) {
     if (-not $me) { $me = Join-Path $script:AppDir 'GESTEM.ps1' }
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $stamp = [DateTime]::UtcNow.Ticks
-        $remote = (Invoke-WebRequest -UseBasicParsing -Uri "$($script:UpdateBase)/version.txt?t=$stamp" -TimeoutSec 5).Content
-        $remote = "$remote".Trim()
+        $remote = "$(Get-RepoFile 'version.txt')".Trim()
         if (-not ($remote -match '^\d+(\.\d+){1,3}$')) { throw "version.txt no válido: $remote" }
         if ([version]$remote -le [version]$script:AppVersion) {
             if ($Manual) { Show-Toast ((L 'upToDate') -f $script:AppVersion) }
@@ -2952,7 +3019,7 @@ function Check-Update([switch]$Manual) {
         }
         Set-Status ((L 'updating') -f $remote)
         $tmp = Join-Path $env:TEMP 'GESTEM_nuevo.ps1'
-        Invoke-WebRequest -UseBasicParsing -Uri "$($script:UpdateBase)/GESTEM.ps1?t=$stamp" -OutFile $tmp -TimeoutSec 30
+        Get-RepoFile 'GESTEM.ps1' $tmp 30
         # comprobar que el archivo descargado está completo y es correcto antes de reemplazar nada
         $code = Get-Content -Raw -LiteralPath $tmp -Encoding UTF8
         $errs = $null
@@ -7387,9 +7454,9 @@ function Check-Remote {
     $j = $null
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $r = Invoke-WebRequest -UseBasicParsing -Uri "$($script:UpdateBase)/control.json?t=$([DateTime]::UtcNow.Ticks)" -TimeoutSec 5
-        $j = $r.Content | ConvertFrom-Json
-        Set-Content -LiteralPath $script:RemotePath -Value $r.Content -Encoding UTF8
+        $txt = Get-RepoFile 'control.json'
+        $j = $txt | ConvertFrom-Json
+        Set-Content -LiteralPath $script:RemotePath -Value $txt -Encoding UTF8
     } catch {
         $code = $null; try { $code = [int]$_.Exception.Response.StatusCode } catch {}
         if ($code -eq 404) { if (Test-Path -LiteralPath $script:RemotePath) { Remove-Item -LiteralPath $script:RemotePath -Force } }
@@ -7805,6 +7872,7 @@ $script:Win.Add_Closing({
 })
 
 $script:Win.Add_ContentRendered({
+    if (-not (Get-GestemKey)) { try { Ask-GestemKey } catch { Write-Log "clave de GESTEM: $($_.Exception.Message)" } }
     Start-UpdateCheckAsync
     Check-Remote
     $flag = Join-Path $script:DataDir 'actualizado.txt'

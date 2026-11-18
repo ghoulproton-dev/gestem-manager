@@ -48,5 +48,6 @@ La versión PowerShell (GESTEM.ps1) sigue siendo la que usa la gestoría hasta e
       campos solo de GESTEM (Col vacío: colab, comtipo, comval, compag, ndocs), tasas DGT del canje (Cfg.TasasCanje, Split-Iva con tasas,
       línea «Tasas DGT (suplido)» en factura y recibo), margen y % en la ficha (Get-Margin), traducción: precio = traductora + 3 € × nº docs
       (Cfg.TradProfit) con aviso, página Colaboradores (Get-ColabItems, KPIs, marcar comisión pagada + deshacer), Text18
+- [ ] Clave de GESTEM (Get/Set-GestemKey con DPAPI, Get-RepoFile por la API de GitHub con la clave, Ask-GestemKey al abrir) — trasladar
 - [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe
