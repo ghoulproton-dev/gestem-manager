@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.9.1'
+$script:AppVersion = '1.9.2'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:RepoApi    = 'https://api.github.com/repos/ghoulproton-dev/gestem-manager'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -3381,6 +3381,7 @@ function Join-FbDocs($docs, [string]$mod) {
                 try { Show-Toast ((L 'fbClash') -f $old, $c.Id, "$($c.F['name'])") '' $null 15 } catch { }
             }
             $script:FbApplying = $true; Write-Store $t $s
+            try { [void](Repair-DocsFolders $t $s) } catch { Write-Log "documentos: $($_.Exception.Message)" }    # carpetas de los renumerados
         } finally { $script:FbApplying = $false; Exit-StoreLock $lk }
     }
     Save-FbState $st
@@ -3457,7 +3458,10 @@ function Receive-FbDocs($docs, [switch]$All) {
                 $dirty = $true
                 Write-Log ("firebase: recibido {0} de {1}{2}" -f $d.Id, $d.Pc, $(if ($d.Deleted) { ' (eliminado)' } else { '' }))
             }
-            if ($dirty) { $script:FbApplying = $true; Write-Store $t $s }
+            if ($dirty) {
+                $script:FbApplying = $true; Write-Store $t $s
+                try { [void](Repair-DocsFolders $t $s) } catch { Write-Log "documentos: $($_.Exception.Message)" }    # nº que cambiaron en otro PC
+            }
         } finally { $script:FbApplying = $false; Exit-StoreLock $lk }
     }
     Save-FbState $st
@@ -6406,13 +6410,63 @@ function Get-ClientDocsDir($r, [switch]$Create) {
     if (-not $tdir) { return $null }
     $id = Get-SafeName "$($r.Id)"
     if (-not $id) { $id = "fila $($r.Row)" }
+    $p = Join-Path $tdir ("$id - " + (Get-SafeName "$($r.Name)"))
+    if (Test-Path -LiteralPath $p) { return $p }    # mismo nº y mismo nombre (puede haber otra carpeta con el mismo nº de otro PC)
     if (Test-Path -LiteralPath $tdir) {
         $hit = Get-ChildItem -LiteralPath $tdir -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq $id -or $_.Name.StartsWith("$id - ") } | Select-Object -First 1
         if ($hit) { return $hit.FullName }
     }
-    $p = Join-Path $tdir ("$id - " + (Get-SafeName "$($r.Name)"))
     if ($Create) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
     return $p
+}
+function Test-SameNameKey([string]$a, [string]$b) {
+    # mismo nombre, o uno contiene todas las palabras del otro («ANA» y «ANA RUIZ»): la misma persona con el nombre corregido
+    if (-not $a -or -not $b) { return $false }
+    if ($a -eq $b) { return $true }
+    $wa = @($a.Split(' ') | Where-Object { $_ }); $wb = @($b.Split(' ') | Where-Object { $_ })
+    if ($wa.Count -gt $wb.Count) { $x = $wa; $wa = $wb; $wb = $x }
+    return (@($wa | Where-Object { $wb -notcontains $_ }).Count -eq 0)
+}
+function Repair-DocsFolders($t, $s) {
+    # carpetas «nº - nombre» cuyo nº ya es de otro cliente (renumerado al unirse o por choque con otro PC): pasan al nº
+    # del cliente con ese nombre, si hay uno solo. Si ese cliente ya tiene carpeta, se juntan sin sobrescribir nada.
+    $n = 0
+    $root = Get-DocsRoot
+    if (-not $root -or -not $s) { return 0 }
+    $tdir = Join-Path $root (Get-SafeName $t.Sheet)
+    if (-not (Test-Path -LiteralPath $tdir)) { return 0 }
+    $byId = @{}; $byName = @{}
+    foreach ($c in $s.Clients) {
+        $id = Get-SafeName "$($c.Id)"; if (-not $id) { $id = "fila $($c.Row)" }
+        $byId[$id] = $c
+        if ($c.Del) { continue }
+        $k = ConvertTo-HandKey (Get-SafeName "$($c.F['name'])")
+        if ($k) { $byName[$k] = $(if ($byName.ContainsKey($k)) { 'varios' } else { $c }) }
+    }
+    foreach ($d in @(Get-ChildItem -LiteralPath $tdir -Directory -ErrorAction SilentlyContinue)) {
+        $i = $d.Name.IndexOf(' - '); if ($i -le 0) { continue }
+        $fid = $d.Name.Substring(0, $i); $fk = ConvertTo-HandKey $d.Name.Substring($i + 3)
+        if (-not $fk) { continue }
+        $own = $byId[$fid]
+        if ($own -and (Test-SameNameKey $fk (ConvertTo-HandKey (Get-SafeName "$($own.F['name'])")))) { continue }    # es de su cliente
+        $c = $byName[$fk]
+        if (-not $c -or $c -is [string]) { continue }    # nadie con ese nombre, o varios: no se toca
+        $nid = Get-SafeName "$($c.Id)"; if (-not $nid) { $nid = "fila $($c.Row)" }
+        if ($nid -eq $fid) { continue }
+        $target = Join-Path $tdir ("$nid - " + (Get-SafeName "$($c.F['name'])"))
+        try {
+            if (Test-Path -LiteralPath $target) { [void](Merge-DocsFolder $d.FullName $target) } else { Move-Item -LiteralPath $d.FullName -Destination $target }
+            Write-Log ("documentos: {0}: carpeta «{1}» pasa a «{2}» (el nº {3} es ahora de otro cliente)" -f $t.Sheet, $d.Name, (Split-Path -Leaf $target), $fid)
+            $n++
+        } catch { Write-Log "documentos: no se pudo renombrar «$($d.Name)»: $($_.Exception.Message)" }
+    }
+    if ($n) { Update-DocsMap }
+    return $n
+}
+function Repair-AllDocsFolders {
+    foreach ($t in $script:Tramites) {
+        try { $s = Read-Store $t; if ($s) { [void](Repair-DocsFolders $t $s) } } catch { Write-Log "documentos ($($t.Sheet)): $($_.Exception.Message)" }
+    }
 }
 function Update-DocsMap {
     # nº de documentos por expediente del trámite actual (para la columna de la lista)
@@ -8588,6 +8642,7 @@ $script:Win.Add_ContentRendered({
     }
     $script:Win.Cursor = [Windows.Input.Cursors]::Wait
     try { Initialize-DocsFolder } catch { Write-Log "documentos: $($_.Exception.Message)" }
+    Repair-AllDocsFolders    # carpetas que quedaron con el nº de otro cliente
     try { Repair-ExcelFile } catch { Write-Log "reparar Excel: $($_.Exception.Message)" }
     try { [void](Sync-HandmadeTabs -Force) } catch { Write-Log "pestañas propias: $($_.Exception.Message)" }
     if (Load-Data -All) {

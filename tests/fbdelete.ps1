@@ -19,6 +19,7 @@ function Write-Log([string]$m) { $script:Logs.Add("[$env:COMPUTERNAME] $m") }
 function Show-Toast([string]$text) { $script:Logs.Add("[$env:COMPUTERNAME] AVISO: $text") }
 $script:Cfg = Get-Content -Raw (Join-Path $env:APPDATA 'GESTEM\config.json') -Encoding UTF8 | ConvertFrom-Json
 $script:Cfg | Add-Member -NotePropertyName FbSync -NotePropertyValue $true -Force    # PCs de prueba: sincronizan aunque este PC tenga la sincronización apagada (solo en memoria)
+$script:FbGest = 'elmahi/_tests/pruebas'    # gestorias/elmahi/_tests/pruebas: las pruebas nunca tocan los clientes reales (gestorias/elmahi/clientes)
 if (-not $Store) { $Store = Get-StoreDir }    # la del Excel de este PC
 $script:Cfg.Language = 'es'
 $realPc = $env:COMPUTERNAME
@@ -44,8 +45,8 @@ function Use-Pc($pc) {
 }
 function Tick { Step-FbSync; $w = 0; while ($script:FbJob -and -not $script:FbJob.H.IsCompleted -and $w -lt 90) { Start-Sleep 1; $w++ } }
 # Firestore de la gestoría: la prueba solo corre si está vacío (si no, puede haber datos reales) y lo deja vacío
-function Get-FbAllDocs { $r = Invoke-Fs Post ':runQuery' @{ structuredQuery = @{ from = @(@{ allDescendants = $true }) } }; return @(foreach ($x in @($r)) { if ($x.document) { $x.document } }) }
-function Assert-FbEmpty { $n = @(Get-FbAllDocs).Count; if ($n) { throw "Firestore tiene $n documento(s): pueden ser datos reales, la prueba no sigue" } }
+function Get-FbAllDocs { if ($script:FbGest -notlike 'elmahi/_tests/*') { throw 'las pruebas solo pueden usar gestorias/elmahi/_tests' }; $r = Invoke-Fs Post ':runQuery' @{ structuredQuery = @{ from = @(@{ allDescendants = $true }) } }; return @(foreach ($x in @($r)) { if ($x.document) { $x.document } }) }
+function Assert-FbEmpty { $n = @(Get-FbAllDocs).Count; if ($n) { throw "Firestore tiene $n documento(s): quedó algo de una prueba anterior en gestorias/elmahi/_tests; bórralo antes de seguir" } }
 function Clear-FbTest {
     # primero se espera a la vuelta en segundo plano: si no, podría subir algo después de limpiar
     if ($script:FbJob) { while (-not $script:FbJob.H.IsCompleted) { Start-Sleep -Milliseconds 300 }; $script:FbJob.PS.Dispose(); $script:FbJob = $null }
