@@ -21,6 +21,11 @@ namespace Gestem
             Directory.CreateDirectory(App.BackupDir);
             Config.Cur = new Config();
             Config.Cur.ExcelPath = Path.Combine(testDir, "cs", "x.xlsx");
+            // copia de los datos tal como llegan, para comprobar al final que no quedan clientes repetidos (test\dups)
+            string dd = Path.Combine(testDir, "dups"), dsrc = Path.GetDirectoryName(Config.Cur.ExcelPath);
+            Directory.CreateDirectory(Path.Combine(dd, "GESTEM datos"));
+            File.Copy(Config.Cur.ExcelPath, Path.Combine(dd, "x.xlsx"), true);
+            foreach (string f in Directory.GetFiles(Path.Combine(dsrc, "GESTEM datos"), "*.json")) File.Copy(f, Path.Combine(dd, "GESTEM datos", Path.GetFileName(f)), true);
             foreach (Tramite t in Tramite.All)
             {
                 StoreData s = Store.Read(t);
@@ -194,6 +199,26 @@ namespace Gestem
                 }
             }
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
+            // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
+            System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
+            int bad = 0;
+            // sobre una copia (test\dups): los datos de test\cs se comparan después con los de PowerShell
+            Config.Cur.ExcelPath = Path.Combine(dd, "x.xlsx");
+            int before = 0;
+            foreach (Tramite t in Tramite.All) { StoreData s0 = Store.Read(t); if (s0 != null) before += s0.Clients.Count; }
+            Hand.SyncTabs(true, true);
+            dupOut.Append("DUP antes: clientes=" + before + "\r\n");
+            foreach (Tramite t in Tramite.All)
+            {
+                StoreData s = Store.Read(t); if (s == null) continue;
+                HashSet<string> gest = new HashSet<string>(); int dup = 0;
+                foreach (ClientRec c in s.Clients) if (c.Row < Hand.RowBase && c.Del == null) gest.Add(Hand.HandKey(Ps.Str(Store.Get(c.F, "name"))));
+                foreach (ClientRec c in s.Clients) if (c.Row >= Hand.RowBase && gest.Contains(Hand.HandKey(Ps.Str(Store.Get(c.F, "name"))))) dup++;
+                bad += dup;
+                dupOut.Append("DUP " + t.Id + " clientes=" + s.Clients.Count + " repetidos=" + dup + "\r\n");
+            }
+            dupOut.Append(bad == 0 ? "DUP OK\r\n" : "DUP MAL\r\n");
+            File.WriteAllText(Path.Combine(testDir, "cs_dups.txt"), dupOut.ToString(), new UTF8Encoding(false));
             return 0;
         }
 

@@ -80,8 +80,8 @@ namespace Gestem
             WireForm();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
-                App.Log("UI ERROR: " + e.Exception);
-                MessageBox.Show(e.Exception.Message, App.Name + " - error", MessageBoxButton.OK, MessageBoxImage.Error);
+                App.LogError("ventana", e.Exception);
+                if (!App.Quiet) MessageBox.Show(e.Exception.GetType().Name + ": " + e.Exception.Message + "\r\n\r\n" + App.LogPath, App.Name + " - error", MessageBoxButton.OK, MessageBoxImage.Error);
                 e.Handled = true;
             };
             ApplyLanguage();
@@ -97,7 +97,7 @@ namespace Gestem
         public void ShowError(string msg)
         {
             App.Log("aviso mostrado: " + PsH.Rep(msg, @"\s+", " "));    // lo que ve la usuaria queda en «Errores» del admin
-            MessageBox.Show(Win, msg, App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (!App.Quiet) MessageBox.Show(Win, msg, App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         // aviso pequeño abajo a la derecha (sin ventana que haya que cerrar)
         public void ShowToast(string text, string btnText, Action action, int seconds)
@@ -255,7 +255,7 @@ namespace Gestem
             if (ctrl && e.Key == Key.N)
             {
                 U<ToggleButton>("NavNew").IsChecked = true;
-                if (EditRow == null) ctl["name"].Focus();
+                if (EditRow == null) FocusCtl("name");
                 e.Handled = true; return;
             }
             if (e.Key == Key.Escape)
@@ -279,7 +279,7 @@ namespace Gestem
             Win.Cursor = Cursors.Wait;
             try
             {
-                try { Hand.SyncTabs(true); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); }
+                try { Hand.SyncTabs(true, true); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); }
                 if (Data.LoadData(true, false))
                 {
                     ApplyLanguage();
@@ -290,52 +290,5 @@ namespace Gestem
             U<ToggleButton>("NavClients").IsChecked = true;
         }
 
-        // GESTEM.exe --uitest <carpeta>: abre la ventana con los datos de prueba (cs\x.xlsx), comprueba la lista y se cierra
-        public static int UiTest(string testDir)
-        {
-            System.Text.StringBuilder o = new System.Text.StringBuilder();
-            App.DataDir = testDir; App.BackupDir = Path.Combine(testDir, "copias"); App.LogPath = Path.Combine(testDir, "ui_log.txt");
-            App.CfgPath = Path.Combine(testDir, "config_ui.json"); FbState.Path = Path.Combine(testDir, "ui_firebase.json");
-            Directory.CreateDirectory(App.BackupDir);
-            Config.Cur = new Config(); Config.Cur.ExcelPath = Path.Combine(testDir, "cs", "x.xlsx");
-            Config.Cur.UpdateKey = "clave-prueba"; Config.Cur.FbSync = false; Config.Cur.DocsDir = "D:/docs"; Config.Cur.Collaborators.Add("ABOGADO X");
-            Config.Cur.TabsChecked = new List<string>(); foreach (Tramite t in Tramite.All) Config.Cur.TabsChecked.Add(t.Id);   // sin abrir Excel
-            G.T = Tramite.ById("canje");
-            Application app = new Application();
-            MainWin w = new MainWin();
-            w.Win.ContentRendered += delegate
-            {
-                try
-                {
-                    foreach (Tramite t in Tramite.All)
-                    {
-                        w.U<ComboBox>("TramiteBox").SelectedIndex = Tramite.All.IndexOf(t);
-                        DataGrid g = w.U<DataGrid>("ClientsGrid");
-                        int n = 0; foreach (object it in g.ItemsSource ?? new object[0]) n++;
-                        int rows = G.Cache[t.Id].Rows.Count;
-                        o.Append("UI " + t.Id + " grid=" + n + " rows=" + rows + (n == rows ? " OK" : " MAL") + " status=" + w.U<TextBlock>("StatusText").Text + "\r\n");
-                    }
-                    w.U<ComboBox>("TramiteBox").SelectedIndex = Tramite.All.IndexOf(Tramite.ById("canje"));
-                    w.U<TextBox>("SearchBox").Text = "moh";
-                    int want = 0; foreach (ClientRow r in G.Rows) if ((r.Name + " " + r.Doc + " " + r.Id + " " + r.Loc).ToLower().Contains("moh")) want++;
-                    o.Append("UI buscar moh=" + w.FilteredRows().Count + " esperado=" + want + "\r\n");
-                    w.U<TextBox>("SearchBox").Text = "";
-                    w.U<ToggleButton>("OnlyDebt").IsChecked = true;
-                    int debt = 0; foreach (ClientRow r in G.Rows) if (r.Pending > 0) debt++;
-                    o.Append("UI deuda=" + w.FilteredRows().Count + " esperado=" + debt + "\r\n");
-                    w.UpdateReqBadge();
-                    // los ajustes de 1.8–1.9 sobreviven a un guardado (cambiar de trámite guarda config)
-                    Config.Load();
-                    Config c = Config.Cur;
-                    o.Append("UI config " + (c.UpdateKey == "clave-prueba" && !c.FbSync && c.DocsDir == "D:/docs" && c.Collaborators.Contains("ABOGADO X") && c.TradProfit == 3 ? "OK" : "MAL") + "\r\n");
-                    o.Append("UI aviso req=" + w.U<Border>("ReqBadge").Visibility + "\r\n");
-                }
-                catch (Exception e) { o.Append("UI! " + e + "\r\n"); }
-                File.WriteAllText(Path.Combine(testDir, "ui_summary.txt"), o.ToString(), new System.Text.UTF8Encoding(false));
-                w.Win.Close();
-            };
-            app.Run(w.Win);
-            return 0;
-        }
     }
 }

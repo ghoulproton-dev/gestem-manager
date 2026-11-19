@@ -18,7 +18,7 @@ namespace Gestem
             }
             if (args.Length > 1 && args[0] == "--uitest")
             {
-                try { return MainWin.UiTest(args[1]); }
+                try { return UiTest.Run(args[1], args.Length > 2 ? args[2] : ""); }
                 catch (Exception ex) { File.WriteAllText(Path.Combine(args[1], "ui_error.txt"), ex.ToString()); return 2; }
             }
             try
@@ -34,6 +34,7 @@ namespace Gestem
                 }
                 // INICIO: config, trámite de la última vez, ventana
                 App.EnsureDirs();
+                AppDomain.CurrentDomain.UnhandledException += delegate(object s, UnhandledExceptionEventArgs e) { Exception x = e.ExceptionObject as Exception; if (x != null) App.LogError("programa", x); };
                 Config.Load();
                 Tx.Lang = Config.Cur.Language;
                 G.T = Tramite.ById(Config.Cur.Tramite) ?? Tramite.All[0];
@@ -43,6 +44,8 @@ namespace Gestem
             catch (Exception ex)
             {
                 File.WriteAllText(log, "FAIL " + ex);
+                App.LogError("inicio", ex);    // también al registro de GESTEM (antes solo quedaba en smoke.log)
+                if (!(args.Length > 0 && args[0] == "--smoke")) MessageBox.Show(ex.GetType().Name + ": " + ex.Message + "\r\n\r\n" + App.LogPath, App.Name + " - error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return 1;
             }
             return 0;

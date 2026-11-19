@@ -29,6 +29,14 @@ namespace Gestem
             Directory.CreateDirectory(BackupDir);
         }
 
+        public static bool Quiet;      // pruebas (--uitest): sin ventanas de aviso que bloqueen
+
+        // error inesperado: al registro con el tipo, la pila completa y las excepciones internas
+        public static void LogError(string where, Exception e)
+        {
+            Log("UI ERROR (" + where + "): " + e.GetType().FullName + ": " + e.Message + "\r\n" + e.ToString());
+        }
+
         // Write-Log
         public static void Log(string msg)
         {
@@ -71,8 +79,9 @@ namespace Gestem
             if (text == null) text = Json.Obj(App.ResJson("text.json"));
             object lt; object v;
             if (text.TryGetValue(Lang, out lt) && Json.Obj(lt) != null && Json.Obj(lt).TryGetValue(key, out v)) return Ps.Str(v);
-            if (text.TryGetValue("es", out lt) && Json.Obj(lt).TryGetValue(key, out v)) return Ps.Str(v);
-            return null;
+            if (text.TryGetValue("es", out lt) && Json.Obj(lt) != null && Json.Obj(lt).TryGetValue(key, out v)) return Ps.Str(v);
+            App.Log("texto que falta: " + key);    // nunca rompe la ventana: se ve la clave y queda en el registro
+            return key;
         }
         public static string F(string key, params object[] args)
         {

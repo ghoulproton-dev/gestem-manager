@@ -351,7 +351,24 @@ namespace Gestem
         }
 
         // Sync-HandmadeTabs: lee las pestañas hechas a mano si el Excel ha cambiado; true si cambió algo
-        public static bool SyncTabs(bool force)
+        public static bool SyncTabs(bool force) { return SyncTabs(force, false); }
+
+        // clientes «de GESTEM» que en realidad son una copia de la pestaña hecha a mano: los importó una versión antigua que
+        // tomaba esa pestaña por una de GESTEM y la marcó como revisada, así que el arreglo de Load-Data («leídos de una
+        // pestaña que no es de GESTEM, quitados») ya no vuelve a pasar y cada cliente sale dos veces (AUT-2026-001 y AUT-001).
+        // Solo los que nadie editó (By = Excel) y cuyo nombre está en la pestaña a mano: lo demás no se toca.
+        public static List<ClientRec> StaleImports(StoreData s, List<ClientRec> handRecs)
+        {
+            HashSet<string> keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (ClientRec c in handRecs) { string k = HandKey(Ps.Str(Store.Get(c.F, "name"))); if (k.Length > 0) keys.Add(k); }
+            List<ClientRec> r = new List<ClientRec>();
+            foreach (ClientRec c in s.Clients)
+                if (c.Row < RowBase && c.By == "Excel" && c.Del == null && keys.Contains(HandKey(Ps.Str(Store.Get(c.F, "name"))))) r.Add(c);
+            return r;
+        }
+
+        // purge: quitar también esas copias (al abrir GESTEM; la prueba de igualdad con PowerShell no lo hace)
+        public static bool SyncTabs(bool force, bool purge)
         {
             string p = Config.Cur.ExcelPath ?? "";
             if (p.Length == 0 || !File.Exists(p)) return false;
@@ -383,6 +400,19 @@ namespace Gestem
                     StoreData s = Store.Read(t);
                     if (s == null && recs.Count == 0) continue;
                     if (s == null) s = NewEmptyStore(t, null);
+                    bool gestTab = false;
+                    foreach (string n in TabCandidates(book.Names, t)) if (book.Sheets.ContainsKey(n) && CellsGestem((Hashtable)book.Sheets[n], t)) gestTab = true;
+                    if (purge && src != null && !gestTab)
+                    {
+                        List<ClientRec> stale = StaleImports(s, recs);
+                        if (stale.Count > 0)
+                        {
+                            foreach (ClientRec c in stale) s.Clients.Remove(c);
+                            Store.Write(t, s);
+                            changed = true;
+                            App.Log(string.Format("{0}: {1} cliente(s) repetidos (importados de la pestaña hecha a mano «{2}» por una versión antigua), quitados", t.Sheet, stale.Count, src));
+                        }
+                    }
                     // clientes que ya se editaron en GESTEM: ahora son de GESTEM, no se vuelven a leer
                     List<string> adoptedKeys = new List<string>(); foreach (string a in s.Adopted) adoptedKeys.Add(HandKey(a));
                     foreach (HandDelRec e in s.HandDel) if (e != null && e.On) adoptedKeys.Add(e.Key);

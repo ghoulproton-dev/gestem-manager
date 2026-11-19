@@ -18,8 +18,27 @@ namespace Gestem
         Dictionary<string, WrapPanel> pills = new Dictionary<string, WrapPanel>(); // $script:PillGroups
         public ClientRow EditRow;
         bool filling, priceTouched, formDirty;
+        // trámite para el que se hizo la ficha: al cambiar de trámite G.T cambia antes que la ficha, y los avisos de los
+        // campos viejos leían los campos del trámite nuevo (KeyNotFound) o un ComboBox como TextBox (InvalidCast)
+        Tramite formT;
+        Tramite FT { get { return formT ?? G.T; } }
         static readonly Dictionary<string, string> PayColors = new Dictionary<string, string> { { "Pagado", "#A9D08E" }, { "Parcial", "#FFE699" }, { "Pendiente", "#FF9B9B" } };
 
+        public IEnumerable<Control> FormControls() { return ctl.Values; }    // para --uitest
+        // un campo de la ficha por su clave (null si este trámite no lo tiene) y su texto, sea TextBox o ComboBox
+        Control Ctl(string key) { Control c; return ctl.TryGetValue(key, out c) ? c : null; }
+        static string TextOf(Control c)
+        {
+            TextBox tb = c as TextBox; if (tb != null) return tb.Text ?? "";
+            ComboBox cb = c as ComboBox; if (cb != null) return (cb.IsEditable ? cb.Text : Ps.Str(cb.SelectedItem)) ?? "";
+            return "";
+        }
+        static void SetText(Control c, string s)
+        {
+            TextBox tb = c as TextBox; if (tb != null) { tb.Text = s; return; }
+            ComboBox cb = c as ComboBox; if (cb != null) cb.Text = s;
+        }
+        void FocusCtl(string key) { Control c = Ctl(key); if (c != null) c.Focus(); }
         // Get-List: la lista sin huecos ni repetidos
         public static string[] GetList(string name)
         {
@@ -69,7 +88,7 @@ namespace Gestem
         {
             if (!formDirty) return false;
             if (EditRow != null) return true;
-            Control c; return ctl.TryGetValue("name", out c) && ((TextBox)c).Text.Trim().Length > 0;
+            return TextOf(Ctl("name")).Trim().Length > 0;
         }
 
         StackPanel FieldBox(Field f, Control c)
@@ -109,7 +128,7 @@ namespace Gestem
 
         public void BuildForm()
         {
-            Tramite T = G.T;
+            Tramite T = G.T; formT = T;
             Grid g = U<Grid>("FormGrid");
             g.Children.Clear(); g.RowDefinitions.Clear();
             ctl = new Dictionary<string, Control>(); pills = new Dictionary<string, WrapPanel>();
@@ -198,15 +217,16 @@ namespace Gestem
 
         public object GetFieldValue(Field f)
         {
-            Control c = ctl[f.Key];
+            Control c = f == null ? null : Ctl(f.Key);
+            if (c == null) return null;
             switch (f.Type)
             {
-                case "Combo": return Ps.Str(((ComboBox)c).SelectedItem).Trim();
-                case "ComboEdit": { string s = (((ComboBox)c).Text ?? "").Trim(); return f.KeepCase ? s : s.ToUpper(); }
-                case "Date": { DateTime? d = ((DatePicker)c).SelectedDate; return d.HasValue ? (object)d.Value : null; }
-                case "Money": { double? m = Ps.ParseMoney(((TextBox)c).Text); return m.HasValue ? (object)m.Value : null; }
-                case "Pills": foreach (UIElement e in pills[f.Key].Children) { RadioButton rb = (RadioButton)e; if (rb.IsChecked == true) return Ps.Str(rb.Content); } return "";
-                default: return ((TextBox)c).Text.Trim();
+                case "Combo": { ComboBox cb = c as ComboBox; return (cb != null ? Ps.Str(cb.SelectedItem) : TextOf(c)).Trim(); }
+                case "ComboEdit": { string s = TextOf(c).Trim(); return f.KeepCase ? s : s.ToUpper(); }
+                case "Date": { DatePicker dp = c as DatePicker; DateTime? d = dp != null ? dp.SelectedDate : null; return d.HasValue ? (object)d.Value : null; }
+                case "Money": { double? m = Ps.ParseMoney(TextOf(c)); return m.HasValue ? (object)m.Value : null; }
+                case "Pills": { WrapPanel wp; if (!pills.TryGetValue(f.Key, out wp)) return ""; foreach (UIElement e in wp.Children) { RadioButton rb = (RadioButton)e; if (rb.IsChecked == true) return Ps.Str(rb.Content); } return ""; }
+                default: return TextOf(c).Trim();
             }
         }
         public void SetFieldValue(Field f, object v)
@@ -221,15 +241,15 @@ namespace Gestem
                     else if (v is double) ((DatePicker)c).SelectedDate = DateTime.FromOADate((double)v);
                     else ((DatePicker)c).SelectedDate = null;
                     break;
-                case "Money": ((TextBox)c).Text = v is double ? ((double)v).ToString("0.##", Ps.ES) : ""; break;
+                case "Money": SetText(c, v is double ? ((double)v).ToString("0.##", Ps.ES) : ""); break;
                 case "Pills": foreach (UIElement e in pills[f.Key].Children) { RadioButton rb = (RadioButton)e; rb.IsChecked = Ps.Str(rb.Content) == Ps.Str(v); } break;
-                default: ((TextBox)c).Text = Ps.Str(v).Trim(); break;
+                default: SetText(c, Ps.Str(v).Trim()); break;
             }
         }
         public Dictionary<string, object> GetFormValues()
         {
             Dictionary<string, object> vals = new Dictionary<string, object>();
-            foreach (Field f in G.T.Fields) vals[f.Key] = GetFieldValue(f);
+            foreach (Field f in FT.Fields) vals[f.Key] = GetFieldValue(f);
             return vals;
         }
         string V(Dictionary<string, object> v, string k) { return Ps.Str(Store.Get(v, k)); }
@@ -238,7 +258,7 @@ namespace Gestem
         {
             filling = true;
             EditRow = null; priceTouched = false;
-            foreach (Field f in G.T.Fields)
+            foreach (Field f in FT.Fields)
             {
                 object v = null;
                 if (f.Role == "nationality") v = Config.Cur.DefaultNationality;
@@ -255,14 +275,14 @@ namespace Gestem
             U("DupWarn").Visibility = Visibility.Collapsed;
             UpdatePreview();
             formDirty = false;
-            ctl["name"].Focus();
+            FocusCtl("name");
         }
 
         public void FillFormForEdit(ClientRow r)
         {
             filling = true;
             EditRow = r; priceTouched = true;
-            foreach (Field f in G.T.Fields) SetFieldValue(f, Store.Get(r.Data, f.Key));
+            foreach (Field f in FT.Fields) SetFieldValue(f, Store.Get(r.Data, f.Key));
             filling = false; formDirty = false;
             U<TextBlock>("FormTitle").Text = string.Format(L("editTitle"), r.Id);
             U<ContentControl>("SaveBtn").Content = L("btnSaveEdit");
@@ -274,9 +294,12 @@ namespace Gestem
         void OnFieldChanged(FrameworkElement sender)
         {
             if (filling) return;
-            formDirty = true;
             string key = Ps.Str(sender.Tag);
-            Tramite T = G.T;
+            Control own = Ctl(key);
+            // un campo de una ficha anterior (otro trámite) que avisa tarde: ya no está en la ficha
+            if (own == null || (own != sender && !(own is ContentControl && pills.ContainsKey(key) && pills[key].Children.Contains(sender)))) return;
+            formDirty = true;
+            Tramite T = FT;
             if (key == "price") priceTouched = true;
             if ((key == "xF" || key == "xG") && ctl.ContainsKey("flim"))
             {
@@ -287,23 +310,23 @@ namespace Gestem
             {
                 string tipo = Ps.Str(GetFieldValue(T.FieldByKey("tipo")));
                 filling = true;
-                if (tipo.Length > 0 && G.Tariff.ContainsKey(tipo)) ((TextBox)ctl["price"]).Text = G.Tariff[tipo].ToString("0.##", Ps.ES);
-                else if (tipo.Length == 0) ((TextBox)ctl["price"]).Text = "";
+                if (tipo.Length > 0 && G.Tariff.ContainsKey(tipo)) SetText(Ctl("price"), G.Tariff[tipo].ToString("0.##", Ps.ES));
+                else if (tipo.Length == 0) SetText(Ctl("price"), "");
                 filling = false;
             }
             // traducciones: precio al cliente = presupuesto de la traductora + beneficio fijo por documento
             if (T.Id == "traduccion" && (key == "gastos" || key == "ndocs") && !priceTouched)
             {
-                double? g = Ps.ParseMoney(((TextBox)ctl["gastos"]).Text);
-                double? nd = Ps.ParseMoney(((TextBox)ctl["ndocs"]).Text); if (!nd.HasValue || nd.Value <= 0) nd = 1;
-                if (g.HasValue) { filling = true; ((TextBox)ctl["price"]).Text = (g.Value + Config.Cur.TradProfit * nd.Value).ToString("0.##", Ps.ES); filling = false; }
+                double? g = Ps.ParseMoney(TextOf(Ctl("gastos")));
+                double? nd = Ps.ParseMoney(TextOf(Ctl("ndocs"))); if (!nd.HasValue || nd.Value <= 0) nd = 1;
+                if (g.HasValue) { filling = true; SetText(Ctl("price"), (g.Value + Config.Cur.TradProfit * nd.Value).ToString("0.##", Ps.ES)); filling = false; }
             }
             UpdatePreview();
         }
 
         public void UpdatePreview()
         {
-            Tramite T = G.T;
+            Tramite T = FT;
             Dictionary<string, object> v = GetFormValues();
             if (EditRow != null) { U<TextBlock>("CardId").Text = EditRow.Id; U<TextBlock>("CardTag").Text = ""; }
             else { U<TextBlock>("CardId").Text = G.NextId.Length > 0 ? G.NextId : "—"; U<TextBlock>("CardTag").Text = L("cardNew"); }
@@ -383,7 +406,7 @@ namespace Gestem
         }
         void CheckDuplicate()
         {
-            ClientRow d = FindDuplicateDoc(((TextBox)ctl["doc"]).Text.Trim());
+            ClientRow d = FindDuplicateDoc(TextOf(Ctl("doc")).Trim());
             if (d != null) { U<TextBlock>("DupWarn").Text = string.Format(L("dupWarn"), d.Id, d.Name); U("DupWarn").Visibility = Visibility.Visible; }
             else U("DupWarn").Visibility = Visibility.Collapsed;
         }
@@ -417,7 +440,7 @@ namespace Gestem
             App.Log("Save-FromForm inicio");
             // shortcut: Ctrl+Z de la última acción rápida (UndoInfo) llega en la etapa 3c
             Dictionary<string, object> vals = GetFormValues();
-            if (V(vals, "name").Length == 0) { ShowError(L("reqName")); ctl["name"].Focus(); return; }
+            if (V(vals, "name").Length == 0) { ShowError(L("reqName")); FocusCtl("name"); return; }
             string nl = Environment.NewLine + Environment.NewLine;
             ClientRow dup = FindDuplicateDoc(V(vals, "doc"));
             if (dup != null && MessageBox.Show(Win, string.Format(L("dupAsk"), dup.Id, dup.Name, nl), App.Name, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;

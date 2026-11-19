@@ -47,6 +47,11 @@ La versión PowerShell (GESTEM.ps1) sigue siendo la que usa la gestoría hasta e
       valores leídos y textos de la tarjeta idénticos (658 líneas). Config guarda ya los ajustes 1.8–1.9 (clave, FbSync…).
 
 ## Encontrado al trasladar (arreglado en PowerShell 1.7.4)
+- Clientes repetidos (AUT-2026-001 y AUT-001): una versión antigua importó pestañas hechas a mano como si fueran de GESTEM y
+  marcó el trámite en TabsChecked, así que el arreglo de Load-Data no vuelve a pasar (PowerShell 1.9.2 también los muestra).
+  C#: al abrir, Hand.SyncTabs(true, true) quita los By=Excel sin editar cuyo nombre está en la pestaña a mano (si no hay
+  pestaña con formato de GESTEM). La prueba de igualdad no lo hace; selftest lo comprueba aparte en test_dups.txt.
+- La ficha recuerda su trámite (formT): al cambiar de trámite, los avisos tardíos de los campos viejos ya no rompen.
 - La escritura directa dejaba calcChain.xml apuntando a celdas sin fórmula -> Excel no abría el archivo. Ahora se quita calcChain.xml.
 - Textos con espacios al principio/final: SetAttribute('space', ns, …) escribía «d1p1:space» -> Excel no abría el archivo. Ahora xml:space.
 - Repair-ExcelFile: una vez por PC arregla los archivos ya dañados (config ExcelRepaired).
