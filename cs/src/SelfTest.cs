@@ -290,11 +290,22 @@ namespace Gestem
             w.U<TextBox>("InvNextBox").Text = "abc"; w.U<TextBox>("CompanyBox").Text = ""; w.PendingLogo = ""; w.SaveSettings();
             o.Append("SC2 " + CfgText(w) + "\r\n"); o.Append("SP2 " + SetText(w) + "\r\n");            // etapa 4c: sesión
             Config.Cur.Colleagues = new List<string>(new string[] { "SAFAE", "chaymae", " ", "LUIS" }); Config.Cur.LastUser = "luis"; G.Lists["colleagues"] = new string[] { "SAFAE", "", "X" };
+            // al iniciar sesiÃ³n se escribe Â«actividad GESTEM - PC.txtÂ» en la carpeta externa (registro propio de la prueba; fecha y hora fuera)
+            string ssExt = Path.Combine(testDir, "cs_sess_ext"), ssKeepExt = Config.Cur.ExtBackupDir, ssKeepLog = App.LogPath; Directory.CreateDirectory(ssExt);
+            App.LogPath = Path.Combine(testDir, "sess_log_cs.txt"); if (File.Exists(App.LogPath)) File.Delete(App.LogPath); Config.Cur.ExtBackupDir = ssExt; bool ssOwner = App.IsOwnerPC, ssAdm = App.IsAdmin; App.IsOwnerPC = false; App.IsAdmin = false;    // como pstest: aún no es el PC del creador
+            Func<string> ssAct = delegate
+            {
+                string f = Path.Combine(ssExt, "actividad GESTEM - " + Environment.MachineName + ".txt"); if (!File.Exists(f)) return "no";
+                string[] a = File.ReadAllLines(f, Encoding.UTF8); List<string> l = new List<string>();
+                for (int i = 0; i < a.Length; i++) l.Add(i == 1 ? "Updated" : (i >= 3 && a[i].Length > 16 ? a[i].Substring(16) : a[i]));
+                File.Delete(f); return string.Join(" Â¶ ", l.ToArray());
+            };
             w.U<ContentControl>("UserBtn").Content = ""; w.ShowSession(); o.Append("SS0 " + SessText(w) + "\r\n");
-            foreach (string who in new string[] { " pepa ", "", "Safae", "luis" }) { w.StartSession(who); o.Append("SS1 [" + who + "] " + SessText(w) + "\r\n"); }
+            foreach (string who in new string[] { " pepa ", "", "Safae", "luis" }) { w.StartSession(who); o.Append("SS1 [" + who + "] " + SessText(w) + "\r\n"); o.Append("SSA [" + who + "] " + ssAct() + "\r\n"); }
             w.ShowSession(); o.Append("SS2 " + SessText(w) + "\r\n");
-            Config.Cur.LastUser = ""; App.User = ""; w.StartSession("  "); o.Append("SS3 " + SessText(w) + "\r\n");
-            w.ShowSession(); o.Append("SS4 " + SessText(w) + "\r\n");            // etapa 4d: administrador (registro de prueba fijo; admin.dat en la carpeta de datos de prueba)
+            Config.Cur.LastUser = ""; App.User = ""; w.StartSession("  "); o.Append("SS3 " + SessText(w) + "\r\n"); o.Append("SSA3 " + ssAct() + "\r\n");
+            w.ShowSession(); o.Append("SS4 " + SessText(w) + "\r\n"); Config.Cur.ExtBackupDir = ssKeepExt; App.LogPath = ssKeepLog; App.IsOwnerPC = ssOwner; App.IsAdmin = ssAdm;
+            // etapa 4d: administrador (registro de prueba fijo; admin.dat en la carpeta de datos de prueba)
             MainWin.Admin = new AdminData(); App.IsAdmin = false; App.IsOwnerPC = MainWin.TestOwnerPC(); w.Remote = null; w.AdmLogFilter = "all";
             bool keepFb = Config.Cur.FbSync; Config.Cur.FbSync = false;
             o.Append("AH " + MainWin.PwHash("secreto1", "sal") + " " + App.IsOwnerPC + "\r\n");

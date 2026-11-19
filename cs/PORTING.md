@@ -200,3 +200,4 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
   Antes (sección 0 del plan):
   - [x] config.json: C# guarda tal cual las claves que no conoce (PowerShell las pierde: Load-Config solo copia las suyas).
         Prueba: «solo C#» en result.txt (cs_only.txt).
+  - [x] Al iniciar sesión, «actividad GESTEM - PC.txt» en la carpeta externa (Start-Session). Prueba: SSA en el resumen.

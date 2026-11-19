@@ -341,11 +341,15 @@ function Get-SessText {
     return "names=$nm|vis=$($u.PanelSession.Visibility)|hint=$($u.SessNewHint.Visibility)|user=$($script:User)|last=$($script:Cfg.LastUser)|col=$(@($script:Cfg.Colleagues) -join ',')|lists=$(@($script:Lists['colleagues']) -join ',')|btn=$($u.UserBtn.Content)|title=$($u.SessTitle.Text)"
 }
 $script:Cfg.Colleagues = @('SAFAE', 'chaymae', ' ', 'LUIS'); $script:Cfg.LastUser = 'luis'; $script:Lists['colleagues'] = @('SAFAE', '', 'X')
+# al iniciar sesiÃ³n se escribe Â«actividad GESTEM - PC.txtÂ» en la carpeta externa (registro propio de la prueba; fecha y hora fuera)
+$ssExt = Join-Path $TestDir 'ps_sess_ext'; New-Item -ItemType Directory -Force $ssExt | Out-Null; $ssKeepExt = $script:Cfg.ExtBackupDir; $ssKeepLog = $script:LogPath
+$script:LogPath = Join-Path $TestDir 'sess_log_ps.txt'; if (Test-Path -LiteralPath $script:LogPath) { [IO.File]::Delete($script:LogPath) }; $script:Cfg.ExtBackupDir = $ssExt
+function Get-SessAct { $f = Join-Path $ssExt "actividad GESTEM - $env:COMPUTERNAME.txt"; if (-not (Test-Path -LiteralPath $f)) { return 'no' }; $a = @(Get-Content -LiteralPath $f -Encoding UTF8); $l = for ($i = 0; $i -lt $a.Count; $i++) { if ($i -eq 1) { 'Updated' } elseif ($i -ge 3 -and $a[$i].Length -gt 16) { $a[$i].Substring(16) } else { $a[$i] } }; [IO.File]::Delete($f); return (@($l) -join ' Â¶ ') }
 $script:UI.UserBtn.Content = ''; Show-Session; [void]$o.Append("SS0 $(Get-SessText)`r`n")
-foreach ($who in ' pepa ', '', 'Safae', 'luis') { Start-Session $who; [void]$o.Append("SS1 [$who] $(Get-SessText)`r`n") }
+foreach ($who in ' pepa ', '', 'Safae', 'luis') { Start-Session $who; [void]$o.Append("SS1 [$who] $(Get-SessText)`r`n"); [void]$o.Append("SSA [$who] $(Get-SessAct)`r`n") }
 Show-Session; [void]$o.Append("SS2 $(Get-SessText)`r`n")
-$script:Cfg.LastUser = ''; $script:User = ''; Start-Session '  '; [void]$o.Append("SS3 $(Get-SessText)`r`n")
-Show-Session; [void]$o.Append("SS4 $(Get-SessText)`r`n")
+$script:Cfg.LastUser = ''; $script:User = ''; Start-Session '  '; [void]$o.Append("SS3 $(Get-SessText)`r`n"); [void]$o.Append("SSA3 $(Get-SessAct)`r`n")
+Show-Session; [void]$o.Append("SS4 $(Get-SessText)`r`n"); $script:Cfg.ExtBackupDir = $ssKeepExt; $script:LogPath = $ssKeepLog
 # etapa 4d: administrador (registro de prueba fijo; admin.dat en la carpeta de datos de prueba)
 Add-Type -AssemblyName System.Security
 $script:AdminPath = Join-Path $script:DataDir 'admin.dat'

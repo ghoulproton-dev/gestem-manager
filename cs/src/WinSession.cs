@@ -2,6 +2,7 @@
 // shortcut: Start-Session no deja aún «actividad GESTEM - PC.txt» en la carpeta externa (Export-ActivityLog va con la copia externa, etapa 5).
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -74,6 +75,8 @@ namespace Gestem
             U("PanelSession").Visibility = Visibility.Collapsed;
             U<ContentControl>("UserBtn").Content = string.Format(L("userTip"), who);
             App.Log("sesión iniciada");
+            string ext = Ps.Str(Config.Cur.ExtBackupDir).Trim();
+            if (ext.Length > 0 && (Directory.Exists(ext) || File.Exists(ext))) ExtBackup.ExportActivityLog(ext);    // así se ve enseguida quién lo abrió
             if (EditRow == null) { BuildForm(); ResetForm(); }
             RefreshClientGrid();
         }
