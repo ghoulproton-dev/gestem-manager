@@ -159,6 +159,24 @@ namespace Gestem
                 d = Store.BuildData(t, s);
                 for (int day = 1; day <= 30; day++) { int due, late; Store.ReqAlerts(d.Rows, new DateTime(2026, 11, day), out due, out late); o.Append("RQ " + day + " due=" + due + " late=" + late + "\r\n"); }
             }
+            // etapa 3b: tasas DGT, IVA, comisión y margen de la ficha
+            Config.Cur.TasasCanje = "B=33; C=100; D=100";
+            foreach (string tid in new string[] { "canje", "traduccion", "homologacion" })
+            {
+                Tramite t = Tramite.ById(tid); StoreData s = Store.Read(t); int i = 0;
+                foreach (ClientRec c in s.Clients)
+                {
+                    Dictionary<string, object> v = new Dictionary<string, object>(c.F);
+                    if (i % 3 == 1) { v["comtipo"] = "%"; v["comval"] = 10L; } else if (i % 3 == 2) { v["comtipo"] = "EUR"; v["comval"] = "12,5"; }
+                    i++;
+                    double tx = Ps.TasasFor(t, v); double? p = Ps.Num(Store.Get(v, "price"));
+                    StringBuilder line = new StringBuilder("MG " + tid + " " + c.Row + " tasas=" + N(tx));
+                    if (p.HasValue && p.Value > 0) { double b, iv, t2; Ps.SplitIva(p.Value, tx, out b, out iv, out t2); line.Append(" base=" + N(b) + " iva=" + N(iv) + " tx=" + N(t2)); }
+                    double m, pct, com;
+                    if (Ps.Margin(t, v, out m, out pct, out com)) line.Append(" m=" + N(m) + " pct=" + pct.ToString("0.###", Ps.Inv) + " com=" + N(com)); else line.Append(" m=-");
+                    o.Append(line.ToString() + "\r\n");
+                }
+            }
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             return 0;
         }

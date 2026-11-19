@@ -146,4 +146,19 @@ $s = Read-Store $t; $i = 0
 foreach ($c in $s.Clients) { $c.F['xF'] = (New-Object DateTime 2026, 11, 1).AddDays(3 * $i); $c.F['xH'] = $null; $c.F['xI'] = $(if ($i -eq 2) { 'Cerrado' } else { $null }); $i++ }
 $d = Build-TramiteData $t $s
 foreach ($day in 1..30) { $al = Get-ReqAlerts $d.Rows (New-Object DateTime 2026, 11, $day); [void]$o.Append("RQ $day due=$($al.Due) late=$($al.Late)`r`n") }
+# etapa 3b: tasas DGT, IVA, comisión y margen de la ficha
+$script:IvaRate = 0.21; $script:Cfg.TasasCanje = 'B=33; C=100; D=100'
+foreach ($tid in 'canje', 'traduccion', 'homologacion') {
+    $t = $script:Tramites | Where-Object { $_.Id -eq $tid }; $s = Read-Store $t; $i = 0
+    foreach ($c in $s.Clients) {
+        $v = @{}; foreach ($k in $c.F.Keys) { $v[$k] = $c.F[$k] }
+        if ($i % 3 -eq 1) { $v['comtipo'] = '%'; $v['comval'] = 10 } elseif ($i % 3 -eq 2) { $v['comtipo'] = 'EUR'; $v['comval'] = '12,5' }
+        $i++
+        $tx = Get-TasasFor $t $v; $mg = Get-Margin $t $v; $p = ConvertTo-CellNumber $v['price']
+        $line = "MG $tid $($c.Row) tasas=$(N $tx)"
+        if ($null -ne $p -and [double]$p -gt 0) { $sp = Split-Iva $p $tx; $line += " base=$(N $sp.Base) iva=$(N $sp.Iva) tx=$(N $sp.Tasas)" }
+        if ($mg) { $line += " m=$(N $mg.Margin) pct=$($mg.Pct.ToString('0.###', $inv)) com=$(N $mg.Com)" } else { $line += ' m=-' }
+        [void]$o.Append("$line`r`n")
+    }
+}
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

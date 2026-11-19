@@ -77,11 +77,55 @@ namespace Gestem
         public static string Euro0(double v) { return v.ToString("N0", ES); }
 
         public const double IvaRate = 0.21;
-        // Split-Iva: total con IVA -> base e IVA
-        public static void SplitIva(double total, out double bas, out double iva)
+        // Split-Iva: total con IVA -> base e IVA (al céntimo). Las tasas (DGT…) son un suplido: van aparte y sin IVA
+        public static void SplitIva(double total, double tasas, out double bas, out double iva, out double tx)
         {
-            bas = Math.Round(total / (1 + IvaRate), 2, MidpointRounding.AwayFromZero);
-            iva = Math.Round(total - bas, 2, MidpointRounding.AwayFromZero);
+            tx = tasas; if (tx < 0 || tx > total) tx = 0;
+            double hon = total - tx;
+            bas = Math.Round(hon / (1 + IvaRate), 2, MidpointRounding.AwayFromZero);
+            iva = Math.Round(hon - bas, 2, MidpointRounding.AwayFromZero);
+        }
+
+        // Get-CanjeTasa: tasa DGT del tipo de permiso («B (Coche)» -> B), según Ajustes: «B=33; C=100; D=100»
+        public static double? CanjeTasa(string tipo)
+        {
+            System.Text.RegularExpressions.Match m = PsH.M((tipo ?? "").Trim().ToUpper(), @"^([A-Z0-9+]+)");
+            if (!m.Success) return null;
+            string code = m.Groups[1].Value;
+            foreach (string p in System.Text.RegularExpressions.Regex.Split(Config.Cur.TasasCanje ?? "", @"[;\r\n]+"))
+            {
+                System.Text.RegularExpressions.Match x = PsH.M(p, @"^\s*([A-Za-z0-9+]+)\s*[=:]\s*([\d.,]+)\s*€?\s*$");
+                if (x.Success && x.Groups[1].Value.ToUpper() == code) return ParseMoney(x.Groups[2].Value);
+            }
+            return null;
+        }
+        // Get-TasasFor: solo el canje lleva tasas DGT
+        public static double TasasFor(Tramite t, Dictionary<string, object> vals)
+        {
+            if (t == null || t.Id != "canje" || vals == null) return 0;
+            double? x = CanjeTasa(Str(Store.Get(vals, "tipo")));
+            return x.HasValue ? x.Value : 0;
+        }
+        // Get-Commission: comisión del colaborador en €: un % del precio o un importe fijo
+        public static double Commission(Dictionary<string, object> vals, double? price)
+        {
+            if (vals == null) return 0;
+            double? n = Num(Store.Get(vals, "comval"));
+            if (!n.HasValue) return 0;
+            if (Str(Store.Get(vals, "comtipo")) == "%") { if (!price.HasValue) return 0; return Math.Round(price.Value * n.Value / 100, 2, MidpointRounding.AwayFromZero); }
+            return n.Value;
+        }
+        // Get-Margin: lo que queda: precio - tasas DGT - gastos - comisión (IVA incluido); false si no hay precio
+        public static bool Margin(Tramite t, Dictionary<string, object> vals, out double margin, out double pct, out double com)
+        {
+            margin = 0; pct = 0; com = 0;
+            double? price = Num(Store.Get(vals, "price"));
+            if (!price.HasValue || price.Value <= 0) return false;
+            double? g = Num(Store.Get(vals, "gastos"));
+            com = Commission(vals, price);
+            double m = price.Value - TasasFor(t, vals) - (g.HasValue ? g.Value : 0) - com;
+            margin = Math.Round(m, 2); pct = m / price.Value * 100;
+            return true;
         }
 
         public static string Upper(string s) { return (s ?? "").ToUpper(Inv); }
