@@ -1,7 +1,8 @@
 // GESTEM.exe --fbtest <carpeta> <gestoría de prueba>: una vuelta de verdad por Firestore, SOLO en gestorias/elmahi/_tests/<...>.
 // Con una copia de certificado.json (tiene un campo Local = contraseña): otro PC sube 2 clientes, este PC se une, envía lo suyo,
 // otro PC lo recibe todo y luego nada más; al final se borra TODO lo de la carpeta de prueba y se comprueba que queda vacía.
-// Resultado: <carpeta>\cs_fb.txt (para comparar con tools\psfbtest.ps1) y la lista de rutas tocadas.
+// También la vuelta de cada 20 s de la ventana (Fb.Step) con el interruptor de admin apagado y encendido.
+// Resultado: <carpeta>\cs_fb.txt y la lista de rutas tocadas (cs_fb_paths.txt).
 // No escribe nada fuera de <carpeta>: la clave de GESTEM se LEE de la config de este PC (no se guarda nada en ella).
 using System;
 using System.Collections.Generic;
@@ -83,6 +84,16 @@ namespace Gestem
                 o.Append("F6 err=" + r3.Err + " total=" + r3.Pulled.Count + " deEstePC=" + fromMe + " conContraseña=" + bad2 + "\r\n");
                 FbResult r4 = Fb.SyncOnce(key, a, r3.Mod, new List<FbPush>(), "OTROPC");
                 o.Append("F7 err=" + r4.Err + " nuevos=" + r4.Pulled.Count + "\r\n");
+                // la vuelta de cada 20 s de la ventana (Fb.Step) con el interruptor de admin: apagado no hace nada; encendido envía un cambio de este PC
+                Fb.TestRun = true; Fb.Auth = a;
+                Fb.SetSwitch(false); Fb.Step();
+                o.Append("F10 apagado enMarcha=" + Fb.Running + " archivo=" + File.Exists(Path.Combine(dir, "firebase_apagado.txt")) + "\r\n");
+                Fb.SetSwitch(true);
+                { StoreData s2 = Store.Read(t); foreach (ClientRec c in s2.Clients) if (c.Row < Hand.RowBase && c.Uid != "otro-1" && c.Uid != "otro-2") { c.F["status"] = "CAMBIO 20 S"; break; } Store.Write(t, s2); }
+                for (int i = 0; i < 3; i++) { Fb.Step(); for (int wt = 0; wt < 600 && Fb.Running; wt++) System.Threading.Thread.Sleep(100); }    // envía, recoge, recoge la vuelta vacía
+                FbResult r5 = Fb.SyncOnce(key, a, r4.Mod.Length > 0 ? r4.Mod : r3.Mod, new List<FbPush>(), "OTROPC");    // F7 no recibió nada: su Mod viene vacío
+                string got = ""; foreach (FbDoc d in r5.Pulled) if (d.Datos.Contains("CAMBIO 20 S")) got = "CAMBIO 20 S";
+                o.Append("F11 pend=" + FbState.Load().Pend.Count + " otroRecibe=" + r5.Pulled.Count + " estado=" + got + " err=" + Fb.LastErr + "\r\n");
                 // gestoría de verdad: la puerta no deja ni mirarla sin --real
                 string keep = Fb.Gest; Fb.Gest = "elmahi"; try { Fb.CheckName(Fb.Base + "/clientes/x"); o.Append("F8 puerta=MAL\r\n"); } catch (InvalidOperationException) { o.Append("F8 puerta=OK\r\n"); } finally { Fb.Gest = keep; }
                 try { Fb.CheckName(Fb.Root + "/gestorias/elmahi/clientes/x"); o.Append("F9 fuera=MAL\r\n"); } catch (InvalidOperationException) { o.Append("F9 fuera=OK\r\n"); }
@@ -92,7 +103,7 @@ namespace Gestem
                 // limpieza: todo lo que haya debajo de la carpeta de prueba (también si algo falló a medias)
                 int n = 0; foreach (string d in Fb.ListAll(a)) { Fb.DeleteDoc(a, d); n++; }
                 o.Append("FZ borrados=" + n + " quedan=" + Fb.ListAll(a).Count + "\r\n");
-                Fb.Trace = null;
+                Fb.Trace = null; Fb.TestRun = false;
                 touched.Sort(StringComparer.Ordinal);
                 File.WriteAllText(Path.Combine(dir, "cs_fb.txt"), o.ToString(), new UTF8Encoding(false));
                 File.WriteAllLines(Path.Combine(dir, "cs_fb_paths.txt"), touched.ToArray(), new UTF8Encoding(false));

@@ -422,22 +422,48 @@ namespace Gestem
             if (r.Pushed.Count > 0) App.Log(string.Format("firebase: enviados {0} cliente(s)", r.Pushed.Count));
         }
 
-        // Set-FbSyncSwitch
+        // Set-FbSyncSwitch (casilla de admin). Encender solo con --real (o en la prueba de red, que solo puede usar _tests/)
         public static void SetSwitch(bool on)
         {
-            if (on && !App.Real) throw new InvalidOperationException("modo prueba: la sincronización con Firebase no se puede encender");
+            if (on && !App.Real && !TestRun) throw new InvalidOperationException("modo prueba: la sincronización con Firebase no se puede encender");
             Config.Cur.FbSync = on; Config.Save();
             string f = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(App.CfgPath), "firebase_apagado.txt");
             App.Guard(f, "firebase");
             if (on) { try { System.IO.File.Delete(f); } catch { } }
-            else System.IO.File.WriteAllText(f, "GESTEM no sincroniza con Firebase en este PC (Ajustes de admin).\r\n", new UTF8Encoding(true));
+            else System.IO.File.WriteAllText(f, "GESTEM no sincroniza con Firebase en este PC (Ajustes de admin).\r\n", new UTF8Encoding(true));    // Set-Content -Encoding UTF8
+        }
+
+        // Step-FbSync (cada 20 s): recoge el resultado de la vuelta anterior y lanza la siguiente en segundo plano.
+        // Nunca en modo prueba; TestRun lo pone solo GESTEM.exe --fbtest, y aun así CheckName no deja salir de gestorias/elmahi/_tests/
+        public static bool TestRun;
+        static Task<FbResult> task; static bool taskJoin;
+        public static bool Running { get { return task != null && !task.IsCompleted; } }
+        public static void Step()
+        {
+            if (!Config.Cur.FbSync || !(App.Real || TestRun)) return;
+            if (task != null)
+            {
+                if (!task.IsCompleted) return;
+                Task<FbResult> j = task; task = null;
+                if (j.Status == TaskStatus.RanToCompletion && j.Result != null) ApplyResult(j.Result, taskJoin);
+            }
+            string k = Updater.GetKey(); if (k.Length == 0) return;
+            FbState st = FbState.Load();
+            // primera vez de este PC (o unión sin terminar): solo se recibe todo; no se envía nada hasta compararlo
+            bool join = st.Joined != "push" && st.Joined != "yes";
+            List<FbPush> push = new List<FbPush>(); bool drop = false;
+            if (!join) push = BuildPush(st, out drop);
+            if (drop) st.Save();
+            FbAuth auth = Auth; string lastMod = join ? "" : st.LastMod, pc = Environment.MachineName;
+            taskJoin = join;
+            task = Task.Run(delegate { return SyncOnce(k, auth, lastMod, push, pc); });
         }
     }
 
     public partial class MainWin
     {
-        Task<FbResult> fbTask; bool fbJoin;
         DispatcherTimer liveTimer; int liveTick;
+        public DispatcherTimer LiveTimer { get { return liveTimer; } }    // pruebas
 
         // al abrir (después de cargar): cada 20 s se mira si otro PC guardó y se sincroniza con Firebase
         void StartLiveTimer()
@@ -449,15 +475,18 @@ namespace Gestem
             liveTimer.Start();
         }
 
-        void InvokeLiveRefresh()
+        // Invoke-LiveRefresh
+        public void InvokeLiveRefresh()
         {
             if (Busy || App.User.Length == 0) return;
             Busy = true;
             try
             {
-                liveTick++;
+                liveTick++; bool own = false;
                 try { Hand.SyncTabs(false); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); }    // ¿se guardó el Excel? se vuelven a leer sus pestañas
-                try { StepFbSync(); } catch (Exception e) { App.Log("firebase: " + e.Message); }
+                try { Fb.Step(); } catch (Exception e) { App.Log("firebase: " + e.Message); }    // lo recibido cambia los datos: la lista se recarga abajo
+                // cada 3 min, lo pendiente del Excel. shortcut: sin Test-ExcelFree; hoy no hay nada pendiente (Data.ExcelWrites = false), portarlo si vuelve la escritura
+                if (liveTick % 9 == 0 && Data.PendingSyncCount() > 0) { if (Data.SyncPendingToExcel() > 0) { own = true; G.CacheStamp = -1; } }
                 if (Store.FileStamp() != G.CacheStamp)
                 {
                     ClientRow sel = U<DataGrid>("ClientsGrid").SelectedItem as ClientRow; int selRow = sel != null ? sel.Row : 0;
@@ -466,34 +495,12 @@ namespace Gestem
                         DataGrid g = U<DataGrid>("ClientsGrid");
                         if (selRow > 0) foreach (object it in g.Items) { ClientRow r = it as ClientRow; if (r != null && r.Row == selRow) { g.SelectedItem = it; g.ScrollIntoView(it); break; } }
                         if (U("PanelStats").Visibility == Visibility.Visible) UpdateStats();
-                        SetStatus(L("liveUpdated"));
+                        if (!own) SetStatus(L("liveUpdated"));
                     }
                 }
             }
             catch (Exception e) { App.Log("DEBUG actualización automática: " + e.Message); }
             finally { Busy = false; }
-        }
-
-        // recoge el resultado de la vuelta anterior y lanza la siguiente (nunca en modo prueba)
-        public void StepFbSync()
-        {
-            if (!Config.Cur.FbSync || !App.Real) return;
-            if (fbTask != null)
-            {
-                if (!fbTask.IsCompleted) return;
-                Task<FbResult> j = fbTask; fbTask = null;
-                if (j.Status == TaskStatus.RanToCompletion && j.Result != null) Fb.ApplyResult(j.Result, fbJoin);
-            }
-            string k = Updater.GetKey(); if (k.Length == 0) return;
-            FbState st = FbState.Load();
-            // primera vez de este PC (o unión sin terminar): solo se recibe todo; no se envía nada hasta compararlo
-            bool join = st.Joined != "push" && st.Joined != "yes";
-            List<FbPush> push = new List<FbPush>(); bool drop = false;
-            if (!join) push = Fb.BuildPush(st, out drop);
-            if (drop) st.Save();
-            FbAuth auth = Fb.Auth; string lastMod = join ? "" : st.LastMod, pc = Environment.MachineName;
-            fbJoin = join;
-            fbTask = Task.Run(delegate { return Fb.SyncOnce(k, auth, lastMod, push, pc); });
         }
     }
 }
