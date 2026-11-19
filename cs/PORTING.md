@@ -35,6 +35,11 @@ La versión PowerShell (GESTEM.ps1) sigue siendo la que usa la gestoría hasta e
       Prueba 19/11/2026: resumen (1278 líneas), los 15 archivos de datos y firebase.json idénticos.
       Arreglado en pstest.ps1: $script:HandRowBase se ponía a mitad de la prueba (la 1.ª pasada no daba uid).
 
+- [x] Etapa 3a — ventana (Win.cs): main.xaml de 1.9.2, paneles y navegación, trámite (con caché), lista de clientes con búsqueda,
+      filtros (estado, deuda, solo míos), línea de estado, aviso (toast), aviso de requerimientos, Ctrl+F, carga al abrir.
+      Prueba: GESTEM.exe --uitest (en test.bat) -> testII_summary.txt: la lista de los 14 trámites = sus datos, búsqueda y deuda bien.
+      Falta en 3a (shortcut en el código): textos de los demás paneles, nº de documentos en la lista, sesión, clave, Find-ExcelAuto.
+
 ## Encontrado al trasladar (arreglado en PowerShell 1.7.4)
 - La escritura directa dejaba calcChain.xml apuntando a celdas sin fórmula -> Excel no abría el archivo. Ahora se quita calcChain.xml.
 - Textos con espacios al principio/final: SetAttribute('space', ns, …) escribía «d1p1:space» -> Excel no abría el archivo. Ahora xml:space.
@@ -113,7 +118,7 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
 
 ## Pendiente
 - [x] Etapa 2d — ver «Hecho»
-- [ ] Etapa 3 — ventana (main.xaml de 1.9.2): lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos,
+- [ ] Etapa 3b–3d — ventana (3a hecha): lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos,
       eliminar cliente, aviso de requerimientos
 - [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto, Colaboradores, margen
 - [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM

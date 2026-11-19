@@ -13,6 +13,11 @@ copy /Y "%SRC%\CRM 2026CLIENTES (copia real).xlsx" "test\ps\x.xlsx" >nul
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\pstest.ps1 "%cd%\test" > test\ps_err.txt 2>&1
 start /wait "" GESTEM.exe --selftest "%cd%\test"
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\compare.ps1 "%cd%\test" > test\compare_err.txt 2>&1
+rem ventana (etapa 3): datos sin tocar en test\ui -> test\ui\ui_summary.txt
+mkdir "test\ui\cs\GESTEM datos"
+copy /Y "%SRC%\GESTEM datos\*.json" "test\ui\cs\GESTEM datos\" >nul
+copy /Y "%SRC%\CRM 2026CLIENTES (copia real).xlsx" "test\ui\cs\x.xlsx" >nul
+start /wait "" GESTEM.exe --uitest "%cd%\test\ui"
 copy /Y "%SRC%\CRM 2026CLIENTES (copia real).xlsx" "test\orig.xlsx" >nul
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\comtest.ps1 > test\comtest_err.txt 2>&1
 echo done> test\done.txt

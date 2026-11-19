@@ -690,7 +690,11 @@
         <StackPanel>
           <RadioButton x:Name="NavNew" Style="{StaticResource Nav}" GroupName="nav" IsChecked="True" Tag="&#xE8FA;"/>
           <RadioButton x:Name="NavClients" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE716;"/>
+          <Border x:Name="ReqBadge" Visibility="Collapsed" CornerRadius="10" Margin="16,0,16,6" Padding="10,4" Cursor="Hand" Background="#B54708">
+            <TextBlock x:Name="ReqBadgeText" Foreground="White" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          </Border>
           <RadioButton x:Name="NavStats" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE9D2;"/>
+          <RadioButton x:Name="NavColab" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE716;"/>
           <RadioButton x:Name="NavSettings" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE713;"/>
           <RadioButton x:Name="NavAbout" Style="{StaticResource Nav}" GroupName="nav" Tag="&#xE946;"/>
         </StackPanel>
@@ -760,14 +764,15 @@
               <Border BorderBrush="#EEF0F3" BorderThickness="0,1,0,0" Padding="18,12,18,16">
                 <Grid>
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                   <TextBlock x:Name="SumPriceL" Foreground="#667085" Margin="0,4"/>
                   <TextBlock x:Name="SumPrice" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" Margin="0,4"/>
-                  <TextBlock x:Name="SumIva" Grid.Row="1" Grid.ColumnSpan="2" Foreground="#98A2B3" FontSize="12" Margin="0,0,0,4" Visibility="Collapsed"/>
+                  <TextBlock x:Name="SumIva" Grid.Row="1" Grid.ColumnSpan="2" Foreground="#98A2B3" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4" Visibility="Collapsed"/>
                   <TextBlock x:Name="SumPaidL" Grid.Row="2" Foreground="#667085" Margin="0,4"/>
                   <TextBlock x:Name="SumPaid" Grid.Row="2" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15" Margin="0,4"/>
                   <TextBlock x:Name="SumPendL" Grid.Row="3" FontWeight="SemiBold" Margin="0,8,0,0" VerticalAlignment="Center"/>
                   <TextBlock x:Name="SumPend" Grid.Row="3" Grid.Column="1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="20" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                  <TextBlock x:Name="SumMargin" Grid.Row="4" Grid.ColumnSpan="2" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
                 </Grid>
               </Border>
             </StackPanel>
@@ -817,6 +822,7 @@
                 <MenuItem x:Name="CmEdit"/>
                 <MenuItem x:Name="CmReceipt"/>
                 <MenuItem x:Name="CmDocs"/>
+                <MenuItem x:Name="CmDelete"/>
               </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.ColumnHeaderStyle>
@@ -1053,8 +1059,14 @@
                     <Button x:Name="ChangeFileBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
                     <TextBox x:Name="FilePathBox" IsReadOnly="True" Background="#F8F6F6"/>
                   </DockPanel>
+                  <TextBlock x:Name="SetDocsL" Style="{StaticResource FieldLabel}" Margin="0,14,0,0"/>
+                  <DockPanel>
+                    <Button x:Name="ChangeDocsBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                    <TextBox x:Name="DocsDirBox" IsReadOnly="True" Background="#F8F6F6"/>
+                  </DockPanel>
+                  <TextBlock x:Name="DocsNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" Margin="1,6,0,0"/>
                   <DockPanel Margin="0,10,0,0">
-                    <Button x:Name="ImportXlBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                    <Button x:Name="ImportXlBtn" Style="{StaticResource Btn}" DockPanel.Dock="Right" Margin="8,0,0,0" Visibility="Collapsed"/>
                     <TextBlock x:Name="DataNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
                   </DockPanel>
                   <TextBlock x:Name="SetNote" Foreground="#7A7072" FontSize="12.5" TextWrapping="Wrap" Margin="1,10,0,0"/>
@@ -1129,6 +1141,7 @@
                     <StackPanel Grid.Row="2"><TextBlock x:Name="InvDomL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvDomBox"/></StackPanel>
                     <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock x:Name="InvPobL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvPobBox"/></StackPanel>
                     <StackPanel Grid.Row="3"><TextBlock x:Name="InvNextL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="InvNextBox"/></StackPanel>
+                    <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock x:Name="TasasL" Style="{StaticResource FieldLabel}"/><TextBox x:Name="TasasBox"/></StackPanel>
                   </Grid>
                 </StackPanel>
               </Grid>
@@ -1205,6 +1218,159 @@
           </Border>
         </StackPanel>
       </ScrollViewer>
+
+      <!-- COLABORADORES Y ABOGADOS -->
+      <Grid x:Name="PanelColab" Visibility="Collapsed">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="240"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Border Style="{StaticResource Card}" Padding="12,16" Margin="0,0,14,0">
+          <DockPanel>
+            <TextBlock x:Name="ColabTitle" DockPanel.Dock="Top" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="17" FontWeight="SemiBold" Foreground="#1E1A1B" Margin="4,0,0,4"/>
+            <TextBlock x:Name="ColabHint" DockPanel.Dock="Top" Foreground="#8A7F81" FontSize="12" TextWrapping="Wrap" Margin="4,0,0,12"/>
+            <ListBox x:Name="ColabList" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                  <Setter Property="Padding" Value="0"/>
+                  <Setter Property="Margin" Value="0,0,0,6"/>
+                  <Setter Property="Cursor" Value="Hand"/>
+                  <Setter Property="Template">
+                    <Setter.Value>
+                      <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="bd" Background="#FAF8F8" BorderBrush="#EEE9EA" BorderThickness="1" CornerRadius="10" Padding="12,9">
+                          <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#F5EFF0"/></Trigger>
+                          <Trigger Property="IsSelected" Value="True"><Setter TargetName="bd" Property="Background" Value="#FBEDEE"/><Setter TargetName="bd" Property="BorderBrush" Value="#D8A7AB"/></Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Setter.Value>
+                  </Setter>
+                </Style>
+              </ListBox.ItemContainerStyle>
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel>
+                    <Border Width="34" Height="34" CornerRadius="17" Background="#FBEDEE" Margin="0,0,10,0">
+                      <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" Foreground="#9E1820" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#1E1A1B" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Info}" Foreground="#8A7F81" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </Border>
+        <DockPanel Grid.Column="1">
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+              <CheckBox x:Name="ColabOnlyPend" VerticalAlignment="Center" Margin="0,0,14,0"/>
+              <Button x:Name="ColabPaidBtn" Style="{StaticResource Primary}" Height="38" FontSize="13" Padding="18,0"/>
+            </StackPanel>
+            <TextBlock x:Name="ColabName" Style="{StaticResource Heading}" VerticalAlignment="Center"/>
+          </DockPanel>
+          <UniformGrid DockPanel.Dock="Top" Columns="3" Margin="-6,0,-6,14">
+            <Border Style="{StaticResource Card}" Margin="6,0,6,12" Padding="18,14"><StackPanel><TextBlock x:Name="ColK1L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK1" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0,6,12" Padding="18,14"><StackPanel><TextBlock x:Name="ColK2L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK2" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0,6,12" Padding="18,14"><StackPanel><TextBlock x:Name="ColK3L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK3" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#B42318" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0" Padding="18,14"><StackPanel><TextBlock x:Name="ColK4L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK4" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0" Padding="18,14"><StackPanel><TextBlock x:Name="ColK5L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK5" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#1E1A1B" Margin="0,6,0,0"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}" Margin="6,0" Padding="18,14"><StackPanel><TextBlock x:Name="ColK6L" Foreground="#6E6466" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="ColK6" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26" FontWeight="Bold" Foreground="#B42318" Margin="0,6,0,0"/></StackPanel></Border>
+          </UniformGrid>
+          <Border Style="{StaticResource Card}" Padding="16,12">
+            <Grid>
+              <TextBlock x:Name="ColabEmpty" Foreground="#8A7F81" TextWrapping="Wrap" Margin="6,10" Visibility="Collapsed"/>
+              <DataGrid x:Name="ColabGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
+                        HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEF0F3"
+                        RowHeight="38" Background="White" BorderThickness="0" CanUserAddRows="False" CanUserResizeRows="False"
+                        AlternatingRowBackground="#FAFBFC" Foreground="#17202E">
+                <DataGrid.ColumnHeaderStyle>
+                  <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="White"/>
+                    <Setter Property="Foreground" Value="#667085"/>
+                    <Setter Property="FontSize" Value="12"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Padding" Value="8,10"/>
+                    <Setter Property="BorderBrush" Value="#E4E7EC"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                  </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.RowStyle>
+                  <Style TargetType="DataGridRow">
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Style.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#F7F5F5"/></Trigger>
+                    </Style.Triggers>
+                  </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.CellStyle>
+                  <Style TargetType="DataGridCell">
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="6,0"/>
+                    <Setter Property="Template">
+                      <Setter.Value>
+                        <ControlTemplate TargetType="DataGridCell">
+                          <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                          </Border>
+                        </ControlTemplate>
+                      </Setter.Value>
+                    </Setter>
+                    <Style.Triggers>
+                      <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="#FBE3E4"/>
+                        <Setter Property="Foreground" Value="#7A0F15"/>
+                      </Trigger>
+                    </Style.Triggers>
+                  </Style>
+                </DataGrid.CellStyle>
+                <DataGrid.Columns>
+                  <DataGridTextColumn Binding="{Binding Tram}" Width="*" MinWidth="110"/>
+                  <DataGridTextColumn Binding="{Binding Id}" Width="118"/>
+                  <DataGridTextColumn Binding="{Binding Name}" Width="2*" MinWidth="160"/>
+                  <DataGridTextColumn Binding="{Binding Colab}" Width="*" MinWidth="100"/>
+                  <DataGridTextColumn Binding="{Binding FechaTxt}" Width="85"/>
+                  <DataGridTemplateColumn Width="130">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <Border Background="{Binding Color}" CornerRadius="11" Padding="10,2" Margin="0,6" HorizontalAlignment="Left">
+                          <TextBlock Text="{Binding Status}" Foreground="#2A2A2A" FontSize="12"/>
+                        </Border>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Binding="{Binding PriceTxt}" Width="85"/>
+                  <DataGridTextColumn Binding="{Binding PaidTxt}" Width="85"/>
+                  <DataGridTextColumn Binding="{Binding PendTxt}" Width="85">
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="#B42318"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTextColumn Binding="{Binding ComTxt}" Width="95"/>
+                  <DataGridTemplateColumn Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <Border Background="{Binding ComColor}" CornerRadius="11" Padding="10,2" Margin="0,6" HorizontalAlignment="Left">
+                          <TextBlock Text="{Binding ComStTxt}" Foreground="#2A2A2A" FontSize="12"/>
+                        </Border>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                </DataGrid.Columns>
+              </DataGrid>
+            </Grid>
+          </Border>
+        </DockPanel>
+      </Grid>
 
       <!-- ACERCA DE -->
       <Border x:Name="PanelAbout" Visibility="Collapsed" Style="{StaticResource Card}" Padding="38,32" HorizontalAlignment="Center" Width="620" VerticalAlignment="Top" Margin="0,30,0,0">
@@ -1627,6 +1793,8 @@
               <CheckBox x:Name="AdmLockAll" Content="Ocultar Ajustes por completo"/>
               <CheckBox x:Name="AdmIgnorePause" Content="Ignorar la pausa remota en este PC"/>
               <CheckBox x:Name="AdmOwnerPC" Content="Este PC es mío: todo lo que se haga aquí cuenta como admin"/>
+              <CheckBox x:Name="AdmFbSync" Content="Sincronizar los clientes con los otros PCs (Firebase) en este PC"/>
+              <TextBlock x:Name="AdmFbState" Foreground="#8A7F81" FontSize="12.5" TextWrapping="Wrap" Margin="24,2,0,0"/>
               <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                 <Button x:Name="AdmSaveLocks" Style="{StaticResource Primary}" Height="40" Padding="22,0" FontSize="14" Content="Guardar bloqueos"/>
                 <TextBlock x:Name="AdmLocksMsg" Foreground="#1B7F45" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0"/>
