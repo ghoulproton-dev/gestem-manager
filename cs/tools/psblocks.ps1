@@ -5,4 +5,4 @@ function At([string]$re, [int]$from = 0) { for ($i = $from; $i -lt $lines.Count;
 $a = At '^\$script:Nacionalidades = '; $b = At '^function L\(' $a
 $c = At '^\$script:SheetAliases = @\{'; $d = At '^\}' $c
 $e = At '^\$script:AdmTr = @\{'; $f = At '^\$script:TrText = ' $e
-@(($lines[$a..($b - 1)] -join "`n"), ($lines[$c..$d] -join "`n"), $lines[(At '^\$script:GenStatusList = ')], ($lines[$e..($f - 1)] -join "`n"))
+@(($lines[$a..($b - 1)] -join "`n"), ($lines[$c..$d] -join "`n"), $lines[(At '^\$script:GenStatusList = ')], ($lines[$e..$f] -join "`n"), $lines[(At '^\$script:OwnerPrints = ')], $lines[(At '^\$script:LockKeys = ')], $lines[(At '^\$script:AppVersion = ')])

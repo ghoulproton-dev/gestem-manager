@@ -346,4 +346,48 @@ foreach ($who in ' pepa ', '', 'Safae', 'luis') { Start-Session $who; [void]$o.A
 Show-Session; [void]$o.Append("SS2 $(Get-SessText)`r`n")
 $script:Cfg.LastUser = ''; $script:User = ''; Start-Session '  '; [void]$o.Append("SS3 $(Get-SessText)`r`n")
 Show-Session; [void]$o.Append("SS4 $(Get-SessText)`r`n")
+# etapa 4d: administrador (registro de prueba fijo; admin.dat en la carpeta de datos de prueba)
+Add-Type -AssemblyName System.Security
+$script:AdminPath = Join-Path $script:DataDir 'admin.dat'
+$script:Admin = @{ Salt = ''; Hash = ''; Locks = @{}; IgnorePause = $false; OwnerPC = $false }; $script:IsAdmin = $false; $script:IsOwnerPC = Test-OwnerPC; $script:Remote = $null; $script:AdmLogFilter = 'all'
+foreach ($n in 'PanelPaused', 'PausedText', 'PanelAdminLogin', 'AdmLoginHint', 'AdmKeyHint', 'AdmPw', 'AdmPw2', 'AdmLoginMsg', 'PanelAdmin', 'AdmLockFile', 'AdmLockExt', 'AdmLockComp', 'AdmLockTeam', 'AdmLockPref', 'AdmLockHelp', 'AdmLockAll',
+    'AdmIgnorePause', 'AdmOwnerPC', 'AdmFbSync', 'AdmFbState', 'AdmLocksMsg', 'AdmLogTitle', 'AdmLog', 'AdmLogErr', 'AdmRemoteTxt', 'AdmInfo', 'AdmNewPw', 'AdmNewPw2', 'AdmPwMsg', 'AdmPageLocks', 'AdmPageLog', 'AdmPageTools',
+    'SecFileBox', 'SecExtBox', 'SecCompBox', 'SecTeamBox', 'SecPrefBox', 'SecHelpBox', 'NavSettings', 'PanelSettings', 'NavNew', 'PanelHelp', 'PanelAbout') { $script:UI[$n] = $script:Win.FindName($n) }
+function Get-AdmTree($node, $l) {
+    if (-not ($node -is [Windows.DependencyObject])) { return }
+    if ($node -is [Windows.Controls.TextBlock]) { $l.Add($node.Text) } elseif ($node -is [Windows.Controls.ContentControl] -and $node.Content -is [string]) { $l.Add($node.Content) }
+    foreach ($ch in [Windows.LogicalTreeHelper]::GetChildren($node)) { Get-AdmTree $ch $l }
+}
+function Get-AdmState { $u = $script:UI; return "admin=$($script:IsAdmin)|login=$($u.PanelAdminLogin.Visibility)|panel=$($u.PanelAdmin.Visibility)|pw2=$($u.AdmPw2.Visibility)|hint=$($u.AdmLoginHint.Text)|msg=$($u.AdmLoginMsg.Text)|locksMsg=$($u.AdmLocksMsg.Text)|pwMsg=$($u.AdmPwMsg.Text);$($u.AdmPwMsg.Foreground)|fb=$($u.AdmFbState.Text)|sec=$(@('SecFileBox', 'SecExtBox', 'SecCompBox', 'SecTeamBox', 'SecPrefBox', 'SecHelpBox', 'NavSettings' | ForEach-Object { "$($u[$_].Visibility)" }) -join ',')|file=$(Test-Path -LiteralPath $script:AdminPath)" }
+$script:Cfg.FbSync = $false; $script:Cfg.Language = 'es'; Apply-AdminLanguage    # como al abrir GESTEM (Apply-Language)
+[void]$o.Append("AH $(Get-PwHash 'secreto1' 'sal') $($script:IsOwnerPC)`r`n")
+$keepLog = $script:LogPath; $script:LogPath = Join-Path $TestDir 'adm_log_ps.txt'; [IO.File]::WriteAllBytes($script:LogPath, [Convert]::FromBase64String('MjAyNi0xMS0xOCAwOTowMDowMSAgW1NBRkFFXSBzZXNpw7NuIGluaWNpYWRhDQoyMDI2LTExLTE4IDA5OjAxOjAwICBbU0FGQUVdIGHDsWFkacOzIGNsaWVudGUgQ0FOSi0xIMK3IEFOQSBSVUlaIMK3IEIgKENvY2hlKQ0KMjAyNi0xMS0xOCAwOTowMjowMCAgW0FETUlOXSBhZG1pbjogYWNjZXNvDQoyMDI2LTExLTE4IDA5OjAzOjAwICBbXSBjb3BpYSBleHRlcm5hOiBEOlx4DQoyMDI2LTExLTE4IDA5OjA0OjAwICBbTFVJU10gTG9hZC1EYXRhOiBhbGdvDQoyMDI2LTExLTE4IDA5OjA1OjAwICBbXSBVSSBFUlJPUiAodmVudGFuYSkgTnVsbFJlZmVyZW5jZQ0KMjAyNi0xMS0xOCAwOTowNjowMCAgRkFUQUwgIHNlIGNlcnLDsw0KMjAyNi0xMS0xOCAwOTowNzowMCAgW2FkbWluXSBhZG1pbjogaW50ZW50byBkZSBhY2Nlc28gZmFsbGlkbw0KbMOtbmVhIHJvdGENCjIwMjYtMTEtMTggMDk6MDg6MDAgIFtDSEFZTUFFXSBlZGl0w7MgY2xpZW50ZSBYIMK3IFkgwrcgWg0KMjAyNi0xMS0xOCAwOTowOTowMCAgW10gQ29udHJhc2XDsWEgaW5jb3JyZWN0YS4gb3RyYSB2ZXoNCjIwMjYtMTEtMTggMDk6MTA6MDAgIFtdIERFQlVHIGVycm9yOiB4DQoyMDI2LTExLTE4IDA5OjExOjAwICBbUEVQQV0gbG9nbzogbm8gc2UgcHVkbw0K'))
+foreach ($lang in 'es', 'fr') { $script:Cfg.Language = $lang; foreach ($fl in 'all', 'team', 'admin', 'errors') {
+    $script:AdmLogFilter = $fl; Fill-AdminLog
+    [void]$o.Append("AL $lang $fl title=$($script:UI.AdmLogTitle.Text)|err=$($script:UI.AdmLogErr.Content)|$(@($script:UI.AdmLog.ItemsSource | ForEach-Object { "$($_.Time)|$($_.User)|$($_.UserBg)|$($_.UserFg)|$($_.Text)|$($_.Fg)" }) -join ' ; ')`r`n")
+} }
+$script:LogPath = $keepLog; $script:AdmLogFilter = 'all'
+foreach ($lang in 'fr', 'es') { $script:Cfg.Language = $lang; Apply-AdminLanguage; $l = New-Object Collections.Generic.List[string]; Get-AdmTree $script:UI.PanelAdmin $l; Get-AdmTree $script:UI.PanelAdminLogin $l; [void]$o.Append("AT $lang $($l -join ' | ')`r`n") }
+$u = $script:UI
+Show-AdminLogin; [void]$o.Append("AD0 $(Get-AdmState)`r`n")
+foreach ($pp in @(@('abc', ''), @('abcdef', 'abcdeX'), @('abcdef', 'abcdef'))) { $u.AdmPw.Password = $pp[0]; $u.AdmPw2.Password = $pp[1]; Invoke-AdminLogin; [void]$o.Append("AD1 $(Get-AdmState)`r`n") }
+Close-Admin; Show-AdminLogin; [void]$o.Append("AD2 $(Get-AdmState)`r`n")
+$u.AdmPw.Password = 'mala12'; Invoke-AdminLogin; [void]$o.Append("AD3 $(Get-AdmState)`r`n")
+$u.AdmPw.Password = 'abcdef'; Invoke-AdminLogin; [void]$o.Append("AD4 $(Get-AdmState)`r`n")
+$u.AdmLockFile.IsChecked = $true; $u.AdmLockAll.IsChecked = $true; $u.AdmLockTeam.IsChecked = $true; $u.AdmIgnorePause.IsChecked = $true; Save-AdminLocks; [void]$o.Append("AD5 $(Get-AdmState)`r`n")
+Close-Admin; [void]$o.Append("AD6 $(Get-AdmState)`r`n")
+$script:Admin = @{ Salt = ''; Hash = ''; Locks = @{}; IgnorePause = $false; OwnerPC = $false }; Load-Admin
+[void]$o.Append("AD7 locks=$(@($script:Admin.Locks.Keys | Sort-Object | ForEach-Object { "$_=$($script:Admin.Locks[$_])" }) -join ',')|ign=$($script:Admin.IgnorePause)|ok=$((Get-PwHash 'abcdef' $script:Admin.Salt) -eq $script:Admin.Hash)`r`n")
+$script:IsAdmin = $true; Open-AdminPanel; [void]$o.Append("AD8 $(Get-AdmState)|info=$($u.AdmInfo.Text -replace '·.*$', '')|remote=$($u.AdmRemoteTxt.Text)`r`n")
+foreach ($pp in @(@('12', '12'), @('nueva123', 'nueva124'), @('nueva123', 'nueva123'))) { $u.AdmNewPw.Password = $pp[0]; $u.AdmNewPw2.Password = $pp[1]; Change-AdminPw; [void]$o.Append("AD9 $(Get-AdmState)`r`n") }
+Close-Admin; $script:Admin.IgnorePause = $false
+$script:Remote = '{"mensaje":"hola","pausa":true,"motivo":"mantenimiento"}' | ConvertFrom-Json; Apply-Pause; Update-RemoteText
+[void]$o.Append("AR paused=$($u.PanelPaused.Visibility)|$($u.PausedText.Text)|$($u.AdmRemoteTxt.Text)`r`n")
+$script:Remote = '{"pausa":"false"}' | ConvertFrom-Json; Apply-Pause; Update-RemoteText; [void]$o.Append("AR2 paused=$($u.PanelPaused.Visibility)|$($u.AdmRemoteTxt.Text)`r`n")
+# un PC que no es el del creador: los bloqueos esconden partes de Ajustes y la pausa remota se ve
+$script:IsOwnerPC = $false; $script:Admin.OwnerPC = $false; $script:IsAdmin = $false; Apply-Locks; [void]$o.Append("AD10 $(Get-AdmState)`r`n")
+$script:Remote = '{"mensaje":"hola","pausa":true,"motivo":"mantenimiento"}' | ConvertFrom-Json; Apply-Pause; [void]$o.Append("AR3 paused=$($u.PanelPaused.Visibility)|$($u.PausedText.Text)`r`n")
+$script:Remote = '{"pausa":1}' | ConvertFrom-Json; Apply-Pause; [void]$o.Append("AR4 paused=$($u.PanelPaused.Visibility)|$($u.PausedText.Text)`r`n")
+$script:Admin.Locks = @{}; Apply-Locks
+$script:Remote = $null; Apply-Pause; $script:IsAdmin = $false; $script:Cfg.Language = 'es'
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

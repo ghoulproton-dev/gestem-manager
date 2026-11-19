@@ -79,7 +79,7 @@ namespace Gestem
             Win.KeyDown += OnKeyDown;
             WireForm();
             WireMenu();
-            WireDocs(); WireStats(); WireSettings(); WireSession();
+            WireDocs(); WireStats(); WireSettings(); WireSession(); WireAdmin();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -168,6 +168,7 @@ namespace Gestem
             SetDocsTexts();
             SetStatsTexts();
             SetSettingsTexts();
+            ApplyAdminLanguage();
             BuildForm();
             ResetForm();
         }
@@ -255,6 +256,13 @@ namespace Gestem
 
         void OnKeyDown(object sender, KeyEventArgs e)
         {
+            Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+            ModifierKeys want = ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt;
+            if (key == Key.A && (Keyboard.Modifiers & want) == want)    // administrador (oculto)
+            {
+                if (App.IsAdmin) OpenAdminPanel(); else ShowAdminLogin();
+                e.Handled = true; return;
+            }
             if (U("PanelSession").Visibility == Visibility.Visible) return;    // eligiendo quién eres: sin atajos
             bool ctrl = Keyboard.Modifiers == ModifierKeys.Control;
             if (ctrl && e.Key == Key.F)

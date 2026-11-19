@@ -22,6 +22,8 @@ namespace Gestem
             App.LogPath = Path.Combine(Root, "gestem.log"); FbState.Path = Path.Combine(Root, "firebase.json");
             Directory.CreateDirectory(Root); Directory.CreateDirectory(DocsRoot);
             if (!File.Exists(App.CfgPath) && File.Exists(realCfg)) File.Copy(realCfg, App.CfgPath);    // solo se lee la de verdad
+            string realAdm = Path.Combine(Path.GetDirectoryName(realCfg), "admin.dat"), adm = Path.Combine(Root, "admin.dat");
+            if (!File.Exists(adm) && File.Exists(realAdm)) { File.Copy(realAdm, adm); }    // la contraseña de administrador de este PC
             Config.Load();
             string x = Ps.Str(Config.Cur.ExcelPath);
             if (x.Length > 0 && !App.IsSafe(x))

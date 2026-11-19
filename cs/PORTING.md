@@ -158,6 +158,12 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         «buscar OneDrive» y «buscar actualizaciones» (etapas 5/5b; botones ocultos). Repair-Shortcuts no se traslada (etapa 7).
   - [x] 4c Sesión (WinSession.cs): quién usa GESTEM (lista de nombres, la última persona entra sola con «¿No eres tú?»), sin atajos
         mientras se elige. Prueba: SS en el resumen. Pendiente: «actividad GESTEM - PC.txt» en la carpeta externa (etapa 5).
+  - [x] 4d Administrador (WinAdmin.cs; Ctrl+Mayús+Alt+A): contraseña (admin.dat cifrado con DPAPI), bloqueos de Ajustes, registro
+        de actividad y de errores, textos traducidos, cambiar contraseña, pantalla de pausa. En modo prueba admin.dat se copia (solo
+        se lee el de verdad). Prueba: AH/AL/AT/AD/AR en el resumen (también un PC que no es el del creador) + «UI admin».
+        Pendiente: leer control.json de GitHub (Check-Remote, con Get-RepoFile en la etapa 5), «buscar actualización» (5),
+        encender/apagar Firebase desde el panel (Set-FbSyncSwitch, 5b; la casilla no se puede cambiar).
+        pstest: psblocks.ps1 carga también TrText/TrTip, OwnerPrints, LockKeys y AppVersion de GESTEM.ps1.
 - [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
 - [ ] Etapa 5b — Firebase (sincronización, primera unión) y carpeta de documentos compartida
 - [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos

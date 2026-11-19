@@ -294,7 +294,43 @@ namespace Gestem
             foreach (string who in new string[] { " pepa ", "", "Safae", "luis" }) { w.StartSession(who); o.Append("SS1 [" + who + "] " + SessText(w) + "\r\n"); }
             w.ShowSession(); o.Append("SS2 " + SessText(w) + "\r\n");
             Config.Cur.LastUser = ""; App.User = ""; w.StartSession("  "); o.Append("SS3 " + SessText(w) + "\r\n");
-            w.ShowSession(); o.Append("SS4 " + SessText(w) + "\r\n");            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
+            w.ShowSession(); o.Append("SS4 " + SessText(w) + "\r\n");            // etapa 4d: administrador (registro de prueba fijo; admin.dat en la carpeta de datos de prueba)
+            MainWin.Admin = new AdminData(); App.IsAdmin = false; App.IsOwnerPC = MainWin.TestOwnerPC(); w.Remote = null; w.AdmLogFilter = "all";
+            bool keepFb = Config.Cur.FbSync; Config.Cur.FbSync = false;
+            o.Append("AH " + MainWin.PwHash("secreto1", "sal") + " " + App.IsOwnerPC + "\r\n");
+            string keepLog = App.LogPath; App.LogPath = Path.Combine(testDir, "adm_log_cs.txt"); File.WriteAllBytes(App.LogPath, Convert.FromBase64String("MjAyNi0xMS0xOCAwOTowMDowMSAgW1NBRkFFXSBzZXNpw7NuIGluaWNpYWRhDQoyMDI2LTExLTE4IDA5OjAxOjAwICBbU0FGQUVdIGHDsWFkacOzIGNsaWVudGUgQ0FOSi0xIMK3IEFOQSBSVUlaIMK3IEIgKENvY2hlKQ0KMjAyNi0xMS0xOCAwOTowMjowMCAgW0FETUlOXSBhZG1pbjogYWNjZXNvDQoyMDI2LTExLTE4IDA5OjAzOjAwICBbXSBjb3BpYSBleHRlcm5hOiBEOlx4DQoyMDI2LTExLTE4IDA5OjA0OjAwICBbTFVJU10gTG9hZC1EYXRhOiBhbGdvDQoyMDI2LTExLTE4IDA5OjA1OjAwICBbXSBVSSBFUlJPUiAodmVudGFuYSkgTnVsbFJlZmVyZW5jZQ0KMjAyNi0xMS0xOCAwOTowNjowMCAgRkFUQUwgIHNlIGNlcnLDsw0KMjAyNi0xMS0xOCAwOTowNzowMCAgW2FkbWluXSBhZG1pbjogaW50ZW50byBkZSBhY2Nlc28gZmFsbGlkbw0KbMOtbmVhIHJvdGENCjIwMjYtMTEtMTggMDk6MDg6MDAgIFtDSEFZTUFFXSBlZGl0w7MgY2xpZW50ZSBYIMK3IFkgwrcgWg0KMjAyNi0xMS0xOCAwOTowOTowMCAgW10gQ29udHJhc2XDsWEgaW5jb3JyZWN0YS4gb3RyYSB2ZXoNCjIwMjYtMTEtMTggMDk6MTA6MDAgIFtdIERFQlVHIGVycm9yOiB4DQoyMDI2LTExLTE4IDA5OjExOjAwICBbUEVQQV0gbG9nbzogbm8gc2UgcHVkbw0K"));
+            foreach (string lang in new string[] { "es", "fr" }) { Config.Cur.Language = lang; Tx.Lang = lang; foreach (string fl in new string[] { "all", "team", "admin", "errors" })
+            {
+                w.AdmLogFilter = fl; List<AdmLogItem> its = w.FillAdminLog(); List<string> l = new List<string>();
+                foreach (AdmLogItem it in its) l.Add(it.Time + "|" + it.User + "|" + it.UserBg + "|" + it.UserFg + "|" + it.Text + "|" + it.Fg);
+                o.Append("AL " + lang + " " + fl + " title=" + w.U<TextBlock>("AdmLogTitle").Text + "|err=" + Ps.Str(w.U<ContentControl>("AdmLogErr").Content) + "|" + string.Join(" ; ", l) + "\r\n");
+            } }
+            App.LogPath = keepLog; w.AdmLogFilter = "all";
+            foreach (string lang in new string[] { "fr", "es" }) { Config.Cur.Language = lang; Tx.Lang = lang; w.ApplyAdminLanguage(); List<string> l = new List<string>(); AdmTree(w.U<FrameworkElement>("PanelAdmin"), l); AdmTree(w.U<FrameworkElement>("PanelAdminLogin"), l); o.Append("AT " + lang + " " + string.Join(" | ", l) + "\r\n"); }
+            Func<string, PasswordBox> PB = delegate(string n) { return w.U<PasswordBox>(n); };
+            w.ShowAdminLogin(); o.Append("AD0 " + AdmState(w) + "\r\n");
+            foreach (string[] pp in new string[][] { new string[] { "abc", "" }, new string[] { "abcdef", "abcdeX" }, new string[] { "abcdef", "abcdef" } }) { PB("AdmPw").Password = pp[0]; PB("AdmPw2").Password = pp[1]; w.InvokeAdminLogin(); o.Append("AD1 " + AdmState(w) + "\r\n"); }
+            w.CloseAdmin(); w.ShowAdminLogin(); o.Append("AD2 " + AdmState(w) + "\r\n");
+            PB("AdmPw").Password = "mala12"; w.InvokeAdminLogin(); o.Append("AD3 " + AdmState(w) + "\r\n");
+            PB("AdmPw").Password = "abcdef"; w.InvokeAdminLogin(); o.Append("AD4 " + AdmState(w) + "\r\n");
+            w.U<CheckBox>("AdmLockFile").IsChecked = true; w.U<CheckBox>("AdmLockAll").IsChecked = true; w.U<CheckBox>("AdmLockTeam").IsChecked = true; w.U<CheckBox>("AdmIgnorePause").IsChecked = true; w.SaveAdminLocks(); o.Append("AD5 " + AdmState(w) + "\r\n");
+            w.CloseAdmin(); o.Append("AD6 " + AdmState(w) + "\r\n");
+            MainWin.Admin = new AdminData(); MainWin.LoadAdmin();
+            List<string> lk = new List<string>(); foreach (object k in MainWin.Admin.Locks.Keys) lk.Add((string)k); lk.Sort(StringComparer.CurrentCultureIgnoreCase);
+            for (int i = 0; i < lk.Count; i++) lk[i] = lk[i] + "=" + MainWin.Admin.Locks[lk[i]];
+            o.Append("AD7 locks=" + string.Join(",", lk) + "|ign=" + MainWin.Admin.IgnorePause + "|ok=" + (MainWin.PwHash("abcdef", MainWin.Admin.Salt) == MainWin.Admin.Hash) + "\r\n");
+            App.IsAdmin = true; w.OpenAdminPanel(); o.Append("AD8 " + AdmState(w) + "|info=" + System.Text.RegularExpressions.Regex.Replace(w.U<TextBlock>("AdmInfo").Text, "·.*$", "") + "|remote=" + w.U<TextBlock>("AdmRemoteTxt").Text + "\r\n");
+            foreach (string[] pp in new string[][] { new string[] { "12", "12" }, new string[] { "nueva123", "nueva124" }, new string[] { "nueva123", "nueva123" } }) { PB("AdmNewPw").Password = pp[0]; PB("AdmNewPw2").Password = pp[1]; w.ChangeAdminPw(); o.Append("AD9 " + AdmState(w) + "\r\n"); }
+            w.CloseAdmin(); MainWin.Admin.IgnorePause = false;
+            w.Remote = Json.Parse("{\"mensaje\":\"hola\",\"pausa\":true,\"motivo\":\"mantenimiento\"}"); w.ApplyPause(); w.UpdateRemoteText();
+            o.Append("AR paused=" + w.U<FrameworkElement>("PanelPaused").Visibility + "|" + w.U<TextBlock>("PausedText").Text + "|" + w.U<TextBlock>("AdmRemoteTxt").Text + "\r\n");
+            w.Remote = Json.Parse("{\"pausa\":\"false\"}"); w.ApplyPause(); w.UpdateRemoteText(); o.Append("AR2 paused=" + w.U<FrameworkElement>("PanelPaused").Visibility + "|" + w.U<TextBlock>("AdmRemoteTxt").Text + "\r\n");
+            // un PC que no es el del creador: los bloqueos esconden partes de Ajustes y la pausa remota se ve
+            App.IsOwnerPC = false; MainWin.Admin.OwnerPC = false; App.IsAdmin = false; w.ApplyLocks(); o.Append("AD10 " + AdmState(w) + "\r\n");
+            w.Remote = Json.Parse("{\"mensaje\":\"hola\",\"pausa\":true,\"motivo\":\"mantenimiento\"}"); w.ApplyPause(); o.Append("AR3 paused=" + w.U<FrameworkElement>("PanelPaused").Visibility + "|" + w.U<TextBlock>("PausedText").Text + "\r\n");
+            w.Remote = Json.Parse("{\"pausa\":1}"); w.ApplyPause(); o.Append("AR4 paused=" + w.U<FrameworkElement>("PanelPaused").Visibility + "|" + w.U<TextBlock>("PausedText").Text + "\r\n");
+            MainWin.Admin.Locks = PsH.New(); w.ApplyLocks();
+            w.Remote = null; w.ApplyPause(); App.IsAdmin = false; Config.Cur.Language = "es"; Tx.Lang = "es"; Config.Cur.FbSync = keepFb;            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
             int bad = 0;
@@ -415,6 +451,19 @@ namespace Gestem
             string[] lc; G.Lists.TryGetValue("colleagues", out lc);
             return "names=" + string.Join(",", nm) + "|vis=" + w.U<FrameworkElement>("PanelSession").Visibility + "|hint=" + w.U<FrameworkElement>("SessNewHint").Visibility + "|user=" + App.User + "|last=" + Config.Cur.LastUser
                 + "|col=" + string.Join(",", Config.Cur.Colleagues) + "|lists=" + (lc == null ? "" : string.Join(",", lc)) + "|btn=" + Ps.Str(w.U<ContentControl>("UserBtn").Content) + "|title=" + w.U<TextBlock>("SessTitle").Text;
+        }        static void AdmTree(object node, List<string> l)
+        {
+            DependencyObject d = node as DependencyObject; if (d == null) return;
+            if (d is TextBlock) l.Add(((TextBlock)d).Text); else if (d is ContentControl && ((ContentControl)d).Content is string) l.Add((string)((ContentControl)d).Content);
+            foreach (object ch in LogicalTreeHelper.GetChildren(d)) AdmTree(ch, l);
+        }
+        static string AdmState(MainWin w)
+        {
+            Func<string, string> V = delegate(string n) { return w.U<FrameworkElement>(n).Visibility.ToString(); };
+            Func<string, string> T = delegate(string n) { return w.U<TextBlock>(n).Text; };
+            List<string> sec = new List<string>(); foreach (string n in new string[] { "SecFileBox", "SecExtBox", "SecCompBox", "SecTeamBox", "SecPrefBox", "SecHelpBox", "NavSettings" }) sec.Add(V(n));
+            return "admin=" + App.IsAdmin + "|login=" + V("PanelAdminLogin") + "|panel=" + V("PanelAdmin") + "|pw2=" + V("AdmPw2") + "|hint=" + T("AdmLoginHint") + "|msg=" + T("AdmLoginMsg") + "|locksMsg=" + T("AdmLocksMsg")
+                + "|pwMsg=" + T("AdmPwMsg") + ";" + w.U<TextBlock>("AdmPwMsg").Foreground + "|fb=" + T("AdmFbState") + "|sec=" + string.Join(",", sec) + "|file=" + File.Exists(MainWin.AdminPath);
         }        static string DocsPanelText(MainWin w)
         {
             List<string> it = new List<string>();

@@ -108,6 +108,15 @@ namespace Gestem
                     o.Append("UI ajustes nat=" + w.U<ComboBox>("NatBox").Items.Count + " logo=" + (w.U<System.Windows.Controls.Image>("AboutImg").Source != null ? "OK" : "MAL") + " ver=" + w.U<TextBlock>("AboutVer").Text + "\r\n");
                     w.U<ToggleButton>("NavClients").IsChecked = true;
                 });
+                Try("admin", delegate
+                {
+                    w.ShowAdminLogin(); Pump(w);
+                    w.U<FrameworkElement>("PanelAdminLogin").Visibility = Visibility.Collapsed;
+                    App.IsAdmin = true; w.OpenAdminPanel(); Pump(w);
+                    foreach (string t in new string[] { "AdmTabLog", "AdmTabTools", "AdmTabLocks" }) { w.U<ToggleButton>(t).IsChecked = true; Pump(w); }
+                    o.Append("UI admin panel=" + w.U<FrameworkElement>("PanelAdmin").Visibility + " registro=" + ((System.Collections.ICollection)w.U<ItemsControl>("AdmLog").ItemsSource).Count + "\r\n");
+                    w.CloseAdmin(); Pump(w);
+                });
                 Try("aviso req", delegate { w.UpdateReqBadge(); o.Append("UI aviso req=" + w.U<Border>("ReqBadge").Visibility + "\r\n"); });
                 Try("config", delegate
                 {

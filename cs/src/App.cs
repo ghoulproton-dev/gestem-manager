@@ -119,7 +119,7 @@ namespace Gestem
         {
             if (adm == null)
             {
-                adm = new Dictionary<string, object>();
+                adm = new Dictionary<string, object>(StringComparer.CurrentCultureIgnoreCase);    // $script:AdmTr es un @{}: sin distinguir mayúsculas
                 Dictionary<string, object> all = Json.Obj(App.ResJson("admin_tr.json"));
                 foreach (string part in new string[] { "adm", "help", "about" })
                     foreach (KeyValuePair<string, object> kv in Json.Obj(all[part])) adm[kv.Key] = kv.Value;
@@ -127,6 +127,13 @@ namespace Gestem
             object tr;
             if (Lang != "es" && adm.TryGetValue(es, out tr)) { string v = Json.Str(tr, Lang); if (!string.IsNullOrEmpty(v)) return v; }
             return es;
+        }
+        public static bool HasAdm(string es) { AdmT(""); return es != null && adm.ContainsKey(es); }
+        static List<string> admLong;
+        public static List<string> AdmKeysLongestFirst()
+        {
+            if (admLong == null) { AdmT(""); admLong = new List<string>(adm.Keys); admLong.Sort(delegate(string a, string b) { return b.Length.CompareTo(a.Length); }); }
+            return admLong;
         }
     }
 }
