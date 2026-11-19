@@ -416,4 +416,19 @@ $u.ColabOnlyPend.IsChecked = $false; $u.ColabList.SelectedIndex = 0; Update-Cola
 Invoke-QuickUndo; Load-ColabPanel; [void]$o.Append("CO5 $(Get-ColState)`r`n")
 $script:Cfg.Collaborators = @(); $script:Cache = @{}; Load-ColabPanel; [void]$o.Append("CO6 $(Get-ColState)`r`n")
 $script:Cfg.Collaborators = $keepCol; $script:T = $script:Tramites | Where-Object { $_.Id -eq 'canje' }; [void](Load-Data -All -Quiet); ${function:Load-Data} = $keepLoad; Remove-Item function:Get-Date
+# etapa 5a: copia externa (carpeta de prueba; 62 copias viejas para ver que quedan 60) y registro de actividad sin nombres
+[void]$o.Append("EX cloud=$(@(Get-CloudRoots) -join ';')|company=$(Find-CompanyCloud)`r`n")
+function Get-Date { if ($args.Count) { Microsoft.PowerShell.Utility\Get-Date @args } else { $script:FixedNow } }
+$ext = Join-Path $TestDir 'ps_ext'; if (Test-Path $ext) { Remove-Item $ext -Recurse -Force }; New-Item -ItemType Directory $ext | Out-Null
+for ($i = 1; $i -le 62; $i++) { [IO.File]::WriteAllText((Join-Path $ext ('x_{0:yyyy-MM-dd}.xlsx' -f (New-Object DateTime 2026, 1, 1).AddDays($i))), 'viejo') }
+[IO.File]::WriteAllText((Join-Path $ext 'x_2026-1-1.xlsx'), 'otro')
+$keepLog = $script:LogPath; $script:LogPath = Join-Path $TestDir 'ext_log_ps.txt'; [IO.File]::WriteAllBytes($script:LogPath, [Convert]::FromBase64String('MjAyNi0xMS0xOCAwOTowMDowMSAgW1NBRkFFXSBzZXNpw7NuIGluaWNpYWRhDQoyMDI2LTExLTE4IDA5OjAxOjAwICBbU0FGQUVdIGHDsWFkacOzIGNsaWVudGUgQ0FOSi0yMDI2LTAwMSDCtyBBTkEgUlVJWiDCtyBCIChDb2NoZSkNCjIwMjYtMTEtMTggMDk6MDE6MzAgIFtsdWlzXSBlZGl0w7MgY2xpZW50ZSBBVVQtMSDCtyBQRVBFIMK3IFggwrcgQXV0w7Nub21vDQoyMDI2LTExLTE4IDA5OjAyOjAwICBbYWRtaW5dIGFkbWluOiBhY2Nlc28NCjIwMjYtMTEtMTggMDk6MDM6MDAgIFtdIGNvcGlhIGV4dGVybmE6IEQ6XHgNCjIwMjYtMTEtMTggMDk6MDQ6MDAgIFtMVUlTXSBMb2FkLURhdGE6IGFsZ28NCjIwMjYtMTEtMTggMDk6MDQ6MzAgIFtMVUlTXSBERUJVRyBlcnJvcjogeA0KMjAyNi0xMS0xOCAwOTowNTowMCAgW10gVUkgRVJST1IgKHZlbnRhbmEpIE51bGxSZWZlcmVuY2UNCmJhc3VyYQ0KMjAyNi0xMS0xOCAwOTowNjowMCAgW0NIQVlNQUVdIGNhbWJpw7MgbG9zIGFqdXN0ZXMNCjIwMjYtMTEtMTggMDk6MDc6MDAgIFtDSEFZTUFFXSBjb21pc2nDs24gcGFnYWRhOiAyIHRyw6FtaXRlKHMpIMK3IExVSVMNCg=='))
+$script:Cfg.ExtBackupDir = $ext; $script:Cfg.LastExtBackup = ''
+$ok = Backup-External -Quiet
+$fl = @(Get-ChildItem $ext -Recurse -File | ForEach-Object { $_.FullName.Substring($ext.Length + 1) -replace '^documentos\\ps_', 'documentos\X_' } | Sort-Object)
+[void]$o.Append("EX ok=$ok last=$($script:Cfg.LastExtBackup) n=$($fl.Count) excel=$(@($fl | Where-Object { $_ -match '^x_.*\.xlsx$' }).Count) first=$(@($fl | Where-Object { $_ -match '^x_' })[0])`r`n")
+foreach ($f in $fl) { if ($f -notmatch '^x_') { [void]$o.Append("EXF $f`r`n") } }
+[void]$o.Append("EXA $((Get-Content -LiteralPath (Join-Path $ext "actividad GESTEM - $env:COMPUTERNAME.txt") -Encoding UTF8) -join ' ¶ ')`r`n")
+$script:Cfg.ExtBackupDir = Join-Path $TestDir 'ps_x.xlsx'; [void]$o.Append("EX2 ok=$(Backup-External -Quiet)`r`n")
+$script:Cfg.ExtBackupDir = ''; $script:Cfg.LastExtBackup = ''; $script:LogPath = $keepLog; Remove-Item function:Get-Date
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

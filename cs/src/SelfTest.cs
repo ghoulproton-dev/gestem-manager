@@ -351,7 +351,24 @@ namespace Gestem
             w.U<CheckBox>("ColabOnlyPend").IsChecked = false; w.U<ListBox>("ColabList").SelectedIndex = 0; w.UpdateColabView(); w.U<DataGrid>("ColabGrid").SelectAll(); w.MarkColabPaid(); o.Append("CO4 " + ColState(w) + "\r\n");
             w.InvokeQuickUndo(); w.LoadColabPanel(); o.Append("CO5 " + ColState(w) + "\r\n");
             Config.Cur.Collaborators = new List<string>(); G.Cache = new Dictionary<string, TramiteData>(StringComparer.CurrentCultureIgnoreCase); w.LoadColabPanel(); o.Append("CO6 " + ColState(w) + "\r\n");
-            Config.Cur.Collaborators = keepCol; G.T = Tramite.ById("canje"); Data.LoadData(true, true); App.Now = delegate { return DateTime.Now; };            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
+            Config.Cur.Collaborators = keepCol; G.T = Tramite.ById("canje"); Data.LoadData(true, true); App.Now = delegate { return DateTime.Now; };            // etapa 5a: copia externa (carpeta de prueba; 62 copias viejas para ver que quedan 60) y registro de actividad sin nombres
+            { string company = ExtBackup.FindCompanyCloud(); o.Append("EX cloud=" + string.Join(";", ExtBackup.CloudRoots()) + "|company=" + company + "\r\n"); }
+            App.Now = delegate { return new DateTime(2026, 11, 19, 12, 0, 0); };
+            string ext = Path.Combine(testDir, "cs_ext"); if (Directory.Exists(ext)) Directory.Delete(ext, true); Directory.CreateDirectory(ext);
+            for (int i = 1; i <= 62; i++) File.WriteAllText(Path.Combine(ext, "x_" + new DateTime(2026, 1, 1).AddDays(i).ToString("yyyy-MM-dd") + ".xlsx"), "viejo");
+            File.WriteAllText(Path.Combine(ext, "x_2026-1-1.xlsx"), "otro");
+            string keepLog2 = App.LogPath; App.LogPath = Path.Combine(testDir, "ext_log_cs.txt"); File.WriteAllBytes(App.LogPath, Convert.FromBase64String("MjAyNi0xMS0xOCAwOTowMDowMSAgW1NBRkFFXSBzZXNpw7NuIGluaWNpYWRhDQoyMDI2LTExLTE4IDA5OjAxOjAwICBbU0FGQUVdIGHDsWFkacOzIGNsaWVudGUgQ0FOSi0yMDI2LTAwMSDCtyBBTkEgUlVJWiDCtyBCIChDb2NoZSkNCjIwMjYtMTEtMTggMDk6MDE6MzAgIFtsdWlzXSBlZGl0w7MgY2xpZW50ZSBBVVQtMSDCtyBQRVBFIMK3IFggwrcgQXV0w7Nub21vDQoyMDI2LTExLTE4IDA5OjAyOjAwICBbYWRtaW5dIGFkbWluOiBhY2Nlc28NCjIwMjYtMTEtMTggMDk6MDM6MDAgIFtdIGNvcGlhIGV4dGVybmE6IEQ6XHgNCjIwMjYtMTEtMTggMDk6MDQ6MDAgIFtMVUlTXSBMb2FkLURhdGE6IGFsZ28NCjIwMjYtMTEtMTggMDk6MDQ6MzAgIFtMVUlTXSBERUJVRyBlcnJvcjogeA0KMjAyNi0xMS0xOCAwOTowNTowMCAgW10gVUkgRVJST1IgKHZlbnRhbmEpIE51bGxSZWZlcmVuY2UNCmJhc3VyYQ0KMjAyNi0xMS0xOCAwOTowNjowMCAgW0NIQVlNQUVdIGNhbWJpw7MgbG9zIGFqdXN0ZXMNCjIwMjYtMTEtMTggMDk6MDc6MDAgIFtDSEFZTUFFXSBjb21pc2nDs24gcGFnYWRhOiAyIHRyw6FtaXRlKHMpIMK3IExVSVMNCg=="));
+            Config.Cur.ExtBackupDir = ext; Config.Cur.LastExtBackup = "";
+            bool extOk = w.BackupExternal(true);
+            List<string> efl = new List<string>(); foreach (string f in Directory.GetFiles(ext, "*", SearchOption.AllDirectories)) efl.Add(System.Text.RegularExpressions.Regex.Replace(f.Substring(ext.Length + 1), @"^documentos\\cs_", @"documentos\X_"));
+            Ps.Sort(efl, StringComparer.CurrentCultureIgnoreCase.Compare);
+            int nx = 0; string firstX = null; foreach (string f in efl) if (System.Text.RegularExpressions.Regex.IsMatch(f, @"^x_", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) { if (firstX == null) firstX = f; if (System.Text.RegularExpressions.Regex.IsMatch(f, @"^x_.*\.xlsx$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) nx++; }
+            o.Append("EX ok=" + extOk + " last=" + Config.Cur.LastExtBackup + " n=" + efl.Count + " excel=" + nx + " first=" + firstX + "\r\n");
+            foreach (string f in efl) if (!System.Text.RegularExpressions.Regex.IsMatch(f, "^x_", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) o.Append("EXF " + f + "\r\n");
+            o.Append("EXA " + string.Join(" ¶ ", File.ReadAllLines(Path.Combine(ext, "actividad GESTEM - " + Environment.MachineName + ".txt"), Encoding.UTF8)) + "\r\n");
+            Config.Cur.ExtBackupDir = Path.Combine(testDir, "cs_x.xlsx"); o.Append("EX2 ok=" + w.BackupExternal(true) + "\r\n");
+            Config.Cur.ExtBackupDir = ""; Config.Cur.LastExtBackup = ""; App.LogPath = keepLog2; App.Now = delegate { return DateTime.Now; };
+            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
             int bad = 0;

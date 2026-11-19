@@ -169,7 +169,15 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         marcar comisión pagada (solo en los datos de GESTEM, no en el Excel) con «Deshacer», doble clic abre la ficha en su trámite.
         Prueba: CO texts/CO0–CO6 en el resumen y los .json (marcar 3 y deshacer) + «UI colaboradores». En pstest, Load-Data -All
         rehace la caché solo para este bloque y los textos salen de las líneas reales de Apply-Language.
-- [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
-- [ ] Etapa 5b — Firebase (sincronización, primera unión) y carpeta de documentos compartida
+- [ ] Etapa 5 — copia externa, actualizaciones + control.json, carpeta de documentos en la nube, Firebase (por este orden);
+      después facturas PDF (con tasas DGT) y exportar CSV/PDF.
+  - [x] 5a Copia externa (ExtBackup.cs): Excel del día (60 días), ajustes, documentos (solo lo nuevo), datos y «actividad GESTEM -
+        PC.txt» sin nombres de clientes; al abrir (y la primera vez busca la nube de la empresa), al cerrar, «copiar ahora», al cambiar
+        la carpeta en Ajustes; «buscar OneDrive». Como Get-ChildItem sin -Force: sin archivos/carpetas ocultos (desktop.ini).
+        Modo prueba: la «nube» es cs\data\nube (App.CloudRootsOverride) y la carpeta externa de la config se cambia a
+        cs\data\nube\GESTEM copias. Prueba: EX/EXF/EXA/EX2 + «UI copia externa».
+  - [ ] 5b Actualizaciones (sin tocar GESTEM.ps1 instalado ni version.txt) + control.json
+  - [ ] 5c Carpeta de documentos en la nube
+  - [ ] 5d Firebase (pruebas solo en gestorias/elmahi/_tests/...; en modo prueba siempre apagado; nunca las contraseñas)
 - [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe

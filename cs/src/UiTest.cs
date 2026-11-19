@@ -22,6 +22,7 @@ namespace Gestem
             App.DataDir = testDir; App.BackupDir = Path.Combine(testDir, "copias"); App.LogPath = Path.Combine(testDir, "ui_log.txt");
             App.CfgPath = Path.Combine(testDir, "config_ui.json"); FbState.Path = Path.Combine(testDir, "ui_firebase.json");
             Directory.CreateDirectory(App.BackupDir);
+            App.CloudRootsOverride = new List<string> { Path.Combine(testDir, "nube") }; Directory.CreateDirectory(App.CloudRootsOverride[0]);    // al abrir se busca la nube de la empresa
             Config.Cur = new Config(); Config.Cur.ExcelPath = Path.Combine(testDir, "cs", "x.xlsx");
             Config.Cur.UpdateKey = "clave-prueba"; Config.Cur.FbSync = false; Config.Cur.DocsDir = Path.Combine(testDir, "docs"); Config.Cur.Collaborators.Add("ABOGADO X");
             Config.Cur.TabsChecked = new List<string>();
@@ -128,6 +129,7 @@ namespace Gestem
                     o.Append("UI colaboradores filas=" + items.Count + " ficha=" + (w.U<ToggleButton>("NavNew").IsChecked == true && G.T.Id == "autonomo" && w.EditRow != null && w.EditRow.Row == items[0].Row ? "OK" : "MAL") + "\r\n");
                     w.ResetForm(); w.U<ComboBox>("TramiteBox").SelectedIndex = Tramite.All.IndexOf(Tramite.ById("canje")); w.U<ToggleButton>("NavClients").IsChecked = true;
                 });
+                Try("copia externa", delegate { string d = Path.Combine(testDir, "nube", "GESTEM copias"); o.Append("UI copia externa=" + (Config.Cur.ExtBackupDir == d && Directory.Exists(d) && Directory.GetFiles(d, "x_*.xlsx").Length == 1 ? "OK" : "MAL " + Config.Cur.ExtBackupDir) + "\r\n"); });
                 Try("aviso req", delegate { w.UpdateReqBadge(); o.Append("UI aviso req=" + w.U<Border>("ReqBadge").Visibility + "\r\n"); });
                 Try("config", delegate
                 {

@@ -36,6 +36,7 @@ namespace Gestem
         // MODO PRUEBA (hasta terminar el traslado): GESTEM.exe solo escribe dentro de las carpetas de prueba registradas.
         // Los datos, documentos, config y registro de verdad solo con «GESTEM.exe --real».
         public static bool Real;
+        public static List<string> CloudRootsOverride;    // modo prueba y pruebas: la «nube» (Get-CloudRoots) es esta carpeta
         static readonly List<string> safeRoots = new List<string>();
         public static void AddSafeRoot(string dir) { safeRoots.Add(Path.GetFullPath(dir).TrimEnd('\\') + "\\"); }
         public static bool IsSafe(string path)
@@ -128,6 +129,7 @@ namespace Gestem
             if (Lang != "es" && adm.TryGetValue(es, out tr)) { string v = Json.Str(tr, Lang); if (!string.IsNullOrEmpty(v)) return v; }
             return es;
         }
+        public static string AdmEn(string es) { AdmT(""); object tr; return es != null && adm.TryGetValue(es, out tr) ? Json.Str(tr, "en") : null; }
         public static bool HasAdm(string es) { AdmT(""); return es != null && adm.ContainsKey(es); }
         static List<string> admLong;
         public static List<string> AdmKeysLongestFirst()

@@ -1,8 +1,7 @@
 // Etapa 4b: Ajustes y empresa. Copiado de Load-SettingsPanel, Load-ImageFile, Get-LogoBrush, Save-CompanyLogo, Choose-Logo,
 // Apply-Branding, Import-DefaultBranding, Choose-ExcelFile, Choose-DocsFolder, Set-DocsRoot, Update-ExtBackupInfo,
 // Choose-ExtFolder y Save-Settings de GESTEM.ps1 (y sus botones).
-// shortcut: «copiar ahora» y la copia al cambiar de carpeta externa (Backup-External), «buscar OneDrive» (Find-CompanyCloud)
-// y «buscar actualizaciones» llegan en las etapas 5/5b; hasta entonces esos botones no se ven.
+// shortcut: «buscar actualizaciones» llega en la etapa 5b; hasta entonces ese botón no se ve.
 // Repair-Shortcuts no se traslada: corrige accesos directos a GESTEM.ps1 (lo hará el instalador de la etapa 7).
 using System;
 using System.Collections.Generic;
@@ -38,7 +37,7 @@ namespace Gestem
                 try { if (!Directory.Exists(d)) { App.Guard(d, "copia externa"); Directory.CreateDirectory(d); } Process.Start("explorer.exe", "\"" + d + "\""); }
                 catch (Exception e) { ShowError(e.Message); }
             };
-            foreach (string b in new string[] { "ExtNowBtn", "ExtOneDriveBtn", "UpdateBtn" }) U(b).Visibility = Visibility.Collapsed;
+            U("UpdateBtn").Visibility = Visibility.Collapsed;
         }
 
         public void SetSettingsTexts()
@@ -84,6 +83,8 @@ namespace Gestem
             PendingLogo = Ps.Str(Config.Cur.CompanyLogo);
             U<System.Windows.Shapes.Shape>("LogoPreview").Fill = LogoBrush(PendingLogo);
             U<TextBox>("ExtDirBox").Text = Ps.Str(Config.Cur.ExtBackupDir);
+            string od = Environment.GetEnvironmentVariable("OneDrive"); if (string.IsNullOrEmpty(od)) od = Environment.GetEnvironmentVariable("OneDriveConsumer");
+            U("ExtOneDriveBtn").Visibility = !string.IsNullOrEmpty(od) && (Directory.Exists(od) || File.Exists(od)) ? Visibility.Visible : Visibility.Collapsed;
             UpdateExtBackupInfo();
             U<CheckBox>("BackupChk").IsChecked = Config.Cur.Backup;
             U<CheckBox>("OpenAfterChk").IsChecked = Config.Cur.OpenAfterSave;
@@ -267,7 +268,7 @@ namespace Gestem
             string newExt = Ps.Str(U<TextBox>("ExtDirBox").Text).Trim();
             bool extChanged = newExt != Ps.Str(c.ExtBackupDir);
             c.ExtBackupDir = newExt;
-            if (extChanged) c.LastExtBackup = "";    // shortcut: aquí PowerShell hace ya la primera copia externa (Backup-External, etapa 5)
+            if (extChanged) { c.LastExtBackup = ""; if (newExt.Length > 0) BackupExternal(false); }
             c.Backup = U<CheckBox>("BackupChk").IsChecked == true;
             c.OpenAfterSave = U<CheckBox>("OpenAfterChk").IsChecked == true;
             string newDocs = Ps.Str(U<TextBox>("DocsDirBox").Text).Trim();

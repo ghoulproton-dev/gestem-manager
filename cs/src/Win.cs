@@ -79,7 +79,7 @@ namespace Gestem
             Win.KeyDown += OnKeyDown;
             WireForm();
             WireMenu();
-            WireDocs(); WireStats(); WireSettings(); WireSession(); WireAdmin(); WireColab();
+            WireDocs(); WireStats(); WireSettings(); WireSession(); WireAdmin(); WireColab(); WireExt();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -314,6 +314,7 @@ namespace Gestem
                 }
             }
             finally { Win.Cursor = null; }
+            try { StartupExtBackup(); } catch (Exception e) { App.Log("copia externa: " + e.Message); }    // copia al abrir
             U<ToggleButton>("NavClients").IsChecked = true;
             // la última persona que usó este PC entra directamente; «¿No eres tú?» abre la lista de nombres
             string last = Ps.Str(Config.Cur.LastUser).Trim();
