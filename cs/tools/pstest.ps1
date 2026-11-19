@@ -431,4 +431,18 @@ foreach ($f in $fl) { if ($f -notmatch '^x_') { [void]$o.Append("EXF $f`r`n") } 
 [void]$o.Append("EXA $((Get-Content -LiteralPath (Join-Path $ext "actividad GESTEM - $env:COMPUTERNAME.txt") -Encoding UTF8) -join ' ¶ ')`r`n")
 $script:Cfg.ExtBackupDir = Join-Path $TestDir 'ps_x.xlsx'; [void]$o.Append("EX2 ok=$(Backup-External -Quiet)`r`n")
 $script:Cfg.ExtBackupDir = ''; $script:Cfg.LastExtBackup = ''; $script:LogPath = $keepLog; Remove-Item function:Get-Date
+# etapa 5b: control.json y versión con un GitHub de mentira (nunca se llama a Check-Update con una versión nueva: instalaría)
+Add-Type -TypeDefinition 'public class FakeResp { public int StatusCode; } public class FakeHttpEx : System.Exception { public FakeResp Response; public FakeHttpEx(int c) : base("(" + c + ")") { Response = new FakeResp(); Response.StatusCode = c; } }'
+$keepRepo = ${function:Get-RepoFile}; $script:FakeRepo = $null
+function Get-RepoFile([string]$name, [string]$outFile, [int]$timeout = 5) { $r = $script:FakeRepo[$name]; if ($r -is [int]) { if ($r -eq 0) { throw 'sin conexión' }; throw (New-Object FakeHttpEx $r) }; return $r }
+function Show-Info([string]$msg) { [void]$o.Append("INFO $msg`r`n") }
+$script:RemotePath = Join-Path $script:DataDir 'control.cache'; foreach ($f in 'control.cache', 'control.visto') { Remove-Item (Join-Path $script:DataDir $f) -ErrorAction SilentlyContinue }
+function Get-RemState { $u = $script:UI; $f = @(foreach ($n in 'control.cache', 'control.visto') { $p = Join-Path $script:DataDir $n; if (Test-Path $p) { $b = [IO.File]::ReadAllBytes($p); "$n=" + [BitConverter]::ToString($b) } else { "$n=-" } }) -join ';'; "remote=$(if ($script:Remote) { $script:Remote | ConvertTo-Json -Compress } else { '-' })|paused=$($u.PanelPaused.Visibility)|$($u.PausedText.Text)|$f" }
+$script:Remote = $null; $script:IsAdmin = $false; $script:IsOwnerPC = $false; $script:Admin.IgnorePause = $false
+$n = 0; foreach ($r in @('{"mensaje":" Hola equipo ","pausa":true,"motivo":"obras"}', '{"mensaje":"Hola equipo","pausa":true,"motivo":"obras"}', 0, '{oops', 500, 404, '{"pausa":false,"mensaje":"otro"}', 0)) {
+    $script:FakeRepo = @{ 'control.json' = $r }; Check-Remote; [void]$o.Append("RC$n $(Get-RemState)`r`n"); $n++ }
+foreach ($v in '1.9.3', '1.9.2', '1.10', '2.0.0.1', '1.9.3.1', '1.9.3.0', 'hola', '1', '1.2.3.4.5', ' 1.9.4 ') { $remote = "$v".Trim(); [void]$o.Append("RV $v=$(($remote -match '^\d+(\.\d+){1,3}$') -and [version]$remote -gt [version]$script:AppVersion)`r`n") }
+foreach ($v in '1.9.3', 'hola', 0, 401) { $script:FakeRepo = @{ 'version.txt' = $v }; Check-Update -Manual; [void]$o.Append("RU $v`r`n") }
+$keepKey = $script:Cfg.UpdateKey; Set-GestemKey 'clave-xyz'; [void]$o.Append("RK $(Get-GestemKey)|$([bool]$script:Cfg.UpdateKey)"); Set-GestemKey ''; [void]$o.Append("|$(Get-GestemKey)|$($script:Cfg.UpdateKey)`r`n"); $script:Cfg.UpdateKey = $keepKey
+${function:Get-RepoFile} = $keepRepo; $script:Remote = $null; Apply-Pause
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

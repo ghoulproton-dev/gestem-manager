@@ -79,7 +79,7 @@ namespace Gestem
             Win.KeyDown += OnKeyDown;
             WireForm();
             WireMenu();
-            WireDocs(); WireStats(); WireSettings(); WireSession(); WireAdmin(); WireColab(); WireExt();
+            WireDocs(); WireStats(); WireSettings(); WireSession(); WireAdmin(); WireColab(); WireExt(); WireUpdater();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -292,9 +292,10 @@ namespace Gestem
         }
 
         // al abrir (Add_ContentRendered): buscar el Excel, pestañas hechas a mano, cargar todo
-        // shortcut: sin clave de GESTEM, actualizaciones, control remoto ni carpeta de documentos en la nube (etapas 4d, 5 y 5b)
+        // shortcut: sin carpeta de documentos en la nube (etapa 5c)
         void Startup()
         {
+            if (!App.Quiet) StartupOnline();    // clave de GESTEM, versión nueva, control remoto (las pruebas no van a internet)
             string x = Config.Cur.ExcelPath;
             if (string.IsNullOrEmpty(x) || !File.Exists(x))
             {

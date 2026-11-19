@@ -1,7 +1,6 @@
 // Etapa 4b: Ajustes y empresa. Copiado de Load-SettingsPanel, Load-ImageFile, Get-LogoBrush, Save-CompanyLogo, Choose-Logo,
 // Apply-Branding, Import-DefaultBranding, Choose-ExcelFile, Choose-DocsFolder, Set-DocsRoot, Update-ExtBackupInfo,
 // Choose-ExtFolder y Save-Settings de GESTEM.ps1 (y sus botones).
-// shortcut: «buscar actualizaciones» llega en la etapa 5b; hasta entonces ese botón no se ve.
 // Repair-Shortcuts no se traslada: corrige accesos directos a GESTEM.ps1 (lo hará el instalador de la etapa 7).
 using System;
 using System.Collections.Generic;
@@ -37,7 +36,6 @@ namespace Gestem
                 try { if (!Directory.Exists(d)) { App.Guard(d, "copia externa"); Directory.CreateDirectory(d); } Process.Start("explorer.exe", "\"" + d + "\""); }
                 catch (Exception e) { ShowError(e.Message); }
             };
-            U("UpdateBtn").Visibility = Visibility.Collapsed;
         }
 
         public void SetSettingsTexts()

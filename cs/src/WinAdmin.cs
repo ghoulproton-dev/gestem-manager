@@ -2,8 +2,8 @@
 // Load-Admin, Save-Admin, Get-PwHash, Get-LockSet, Test-Locked, Apply-Locks, Show-AdminLogin, Update-KeyHint, Invoke-AdminLogin,
 // Open-AdminPanel, Fill-AdminLog, Test-ErrorLogLine, Show-AdminTab, Save-AdminLocks, Update-AdmFbState, Change-AdminPw,
 // Close-Admin, Apply-Pause y Update-RemoteText de GESTEM.ps1 (y sus eventos).
-// shortcut: leer control.json de GitHub (Check-Remote) va con las actualizaciones (Get-RepoFile, etapa 5): hasta entonces no hay
-// pausa ni mensaje remoto. Encender/apagar Firebase (Set-FbSyncSwitch) es de la 5b: la casilla se ve pero no se puede cambiar.
+// control.json (Check-Remote) está en Updater.cs. shortcut: encender/apagar Firebase (Set-FbSyncSwitch) llega con la 5d: la casilla
+// se ve pero no se puede cambiar.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -29,7 +29,7 @@ namespace Gestem
         static readonly string[] OwnerPrints = { "799CEE89435398F2A3BAA342547E3E364B49C27853D8398CD2B837E49B83271D" };
         public static readonly string[] LockKeys = { "File", "Ext", "Comp", "Team", "Pref", "Help", "All" };
         public string AdmLogFilter = "all";
-        public object Remote;    // $script:Remote (control.json); null hasta la etapa 5
+        public object Remote;    // $script:Remote (control.json, CheckRemote)
         readonly Dictionary<object, string> trText = new Dictionary<object, string>(), trTip = new Dictionary<object, string>();
 
         static string AdmT(string es) { return Tx.AdmT(es); }
@@ -55,7 +55,7 @@ namespace Gestem
             U<Button>("AdmOpenData").Click += delegate { System.Diagnostics.Process.Start("explorer.exe", "\"" + App.DataDir + "\""); };
             U<Button>("AdmOpenApp").Click += delegate { System.Diagnostics.Process.Start("explorer.exe", "\"" + App.AppDir + "\""); };
             U<Button>("AdmShowAll").Click += delegate { U("PanelAdmin").Visibility = Visibility.Collapsed; LoadSettingsPanel(); U<ToggleButton>("NavSettings").IsChecked = true; ShowPanel("PanelSettings"); };
-            U("AdmUpdate").Visibility = Visibility.Collapsed;    // buscar actualizaciones: etapa 5
+            U<Button>("AdmUpdate").Click += delegate { U("PanelAdmin").Visibility = Visibility.Collapsed; CheckUpdate(true); };
             U("AdmFbSync").IsEnabled = false;                     // Set-FbSyncSwitch: etapa 5b
             LoadAdmin();
             App.IsOwnerPC = TestOwnerPC();

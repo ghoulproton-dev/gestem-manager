@@ -368,6 +368,18 @@ namespace Gestem
             o.Append("EXA " + string.Join(" ¶ ", File.ReadAllLines(Path.Combine(ext, "actividad GESTEM - " + Environment.MachineName + ".txt"), Encoding.UTF8)) + "\r\n");
             Config.Cur.ExtBackupDir = Path.Combine(testDir, "cs_x.xlsx"); o.Append("EX2 ok=" + w.BackupExternal(true) + "\r\n");
             Config.Cur.ExtBackupDir = ""; Config.Cur.LastExtBackup = ""; App.LogPath = keepLog2; App.Now = delegate { return DateTime.Now; };
+            // etapa 5b: control.json y versión con un GitHub de mentira
+            object[] fake = null;
+            Updater.FetchHook = delegate(string name) { object r = fake[0]; if (r is int) { if ((int)r == 0) throw new Exception("sin conexión"); throw new RepoException((int)r, "(" + r + ")"); } return (string)r; };
+            w.InfoHook = delegate(string m) { o.Append("INFO " + m + "\r\n"); };
+            foreach (string f in new string[] { "control.cache", "control.visto" }) File.Delete(Path.Combine(App.DataDir, f));
+            w.Remote = null; App.IsAdmin = false; App.IsOwnerPC = false; MainWin.Admin.IgnorePause = false;
+            int rn = 0; foreach (object r in new object[] { "{\"mensaje\":\" Hola equipo \",\"pausa\":true,\"motivo\":\"obras\"}", "{\"mensaje\":\"Hola equipo\",\"pausa\":true,\"motivo\":\"obras\"}", 0, "{oops", 500, 404, "{\"pausa\":false,\"mensaje\":\"otro\"}", 0 })
+            { fake = new object[] { r }; w.CheckRemote(); o.Append("RC" + rn + " " + RemState(w) + "\r\n"); rn++; }
+            foreach (string v in new string[] { "1.9.3", "1.9.2", "1.10", "2.0.0.1", "1.9.3.1", "1.9.3.0", "hola", "1", "1.2.3.4.5", " 1.9.4 " }) o.Append("RV " + v + "=" + Updater.IsNewer(v, App.Version) + "\r\n");
+            foreach (object v in new object[] { "1.9.3", "hola", 0, 401 }) { fake = new object[] { v }; w.CheckUpdate(true); o.Append("RU " + v + "\r\n"); }
+            { string keepKey = Config.Cur.UpdateKey; Updater.SetKey("clave-xyz"); o.Append("RK " + Updater.GetKey() + "|" + (Config.Cur.UpdateKey.Length > 0)); Updater.SetKey(""); o.Append("|" + Updater.GetKey() + "|" + Config.Cur.UpdateKey + "\r\n"); Config.Cur.UpdateKey = keepKey; }
+            Updater.FetchHook = null; w.InfoHook = null; w.Remote = null; w.ApplyPause();
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
@@ -497,6 +509,11 @@ namespace Gestem
                 gi.Add(x.TramId + "|" + x.Tram + "|" + x.Row + "|" + x.Id + "|" + x.Name + "|" + x.Colab + "|" + x.FechaTxt + "|" + x.Status + "|" + x.Color + "|" + x.PriceTxt + "|" + x.PaidTxt + "|" + x.PendTxt + "|" + x.ComTxt + "|" + x.ComStTxt + "|" + x.ComColor);
             return "name=" + T("ColabName") + "|k=" + T("ColK1") + ";" + T("ColK2") + ";" + T("ColK3") + ";" + T("ColK4") + ";" + T("ColK5") + ";" + T("ColK6") + "|empty=" + w.U<FrameworkElement>("ColabEmpty").Visibility + ";" + T("ColabEmpty")
                 + "|grid=" + w.U<FrameworkElement>("ColabGrid").Visibility + "|list=" + string.Join(",", li) + "|sel=" + w.U<ListBox>("ColabList").SelectedIndex + "\r\n  " + string.Join("\r\n  ", gi);
+        }        static string RemState(MainWin w)
+        {
+            List<string> f = new List<string>();
+            foreach (string n in new string[] { "control.cache", "control.visto" }) { string p = Path.Combine(App.DataDir, n); f.Add(n + "=" + (File.Exists(p) ? BitConverter.ToString(File.ReadAllBytes(p)) : "-")); }
+            return "remote=" + (w.Remote != null ? Json.WriteCompact(w.Remote) : "-") + "|paused=" + w.U<FrameworkElement>("PanelPaused").Visibility + "|" + w.U<TextBlock>("PausedText").Text + "|" + string.Join(";", f);
         }        static void AdmTree(object node, List<string> l)
         {
             DependencyObject d = node as DependencyObject; if (d == null) return;

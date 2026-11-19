@@ -176,7 +176,11 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         la carpeta en Ajustes; «buscar OneDrive». Como Get-ChildItem sin -Force: sin archivos/carpetas ocultos (desktop.ini).
         Modo prueba: la «nube» es cs\data\nube (App.CloudRootsOverride) y la carpeta externa de la config se cambia a
         cs\data\nube\GESTEM copias. Prueba: EX/EXF/EXA/EX2 + «UI copia externa».
-  - [ ] 5b Actualizaciones (sin tocar GESTEM.ps1 instalado ni version.txt) + control.json
+  - [x] 5b Actualizaciones + control.json (Updater.cs): clave de GESTEM (pedirla una vez, DPAPI), leer version.txt en segundo plano,
+        «buscar actualización» (Ajustes y admin), control.json (mensaje una vez, pausa remota, copia sin conexión, 404 la borra).
+        Solo LEE de GitHub. Con versión nueva solo avisa: instalar un GESTEM.exe nuevo queda para la etapa 7 (hace falta decidir dónde
+        se publica el .exe); nunca toca GESTEM.ps1 ni version.txt. Las pruebas (Quiet) no van a internet.
+        Prueba: RC0–RC7/RV/RU/RK con un GitHub de mentira (Updater.FetchHook / Get-RepoFile de la prueba).
   - [ ] 5c Carpeta de documentos en la nube
   - [ ] 5d Firebase (pruebas solo en gestorias/elmahi/_tests/...; en modo prueba siempre apagado; nunca las contraseñas)
 - [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos
