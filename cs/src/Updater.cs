@@ -104,6 +104,7 @@ namespace Gestem
     public partial class MainWin
     {
         bool updChecking;
+        bool leaving;    // se cierra para volver a PowerShell (o para abrir el GESTEM.exe nuevo): no se carga nada más
         public Action<string> InfoHook;    // pruebas: qué mensaje de información se mostró
 
         void WireUpdater()
@@ -185,6 +186,7 @@ namespace Gestem
             }
             Remote = j;
             if (j == null) return;
+            if (App.Real && ExeSwitch.WantsPs(j)) { leaving = true; ExeSwitch.BackToPs(); Win.Close(); return; }    // vuelta remota a PowerShell
             string msg = Ps.Str(Json.Str(j, "mensaje")).Trim();
             if (msg.Length > 0)
             {

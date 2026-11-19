@@ -44,7 +44,11 @@ namespace Gestem
                 }
                 // INICIO: config, trámite de la última vez, ventana
                 // hasta terminar el traslado: sin --real se trabaja con una COPIA (cs\data\prueba) y documentos de prueba (cs\data\docs)
-                App.Real = Array.IndexOf(args, "--real") >= 0;
+                // instalado por GESTEM.ps1 2.0.0 (GESTEM.ps1 al lado): los datos de verdad sin --real; --prueba fuerza el modo prueba
+                App.Real = Array.IndexOf(args, "--real") >= 0 || (Array.IndexOf(args, "--prueba") < 0 && File.Exists(Path.Combine(App.AppDir, "GESTEM.ps1")));
+                // --tras <pid>: abierto por GESTEM.ps1 o por la actualización: primero se espera a que ese programa se cierre
+                int tr = Array.IndexOf(args, "--tras"); int trPid;
+                if (tr >= 0 && tr + 1 < args.Length && int.TryParse(args[tr + 1], out trPid)) { try { System.Diagnostics.Process.GetProcessById(trPid).WaitForExit(30000); } catch { } }
                 // un solo GESTEM abierto (por usuario y modo): el segundo trae el primero al frente y se cierra sin tocar nada
                 bool first;
                 one = new System.Threading.Mutex(true, @"Local\GESTEM-MANAGER" + (App.Real ? "" : "-prueba"), out first);

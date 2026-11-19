@@ -7,13 +7,13 @@
 #  Escribe directamente en el Excel de la gestoría usando Microsoft Excel.
 #  Requiere: Windows 10/11, Windows PowerShell 5.1 y Microsoft Excel instalado.
 
-param([switch]$Oculto)
+param([switch]$Oculto, [switch]$Volver, [switch]$VolverRemoto)
 # sin ventana de consola: si se abrió de otra forma (Terminal de Windows), se vuelve a abrir oculto
 if (-not $Oculto -and $PSCommandPath) {
     try {
         $psi = New-Object Diagnostics.ProcessStartInfo
         $psi.FileName = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
-        $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -STA -File "' + $PSCommandPath + '" -Oculto'
+        $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -STA -File "' + $PSCommandPath + '" -Oculto' + $(if ($Volver) { ' -Volver' } elseif ($VolverRemoto) { ' -VolverRemoto' } else { '' })
         $psi.UseShellExecute = $false
         $psi.CreateNoWindow = $true
         [void][Diagnostics.Process]::Start($psi)
@@ -8318,7 +8318,38 @@ function Set-ExeShortcuts([string]$exe) {
             Write-Log "acceso directo a GESTEM.exe: $($f.FullName)"
         }
     }
+    # «Volver a GESTEM anterior» en el escritorio: este PC vuelve a PowerShell (y ya no cambia solo)
+    $ps = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'; $ch = Join-Path $env:WINDIR 'System32\conhost.exe'
+    $a = '-NoProfile -ExecutionPolicy Bypass -STA -File "' + $me + '" -Oculto -Volver'
+    $v = $sh.CreateShortcut((Join-Path @(Get-ShortcutDirs)[0] 'Volver a GESTEM anterior.lnk'))
+    if (Test-Path -LiteralPath $ch) { $v.TargetPath = $ch; $v.Arguments = '--headless "' + $ps + '" ' + $a } else { $v.TargetPath = $ps; $v.Arguments = $a }
+    $v.WorkingDirectory = $script:AppDir; $v.WindowStyle = 7
+    $ico = Join-Path $script:AppDir 'gestem.ico'; if (Test-Path -LiteralPath $ico) { $v.IconLocation = "$ico,0" }
+    $v.Save()
     return ,$old
+}
+function Get-ExeRunning([string]$exe) { return @(Get-Process -Name 'GESTEM' -ErrorAction SilentlyContinue | Where-Object { "$($_.Path)" -ieq $exe }).Count -gt 0 }
+function Undo-GestemExe([switch]$Remote) {
+    # vuelta a PowerShell: con el icono «Volver a GESTEM anterior» (este PC ya no cambia solo: exe_desactivado.txt) o desde GESTEM.exe
+    # por control.json «exe»: "no" (vuelve a cambiar cuando control.json lo permita). Solo los accesos directos: datos y config no se tocan.
+    $exe = Join-Path $script:AppDir 'GESTEM.exe'
+    if ($Remote) { for ($i = 0; $i -lt 40 -and (Get-ExeRunning $exe); $i++) { Start-Sleep -Milliseconds 250 } }    # GESTEM.exe se está cerrando
+    if (Get-ExeRunning $exe) { Write-Log 'volver a GESTEM anterior: GESTEM.exe sigue abierto'; return 'abierto' }
+    $done = Join-Path $script:DataDir 'exe_instalado.txt'
+    if (Test-Path -LiteralPath $done) {
+        $sh = New-Object -ComObject WScript.Shell
+        foreach ($s in @((Get-Content -Raw -LiteralPath $done -Encoding UTF8 | ConvertFrom-Json).antes)) {
+            if (-not $s -or -not (Test-Path -LiteralPath $s.Path)) { continue }
+            $l = $sh.CreateShortcut($s.Path)
+            $l.TargetPath = $s.Target; $l.Arguments = $s.Args; $l.WorkingDirectory = $s.Dir; $l.IconLocation = $s.Icon; $l.WindowStyle = [int]$s.Style
+            $l.Save()
+        }
+        Remove-Item -LiteralPath $done -Force
+    }
+    Remove-Item -LiteralPath (Join-Path @(Get-ShortcutDirs)[0] 'Volver a GESTEM anterior.lnk') -Force -ErrorAction SilentlyContinue
+    if (-not $Remote) { Set-Content -LiteralPath (Join-Path $script:DataDir 'exe_desactivado.txt') -Value (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') -Encoding UTF8 }
+    Write-Log $(if ($Remote) { 'vuelta a GESTEM (PowerShell) por control.json' } else { 'vuelta a GESTEM (PowerShell) con «Volver a GESTEM anterior»' })
+    return 'ok'
 }
 function Install-GestemExe {
     # al abrir, antes de la ventana. Si algo falla se sigue en PowerShell (al registro) y se reintenta al abrir: 3 veces por versión
@@ -8368,7 +8399,9 @@ function Install-GestemExe {
 #  INICIO
 # =====================================================================
 Load-Config
-if ((Install-GestemExe) -eq 'ok') { exit }
+if ($Volver -or $VolverRemoto) {
+    if ((Undo-GestemExe -Remote:$VolverRemoto) -eq 'abierto') { [void][Windows.MessageBox]::Show('Cierra GESTEM antes de volver a la versión anterior.', $script:AppName, 'OK', 'Warning'); exit }
+} elseif ((Install-GestemExe) -eq 'ok') { exit }
 $script:T = $script:Tramites | Where-Object { $_.Id -eq $script:Cfg.Tramite } | Select-Object -First 1
 if (-not $script:T) { $script:T = $script:Tramites[0] }
 $script:Lists = @{ 'nationalities' = $script:Nacionalidades; 'payments' = $script:FormasPago }

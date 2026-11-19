@@ -297,6 +297,7 @@ namespace Gestem
         void Startup()
         {
             if (!App.Quiet) StartupOnline();    // clave de GESTEM, versión nueva, control remoto (las pruebas no van a internet)
+            if (leaving) return;
             string x = Config.Cur.ExcelPath;
             if (string.IsNullOrEmpty(x) || !File.Exists(x))
             {
