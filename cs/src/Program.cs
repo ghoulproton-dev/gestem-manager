@@ -21,6 +21,11 @@ namespace Gestem
                 try { return UiTest.Run(args[1], args.Length > 2 ? args[2] : ""); }
                 catch (Exception ex) { File.WriteAllText(Path.Combine(args[1], "ui_error.txt"), ex.ToString()); return 2; }
             }
+            if (args.Length > 2 && args[0] == "--fbtest")    // red de verdad, solo gestorias/elmahi/_tests/...; no entra en test.bat
+            {
+                try { return FbTest.Run(args[1], args[2]); }
+                catch (Exception ex) { File.WriteAllText(Path.Combine(args[1], "cs_fb_error.txt"), ex.ToString()); return 2; }
+            }
             try
             {
                 if (args.Length > 0 && args[0] == "--smoke")

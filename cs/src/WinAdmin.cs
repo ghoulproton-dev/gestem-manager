@@ -2,8 +2,7 @@
 // Load-Admin, Save-Admin, Get-PwHash, Get-LockSet, Test-Locked, Apply-Locks, Show-AdminLogin, Update-KeyHint, Invoke-AdminLogin,
 // Open-AdminPanel, Fill-AdminLog, Test-ErrorLogLine, Show-AdminTab, Save-AdminLocks, Update-AdmFbState, Change-AdminPw,
 // Close-Admin, Apply-Pause y Update-RemoteText de GESTEM.ps1 (y sus eventos).
-// control.json (Check-Remote) está en Updater.cs. shortcut: encender/apagar Firebase (Set-FbSyncSwitch) llega con la 5d: la casilla
-// se ve pero no se puede cambiar.
+// control.json (Check-Remote) está en Updater.cs; encender/apagar Firebase (Set-FbSyncSwitch) en FbSync.cs (solo con --real).
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -56,7 +55,7 @@ namespace Gestem
             U<Button>("AdmOpenApp").Click += delegate { System.Diagnostics.Process.Start("explorer.exe", "\"" + App.AppDir + "\""); };
             U<Button>("AdmShowAll").Click += delegate { U("PanelAdmin").Visibility = Visibility.Collapsed; LoadSettingsPanel(); U<ToggleButton>("NavSettings").IsChecked = true; ShowPanel("PanelSettings"); };
             U<Button>("AdmUpdate").Click += delegate { U("PanelAdmin").Visibility = Visibility.Collapsed; CheckUpdate(true); };
-            U("AdmFbSync").IsEnabled = false;                     // Set-FbSyncSwitch: etapa 5b
+            U("AdmFbSync").IsEnabled = App.Real;                  // modo prueba: la sincronización no se puede encender
             LoadAdmin();
             App.IsOwnerPC = TestOwnerPC();
             ApplyLocks();
@@ -284,6 +283,12 @@ namespace Gestem
             Admin.IgnorePause = U<ToggleButton>("AdmIgnorePause").IsChecked == true;
             Admin.OwnerPC = U<ToggleButton>("AdmOwnerPC").IsChecked == true;
             App.IsOwnerPC = TestOwnerPC();
+            bool fbOn = U<ToggleButton>("AdmFbSync").IsChecked == true;
+            if (fbOn != Config.Cur.FbSync)
+            {
+                try { Fb.SetSwitch(fbOn); App.Log(Config.Cur.FbSync ? "admin: sincronización con Firebase activada en este PC" : "admin: sincronización con Firebase apagada en este PC"); }
+                catch (Exception e) { App.Log("admin: no se pudo cambiar Firebase: " + e.Message); U<ToggleButton>("AdmFbSync").IsChecked = Config.Cur.FbSync; }
+            }
             UpdateAdmFbState();
             SaveAdmin();
             ApplyLocks();
@@ -299,7 +304,7 @@ namespace Gestem
             {
                 FbState st = null; try { st = FbState.Load(); } catch { }
                 int n = st != null ? st.Pend.Count : 0;
-                txt = st != null && st.Joined == "yes" ? string.Format(AdmT("Activada · unido · {0} cambio(s) por enviar"), n) : AdmT("Activada · primera sincronización pendiente");    // shortcut: el último error de Firebase llega con la 5b
+                txt = Fb.LastErr.Length > 0 ? string.Format(AdmT("Activada · error: {0}"), Fb.LastErr) : st != null && st.Joined == "yes" ? string.Format(AdmT("Activada · unido · {0} cambio(s) por enviar"), n) : AdmT("Activada · primera sincronización pendiente");
             }
             U<TextBlock>("AdmFbState").Text = txt;
         }

@@ -405,6 +405,33 @@ namespace Gestem
                 Config.Cur.DocsDir = ""; w.InitializeDocsFolder(); o.Append("DC none docs=" + Config.Cur.DocsDir + "\r\n");
                 Config.Cur.DocsDir = keepDocs; Config.Cur.FbSync = keepFb5c; App.CloudRootsOverride = null; w.ToastHook = keepToast; Docs.UpdateMap();
             }
+            // etapa 5d: Firebase sin red: las mismas vueltas (unión, envío, recibir) con resultados de mentira
+            {
+                Action<string, string> keepToast5 = w.ToastHook; w.ToastHook = delegate(string a, string b) { o.Append("TOAST " + System.Text.RegularExpressions.Regex.Replace(a, "[0-9a-f]{32}", "GUID") + "|" + b + "\r\n"); };
+                Fb.Notify = delegate(string m) { w.ShowToast(m, "", null, 15); }; Fb.LastErr = ""; Fb.Auth = null;
+                if (File.Exists(FbState.Path)) File.Delete(FbState.Path);
+                Func<string, List<FbDoc>> docs = delegate(string b64)
+                {
+                    List<FbDoc> l = new List<FbDoc>();
+                    foreach (object x in (System.Collections.IList)Json.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(b64))))
+                    { object del = Json.Get(x, "Deleted"); l.Add(new FbDoc { Uid = Json.Str(x, "Uid"), T = Json.Str(x, "T"), Id = Json.Str(x, "Id") ?? "", Datos = Json.Str(x, "Datos"), Updated = Json.Str(x, "Updated"), By = Json.Str(x, "By"), Pc = Json.Str(x, "Pc"), Deleted = del is bool && (bool)del }); }
+                    return l;
+                };
+                List<FbPush> push = new List<FbPush>(); bool joinNext = true;
+                Action<List<FbDoc>, string, bool> round = delegate(List<FbDoc> pulled, string mod, bool echo)
+                {
+                    // como Step-FbSync: lo que vuelve de la vuelta anterior, y lo que se enviaría en la siguiente
+                    FbResult r = new FbResult(); r.Pulled = pulled; r.Mod = mod; if (echo) r.Pushed = push;
+                    Fb.ApplyResult(r, joinNext);
+                    FbState st = FbState.Load(); joinNext = st.Joined != "push" && st.Joined != "yes";
+                    bool drop = false; push = joinNext ? new List<FbPush>() : Fb.BuildPush(st, out drop); if (!joinNext && drop) st.Save();
+                };
+                round(docs("W3siUGMiOiJPVFJPUEMiLCJEZWxldGVkIjpmYWxzZSwiVWlkIjoidS0wMDEiLCJJZCI6IkNBTkotMjAyNi0wMDEiLCJCeSI6Ik9UUkEiLCJUIjoiY2FuamUiLCJEYXRvcyI6IntcIm5hbWVcIjpcIk1PSEFNTUFESU5FIEJPVVRFUkZBU1NcIixcImRvY1wiOlwiWjQ4MDEwMDNCXCIsXCJzdGF0dXNcIjpcIkZpbmFsaXphZG9cIixcInByaWNlXCI6MTIwLFwicGF5c3RhdGVcIjpcIlBhZ2Fkb1wiLFwicGFpZFwiOjEyMH0iLCJVcGRhdGVkIjoiMjAyNi0xMS0yMFQxMDowMDowMCJ9LHsiUGMiOiJPVFJPUEMiLCJEZWxldGVkIjpmYWxzZSwiVWlkIjoidS0wMDIiLCJJZCI6IkNBTkotMjAyNi0wMDIiLCJCeSI6Ik9UUkEiLCJUIjoiY2FuamUiLCJEYXRvcyI6IntcIm5hbWVcIjpcIk9UUkEgUEVSU09OQVwiLFwiZG9jXCI6XCJYMTIzNDU2N1pcIixcInByaWNlXCI6MTQwfSIsIlVwZGF0ZWQiOiIyMDI2LTExLTIwVDEwOjAxOjAwIn0seyJQYyI6Ik9UUk9QQyIsIkRlbGV0ZWQiOmZhbHNlLCJVaWQiOiJ1LTA5MCIsIklkIjoiQ0FOSi0yMDI2LTA5MCIsIkJ5IjoiT1RSQSIsIlQiOiJjYW5qZSIsIkRhdG9zIjoie1wibmFtZVwiOlwiTlVFVkEgREUgRlVFUkFcIixcInByaWNlXCI6MTIuNSxcImZzb2xcIjpcIjIwMjYtMTEtMDJcIn0iLCJVcGRhdGVkIjoiMjAyNi0xMS0yMFQxMDowMjowMCJ9LHsiUGMiOiJPVFJPUEMiLCJEZWxldGVkIjp0cnVlLCJVaWQiOiJoYW5kLWNhbmplLWFiYyIsIklkIjoiIiwiQnkiOiJPVFJBIiwiVCI6ImNhbmplIiwiRGF0b3MiOiJ7XCJuYW1lXCI6XCJBTEdVSUVOIEEgTUFOT1wifSIsIlVwZGF0ZWQiOiIyMDI2LTExLTIwVDEwOjAzOjAwIn0seyJQYyI6Ik9UUk9QQyIsIkRlbGV0ZWQiOmZhbHNlLCJVaWQiOiJ1LWEwMSIsIklkIjoiQVVULTIwMjYtMDAxIiwiQnkiOiJPVFJBIiwiVCI6ImF1dG9ub21vIiwiRGF0b3MiOiJ7XCJuYW1lXCI6XCJNT0hBTU1FRCBEQUhCSVwiLFwieElcIjpcIk5PLURFQkUtTExFR0FSXCIsXCJzdGF0dXNcIjpcIkZhdm9yYWJsZVwifSIsIlVwZGF0ZWQiOiIyMDI2LTExLTIxVDA5OjAwOjAwIn0seyJQYyI6Ik9UUk9QQyIsIkRlbGV0ZWQiOmZhbHNlLCJVaWQiOiJ1LXp6IiwiSWQiOiJYIiwiQnkiOiJPVFJBIiwiVCI6ImluZXhpc3RlbnRlIiwiRGF0b3MiOiJ7fSIsIlVwZGF0ZWQiOiIyMDI2LTExLTIwVDEwOjAwOjAwIn1d"), "2026-11-20T09:00:00.000001Z", false); FbDump(o, "S0"); FbPushDump(o, "S0", push);
+                round(new List<FbDoc>(), "2026-11-20T11:00:00Z", true); FbDump(o, "S1"); FbPushDump(o, "S1", push);
+                round(docs("W3siUGMiOiJPVFJPUEMiLCJEZWxldGVkIjp0cnVlLCJVaWQiOiJ1LTAwMSIsIklkIjoiQ0FOSi0yMDI2LTAwMSIsIkJ5IjoiT1RSQSIsIlQiOiJjYW5qZSIsIkRhdG9zIjoie1wibmFtZVwiOlwiTU9IQU1NQURJTkUgQk9VVEVSRkFTU1wiLFwiZG9jXCI6XCJaNDgwMTAwM0JcIixcInN0YXR1c1wiOlwiRmluYWxpemFkb1wifSIsIlVwZGF0ZWQiOiIyMDI2LTExLTIyVDEwOjAwOjAwIn0seyJQYyI6IkRFU0tUT1AtVVRBSzNUQiIsIkRlbGV0ZWQiOmZhbHNlLCJVaWQiOiJ1LTA5MCIsIklkIjoiQ0FOSi0yMDI2LTA5MCIsIkJ5IjoiWU8iLCJUIjoiY2FuamUiLCJEYXRvcyI6IntcIm5hbWVcIjpcIkRFIEVTVEUgUENcIn0iLCJVcGRhdGVkIjoiMjAyNi0xMS0yMlQxMDowMDowMCJ9LHsiUGMiOiJPVFJPUEMiLCJEZWxldGVkIjpmYWxzZSwiVWlkIjoiaGFuZC1jYW5qZS1hYmMiLCJJZCI6IiIsIkJ5IjoiVklFSk8iLCJUIjoiY2FuamUiLCJEYXRvcyI6IntcIm5hbWVcIjpcIkFMR1VJRU4gQSBNQU5PXCJ9IiwiVXBkYXRlZCI6IjIwMjYtMTEtMTlUMDA6MDA6MDAifV0="), "2026-11-22T11:00:00Z", false); FbDump(o, "S2"); FbPushDump(o, "S2", push);
+                round(new List<FbDoc>(), "", false); FbDump(o, "S3"); FbPushDump(o, "S3", push);
+                w.ToastHook = keepToast5; Fb.Notify = null;
+            }
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
@@ -539,6 +566,29 @@ namespace Gestem
             List<string> f = new List<string>();
             foreach (string n in new string[] { "control.cache", "control.visto" }) { string p = Path.Combine(App.DataDir, n); f.Add(n + "=" + (File.Exists(p) ? BitConverter.ToString(File.ReadAllBytes(p)) : "-")); }
             return "remote=" + (w.Remote != null ? Json.WriteCompact(w.Remote) : "-") + "|paused=" + w.U<FrameworkElement>("PanelPaused").Visibility + "|" + w.U<TextBlock>("PausedText").Text + "|" + string.Join(";", f);
+        }        static void FbDump(StringBuilder o, string tag)
+        {
+            FbState st = FbState.Load(); Dictionary<string, int> hs = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase); int nn = 0;
+            foreach (System.Collections.DictionaryEntry e in st.Pend) { PendItem p = (PendItem)e.Value; int v; hs.TryGetValue(p.H, out v); hs[p.H] = v + 1; if (p.N) nn++; }
+            List<string> hk = new List<string>(hs.Keys); Ps.Sort(hk, StringComparer.CurrentCultureIgnoreCase.Compare); for (int i = 0; i < hk.Count; i++) hk[i] = hk[i] + "=" + hs[hk[i]];
+            o.Append("FB " + tag + " joined=" + st.Joined + " lastMod=" + st.LastMod + " pend=" + st.Pend.Count + " h=" + string.Join(",", hk) + " nuevos=" + nn + " err=" + Fb.LastErr + "\r\n");
+            foreach (string tid in new string[] { "canje", "autonomo" })
+            {
+                StoreData s = Store.Read(Tramite.ById(tid)); List<ClientRec> l = new List<ClientRec>();
+                foreach (ClientRec c in s.Clients) if (Array.IndexOf(new string[] { "u-001", "u-002", "u-090", "u-a01" }, c.Uid) >= 0 || c.Row == 12 || c.Row == 88 || c.Row == 89 || Ps.Str(Store.Get(c.F, "name")) == "AZIZ BOUTERFASS") l.Add(c);
+                Ps.Sort(l, delegate(ClientRec a, ClientRec b) { return a.Row.CompareTo(b.Row); });
+                foreach (ClientRec c in l) o.Append("FBC " + tag + " " + tid + " " + c.Row + " " + c.Id + " " + System.Text.RegularExpressions.Regex.Replace(Ps.Str(c.Uid), "^[0-9a-f]{32}$", "GUID") + "|" + Ps.Str(Store.Get(c.F, "name")) + "|" + Ps.Str(Store.Get(c.F, "status")) + "|" + Ps.Str(Store.Get(c.F, "price")) + "|" + Ps.Str(Store.Get(c.F, "xI")) + "|" + c.Updated + "|" + c.By + "|sync=" + c.Sync + "|del=" + (c.Del != null) + "\r\n");
+                List<string> h = new List<string>(); foreach (HandDelRec e in s.HandDel) h.Add(e.Uid + ":" + e.Name + ":" + e.On + ":" + e.At);
+                o.Append("FBH " + tag + " " + tid + " " + string.Join(",", h) + " adopted=" + s.Adopted.Count + "\r\n");
+            }
+        }
+        static void FbPushDump(StringBuilder o, string tag, List<FbPush> push)
+        {
+            List<string> l = new List<string>(); int bad = 0;
+            foreach (FbPush p in push) { string x = p.T + "|" + p.Id + "|" + p.Datos + "|" + p.Updated + "|" + p.By + "|" + p.H + "|" + p.N + "|" + p.Deleted + "|" + p.Uid; l.Add(x); foreach (Field f in Tramite.ById(p.T).Fields) if (f.Local && p.Datos.Contains("\"" + f.Key + "\":")) { bad++; break; } }
+            for (int i = 0; i < l.Count; i++) l[i] = System.Text.RegularExpressions.Regex.Replace(l[i], "[0-9a-f]{32}", "GUID"); l.Sort(StringComparer.Ordinal);    // el orden sale de un @{} con un GUID al azar: no cuenta
+            o.Append("FBP " + tag + " n=" + l.Count + " conContraseña=" + bad + "\r\n"); int k = 0;
+            foreach (string x in l) if ((x.StartsWith("canje|") || x.Contains("|u-")) && k++ < 12) o.Append("FBP " + tag + " " + System.Text.RegularExpressions.Regex.Replace(x, "[0-9a-f]{32}", "GUID") + "\r\n");
         }        static void AdmTree(object node, List<string> l)
         {
             DependencyObject d = node as DependencyObject; if (d == null) return;

@@ -1,5 +1,5 @@
 // Firebase: estado de este PC (%APPDATA%\GESTEM\firebase.json). Copiado de Get-FbState / Save-FbState.
-// La sincronización en sí (Step-FbSync, Join-FbDocs…) es de la etapa 5b.
+// La sincronización en sí (Step-FbSync, Join-FbDocs…) está en FbSync.cs.
 using System;
 using System.Collections;
 using System.Collections.Generic;

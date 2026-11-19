@@ -289,7 +289,7 @@ namespace Gestem
                 try
                 {
                     string bk = Path.Combine(App.BackupDir, "datos_" + t.Id + "_" + DateTime.Now.ToString("yyyy-MM-dd", Ps.Inv) + ".json");
-                    if (!File.Exists(bk)) File.Copy(p, bk, true);
+                    if (!File.Exists(bk)) { App.Guard(bk, "copias"); File.Copy(p, bk, true); }    // modo prueba: sin copia antes que una copia en la carpeta de verdad
                 }
                 catch { }
                 try { File.Replace(tmp, p, null); }

@@ -313,6 +313,7 @@ namespace Gestem
                 {
                     ApplyLanguage();
                     try { UpdateReqBadge(); } catch (Exception e) { App.Log("aviso de requerimientos: " + e.Message); }
+                    StartLiveTimer();
                 }
             }
             finally { Win.Cursor = null; }
