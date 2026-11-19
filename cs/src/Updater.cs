@@ -1,8 +1,7 @@
 // Etapa 5b: actualizaciones y control remoto. Copiado de Get-GestemKey, Set-GestemKey, Get-RepoFile, Test-GestemKey, Ask-GestemKey,
 // Start-UpdateCheckAsync, Check-Update y Check-Remote de GESTEM.ps1. Solo LEE de GitHub (version.txt, control.json): nunca escribe en
 // el repositorio, ni toca GESTEM.ps1 ni version.txt.
-// shortcut: cuando hay versión nueva solo se avisa (registro, y un aviso si se pidió con el botón); instalar GESTEM.exe nuevo llega
-// con la etapa 7, cuando el repositorio tenga un GESTEM.exe publicado que descargar.
+// Etapa 7: GESTEM.exe mira app/exe_version.txt (version.txt es de GESTEM.ps1) y se instala solo (ExeSwitch.Update).
 using System;
 using System.IO;
 using System.Net;
@@ -23,6 +22,8 @@ namespace Gestem
         public const string UpdateBase = "https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main";
         public const string RepoApi = "https://api.github.com/repos/ghoulproton-dev/gestem-manager";
         public static Func<string, string> FetchHook;    // pruebas: en vez de GitHub (lanza RepoException para un 404…)
+        public static Func<string, byte[]> FetchBytesHook;    // pruebas: archivos binarios (app/GESTEM.exe)
+        public const string ExeVersionFile = "app/exe_version.txt";
 
         // clave de GESTEM: abre el GitHub privado (cifrada para este usuario de Windows)
         public static string GetKey()
@@ -50,6 +51,11 @@ namespace Gestem
         public static string RepoFile(string name, int timeout = 5)
         {
             if (FetchHook != null) return FetchHook(name);
+            return Encoding.UTF8.GetString(RepoBytes(name, timeout));
+        }
+        public static byte[] RepoBytes(string name, int timeout)
+        {
+            if (FetchBytesHook != null) return FetchBytesHook(name);
             string k = GetKey();
             using (HttpClient hc = Client(k, timeout))
             {
@@ -64,15 +70,15 @@ namespace Gestem
                         if (k.Length > 0 && code == 401) { SetKey(""); App.Log("clave de GESTEM rechazada por GitHub: se pedirá otra"); }
                         throw new RepoException(code, "(" + code + ") " + r.ReasonPhrase);
                     }
-                    return Encoding.UTF8.GetString(r.Content.ReadAsByteArrayAsync().Result);
+                    return r.Content.ReadAsByteArrayAsync().Result;
                 }
             }
         }
         public static Task<string> VersionAsync()
         {
-            if (FetchHook != null) return Task.FromResult(FetchHook("version.txt"));
+            if (FetchHook != null) return Task.FromResult(FetchHook(ExeVersionFile));
             string k = GetKey(); HttpClient hc = Client(k, 20);
-            return hc.GetStringAsync(Uri("version.txt", k)).ContinueWith(t => { hc.Dispose(); return t.Result; });
+            return hc.GetStringAsync(Uri(ExeVersionFile, k)).ContinueWith(t => { hc.Dispose(); return t.Result; });
         }
 
         public static string TestKey(string k)
@@ -151,12 +157,20 @@ namespace Gestem
             updChecking = true;
             try
             {
-                string remote = Ps.Str(Updater.RepoFile("version.txt")).Trim();
+                string remote = Ps.Str(Updater.RepoFile(Updater.ExeVersionFile)).Trim();
                 if (!Regex.IsMatch(remote, @"^\d+(\.\d+){1,3}$")) throw new Exception("version.txt no válido: " + remote);
                 if (!Updater.IsNewer(remote, App.Version)) { if (manual) Toast(string.Format(L("upToDate"), App.Version), false, 7); return; }
-                // shortcut: aquí PowerShell descarga e instala la versión nueva; GESTEM.exe solo avisa hasta la etapa 7
-                App.Log("actualización: hay versión " + remote + "; GESTEM.exe aún no se instala solo (etapa 7)");
-                if (manual) ShowError(L("updateFail") + Environment.NewLine + "GESTEM.exe " + App.Version + " → " + remote + ": la instalación automática de GESTEM.exe llega más adelante.");
+                if (!ExeSwitch.CanUpdate)
+                {
+                    App.Log("actualización: hay GESTEM.exe " + remote + "; esta copia no se actualiza sola (modo prueba o sin GESTEM.ps1 al lado)");
+                    if (manual) ShowError(L("updateFail") + Environment.NewLine + "GESTEM.exe " + App.Version + " → " + remote + ": esta copia no se actualiza sola.");
+                    return;
+                }
+                SetStatus(string.Format(L("updating"), remote));
+                ExeSwitch.Update(remote);
+                // con una ficha a medias no se cierra nada: el nuevo se abre la próxima vez
+                if (FormHasWork()) { Toast(string.Format(L("updated"), remote), false, 10); return; }
+                leaving = true; ExeSwitch.Restart(); Win.Close();
             }
             catch (Exception e)
             {
