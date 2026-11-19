@@ -52,7 +52,7 @@ namespace Gestem
             U<ToggleButton>("NavNew").Checked += delegate { ShowPanel("PanelForm"); };
             U<ToggleButton>("NavStats").Checked += delegate { ShowPanel("PanelStats"); FillStatsFilters(); UpdateStats(); };
             U<ToggleButton>("NavColab").Checked += delegate { ShowPanel("PanelColab"); };
-            U<ToggleButton>("NavSettings").Checked += delegate { ShowPanel("PanelSettings"); };
+            U<ToggleButton>("NavSettings").Checked += delegate { LoadSettingsPanel(); ShowPanel("PanelSettings"); };
             U<ToggleButton>("NavAbout").Checked += delegate { ShowPanel("PanelAbout"); };
             U("ReqBadge").MouseLeftButtonUp += delegate
             {
@@ -79,7 +79,7 @@ namespace Gestem
             Win.KeyDown += OnKeyDown;
             WireForm();
             WireMenu();
-            WireDocs(); WireStats();
+            WireDocs(); WireStats(); WireSettings();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -87,6 +87,7 @@ namespace Gestem
                 e.Handled = true;
             };
             ApplyLanguage();
+            InitBranding();
             Win.ContentRendered += delegate { Startup(); };
         }
 
@@ -166,6 +167,7 @@ namespace Gestem
             SetCmHeaders();
             SetDocsTexts();
             SetStatsTexts();
+            SetSettingsTexts();
             BuildForm();
             ResetForm();
         }

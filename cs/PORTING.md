@@ -151,7 +151,12 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         Ps.Sort copia el Sort-Object de PS 5.1 (no estable: los empates salen en un orden concreto); también en la lista de documentos.
         Ojo: los @{} de los trámites ya vienen del JSON en el orden en que PS los recorre; meterlos en otro Hashtable lo cambia.
         Arreglado de paso: ExcelCom.Close comprobaba FullName (en OneDrive es https://…) -> ahora la ruta del Excel abierto;
-        compare.ps1 ya no da IGUAL si pstest.ps1 falla sin dejar ps_summary.txt.- [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
+        compare.ps1 ya no da IGUAL si pstest.ps1 falla sin dejar ps_summary.txt.
+  - [x] 4b Ajustes y empresa (WinSettings.cs, Invoices.cs): panel, guardar, logo (copia en la carpeta de datos), nombre en la
+        ventana, cambiar la carpeta de documentos (Set-DocsRoot), nº de la próxima factura (facturas.json), icono como recurso.
+        Prueba: SP/SC/SD en el resumen + facturas.json + «UI ajustes». Pendiente: copia externa (Backup-External, «copiar ahora»),
+        «buscar OneDrive» y «buscar actualizaciones» (etapas 5/5b; botones ocultos). Repair-Shortcuts no se traslada (etapa 7).
+- [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
 - [ ] Etapa 5b — Firebase (sincronización, primera unión) y carpeta de documentos compartida
 - [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe

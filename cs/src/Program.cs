@@ -41,9 +41,7 @@ namespace Gestem
                 Tx.Lang = Config.Cur.Language;
                 G.T = Tramite.ById(Config.Cur.Tramite) ?? Tramite.All[0];
                 Application app = new Application();
-                MainWin mw = new MainWin();
-                if (!App.Real) mw.Win.Title += "  —  " + TestMode.Banner;
-                app.Run(mw.Win);
+                app.Run(new MainWin().Win);    // el título dice MODO PRUEBA (ApplyBranding)
             }
             catch (Exception ex)
             {

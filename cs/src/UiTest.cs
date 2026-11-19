@@ -101,6 +101,13 @@ namespace Gestem
                     o.Append("UI resumen grafica=" + (drawn > 0 ? "OK" : "MAL") + " filas=" + w.U<Grid>("StatsGrid").RowDefinitions.Count + " alcance=" + (w.StatsScopeId ?? "todos") + "\r\n");
                     w.U<ToggleButton>("NavClients").IsChecked = true;
                 });
+                Try("ajustes", delegate
+                {
+                    w.U<ToggleButton>("NavSettings").IsChecked = true; Pump(w);
+                    w.U<ToggleButton>("NavAbout").IsChecked = true; Pump(w);
+                    o.Append("UI ajustes nat=" + w.U<ComboBox>("NatBox").Items.Count + " logo=" + (w.U<System.Windows.Controls.Image>("AboutImg").Source != null ? "OK" : "MAL") + " ver=" + w.U<TextBlock>("AboutVer").Text + "\r\n");
+                    w.U<ToggleButton>("NavClients").IsChecked = true;
+                });
                 Try("aviso req", delegate { w.UpdateReqBadge(); o.Append("UI aviso req=" + w.U<Border>("ReqBadge").Visibility + "\r\n"); });
                 Try("config", delegate
                 {

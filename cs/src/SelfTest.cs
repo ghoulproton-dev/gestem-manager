@@ -273,7 +273,22 @@ namespace Gestem
             w.StatsScopeId = null; w.FillStatsFilters(); w.U<ComboBox>("StatsPeriod").SelectedIndex = 0; w.U<ComboBox>("StatsWho").SelectedIndex = 0;
             foreach (string m in new string[] { "ChartDay", "ChartWeek", "ChartMonth" }) { w.U<RadioButton>(m).IsChecked = true; w.UpdateChart(); o.Append("CH " + m + " " + StatsText(w) + "\r\n"); }
             App.Now = delegate { return DateTime.Now; };
-            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
+            // etapa 4b: Ajustes (mismos valores de partida que en pstest.ps1; la copia externa no cambia: Backup-External es de la etapa 5)
+            App.DataDir = Path.Combine(testDir, "cs_data"); Directory.CreateDirectory(App.DataDir);
+            Config.Cur.CompanyName = ""; Config.Cur.CompanyLogo = ""; Config.Cur.InvIban = ""; Config.Cur.ExtBackupDir = ""; Config.Cur.LastExtBackup = "";
+            Config.Cur.InvName = "Ana Prueba"; Config.Cur.InvActivity = "Gestoría"; Config.Cur.InvNif = "x1"; Config.Cur.InvAddress = "C/ Mayor 1"; Config.Cur.InvTown = "Madrid";
+            Config.Cur.TasasCanje = "B=33; C=100; D=100"; Config.Cur.Backup = true; Config.Cur.OpenAfterSave = false; Config.Cur.DefaultNationality = "MARROQUI"; Config.Cur.Colleagues = new List<string>(new string[] { "SAFAE", "CHAYMAE" });
+            w.LoadSettingsPanel(); o.Append("SP0 " + SetText(w) + "\r\n");
+            w.U<TextBox>("CompanyBox").Text = "  Gestoría Prueba  "; w.U<TextBox>("InvNifBox").Text = " x123 "; w.U<TextBox>("InvIbanBox").Text = "es12 3456"; w.U<TextBox>("InvPobBox").Text = " Getafe ";
+            w.U<TextBox>("TasasBox").Text = "B=40;C=90\r\n  D=95 ;; "; w.U<TextBox>("InvNextBox").Text = " 7 "; w.U<TextBox>("ColleaguesBox").Text = "ana, luis ,, Pepa"; w.U<ComboBox>("NatBox").Text = " argelina ";
+            w.U<CheckBox>("BackupChk").IsChecked = false; w.U<CheckBox>("OpenAfterChk").IsChecked = true;
+            string lsrc = Path.Combine(testDir, "logo_cs.png"); File.WriteAllBytes(lsrc, Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")); w.PendingLogo = lsrc;
+            w.U<TextBox>("DocsDirBox").Text = Path.Combine(testDir, "cs_docs2");
+            w.SaveSettings();
+            o.Append("SC1 " + CfgText(w) + "\r\n"); o.Append("SP1 " + SetText(w) + "\r\n");
+            DocsTree(o, "SD", Path.Combine(testDir, "cs_docs2"));
+            w.U<TextBox>("InvNextBox").Text = "abc"; w.U<TextBox>("CompanyBox").Text = ""; w.PendingLogo = ""; w.SaveSettings();
+            o.Append("SC2 " + CfgText(w) + "\r\n"); o.Append("SP2 " + SetText(w) + "\r\n");            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
             int bad = 0;
@@ -369,6 +384,24 @@ namespace Gestem
             Func<string, string> T = delegate(string n) { return w.U<TextBlock>(n).Text; };
             return "sub=" + T("StatsSub") + "|table=" + T("StatsTable") + "|all=" + w.U<FrameworkElement>("StatsAllBtn").Visibility + "|kpi=" + T("KpiBill") + ";" + T("KpiBillF") + ";" + T("KpiPaid") + ";" + T("KpiPaidF") + ";" + T("KpiPend") + ";" + T("KpiPendF") + ";" + T("KpiNet") + ";" + T("KpiNetF") + ";" + w.U<Grid>("KpiPaidTrack").ColumnDefinitions[0].Width.Value.ToString("R", Ps.Inv) + "\r\n  "
                 + string.Join(" ; ", l) + "\r\n  chart=" + T("ChartTitle") + "|" + T("ChartSub") + "|" + T("ChartDelta") + "|" + string.Join(" ", lab) + "|" + string.Join(" ", bk);
+        }        static string SetText(MainWin w)
+        {
+            Func<string, string> T = delegate(string n) { return ((TextBox)w.U<FrameworkElement>(n)).Text; };
+            System.Windows.Media.ImageBrush ib = w.U<System.Windows.Shapes.Shape>("LogoPreview").Fill as System.Windows.Media.ImageBrush;
+            string lg = ib != null && ib.ImageSource is System.Windows.Media.Imaging.BitmapImage ? "propio" : "de serie";
+            ComboBox lb = w.U<ComboBox>("LangBox"), nb = w.U<ComboBox>("NatBox"); TextBlock el = w.U<TextBlock>("ExtLastTxt");
+            return "file=" + Path.GetFileName(T("FilePathBox")) + "|docs=" + System.Text.RegularExpressions.Regex.Replace(Path.GetFileName(T("DocsDirBox")), "^cs_", "X_") + "|lang=" + lb.SelectedIndex + "/" + lb.Items.Count + "|nat=" + nb.Text + "/" + nb.Items.Count + "|col=" + T("ColleaguesBox") + "|co=" + T("CompanyBox")
+                + "|inv=" + T("InvNameBox") + ";" + T("InvActBox") + ";" + T("InvNifBox") + ";" + T("InvIbanBox") + ";" + T("InvDomBox") + ";" + T("InvPobBox") + ";" + T("InvNextBox") + "|tasas=" + T("TasasBox")
+                + "|ext=" + T("ExtDirBox") + "|extLast=" + el.Text + ";" + el.Foreground + ";" + w.U<Button>("ExtOpenBtn").IsEnabled + "|bk=" + w.U<CheckBox>("BackupChk").IsChecked + "|open=" + w.U<CheckBox>("OpenAfterChk").IsChecked + "|welcome=" + w.U<FrameworkElement>("WelcomeText").Visibility + "|logo=" + lg;
+        }
+        static string CfgText(MainWin w)
+        {
+            Config f = Config.Cur; string[] lc; G.Lists.TryGetValue("colleagues", out lc);
+            Func<string, string> T = delegate(string n) { return w.U<TextBlock>(n).Text; };
+            return "lang=" + f.Language + "|nat=" + f.DefaultNationality + "|co=" + f.CompanyName + "|inv=" + f.InvName + ";" + f.InvActivity + ";" + f.InvNif + ";" + f.InvIban + ";" + f.InvAddress + ";" + f.InvTown + "|tasas=" + f.TasasCanje
+                + "|col=" + string.Join(",", f.Colleagues) + "|lists=" + (lc == null ? "" : string.Join(",", lc))
+                + "|bk=" + f.Backup + "|open=" + f.OpenAfterSave + "|ext=" + f.ExtBackupDir + "|extLast=" + f.LastExtBackup + "|docs=" + System.Text.RegularExpressions.Regex.Replace(Path.GetFileName(f.DocsDir), "^cs_", "X_") + "|logo=" + Path.GetFileName(f.CompanyLogo) + "|logoFile=" + File.Exists(f.CompanyLogo)
+                + "|title=" + w.Win.Title.Replace("  —  " + TestMode.Banner, "") + "|side=" + T("SideCompany") + "/" + w.U<FrameworkElement>("SideCompany").Visibility + "|sess=" + T("SessCompany") + "|about=" + T("AboutCompany") + "|status=" + T("StatusText");
         }        static string DocsPanelText(MainWin w)
         {
             List<string> it = new List<string>();

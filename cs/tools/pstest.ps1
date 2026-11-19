@@ -302,4 +302,36 @@ foreach ($sc in $null, 'canje', 'tasas', 'traduccion') {
 $script:StatsScopeId = $null; Fill-StatsFilters; $script:UI.StatsPeriod.SelectedIndex = 0; $script:UI.StatsWho.SelectedIndex = 0
 foreach ($m in 'ChartDay', 'ChartWeek', 'ChartMonth') { $script:UI[$m].IsChecked = $true; Update-Chart; [void]$o.Append("CH $m $(Get-StatsText)`r`n") }
 Remove-Item function:Get-Date
+# etapa 4b: Ajustes (mismos valores de partida que el C#; la copia externa no cambia: Backup-External es de la etapa 5)
+$script:DataDir = Join-Path $TestDir 'ps_data'; New-Item -ItemType Directory -Force -Path $script:DataDir | Out-Null
+foreach ($k in 'CompanyName', 'CompanyLogo', 'InvIban', 'ExtBackupDir', 'LastExtBackup') { $script:Cfg[$k] = '' }
+$script:Cfg.InvName = 'Ana Prueba'; $script:Cfg.InvActivity = 'Gestoría'; $script:Cfg.InvNif = 'x1'; $script:Cfg.InvAddress = 'C/ Mayor 1'; $script:Cfg.InvTown = 'Madrid'
+$script:Cfg.TasasCanje = 'B=33; C=100; D=100'; $script:Cfg.Backup = $true; $script:Cfg.OpenAfterSave = $false; $script:Cfg.DefaultNationality = 'MARROQUI'; $script:Cfg.Colleagues = @('SAFAE', 'CHAYMAE')
+function Apply-Language { }
+foreach ($n in 'FilePathBox', 'DocsDirBox', 'LangBox', 'NatBox', 'ColleaguesBox', 'CompanyBox', 'InvNameBox', 'InvActBox', 'InvNifBox', 'InvIbanBox', 'InvDomBox', 'InvPobBox', 'InvNextBox', 'TasasBox',
+    'LogoPreview', 'ExtDirBox', 'ExtOneDriveBtn', 'ExtLastTxt', 'ExtNowBtn', 'ExtOpenBtn', 'BackupChk', 'OpenAfterChk', 'WelcomeText', 'SideLogo', 'SessLogo', 'SideCompany', 'SessCompany', 'AboutCompany') { $script:UI[$n] = $script:Win.FindName($n) }
+function Get-SetText {
+    $u = $script:UI; $lg = $(if ($u.LogoPreview.Fill -and $u.LogoPreview.Fill.ImageSource -is [Windows.Media.Imaging.BitmapImage]) { 'propio' } else { 'de serie' })
+    return "file=$([IO.Path]::GetFileName($u.FilePathBox.Text))|docs=$([IO.Path]::GetFileName($u.DocsDirBox.Text) -replace '^ps_', 'X_')|lang=$($u.LangBox.SelectedIndex)/$($u.LangBox.Items.Count)|nat=$($u.NatBox.Text)/$($u.NatBox.Items.Count)|col=$($u.ColleaguesBox.Text)|co=$($u.CompanyBox.Text)" +
+        "|inv=$($u.InvNameBox.Text);$($u.InvActBox.Text);$($u.InvNifBox.Text);$($u.InvIbanBox.Text);$($u.InvDomBox.Text);$($u.InvPobBox.Text);$($u.InvNextBox.Text)|tasas=$($u.TasasBox.Text)" +
+        "|ext=$($u.ExtDirBox.Text)|extLast=$($u.ExtLastTxt.Text);$($u.ExtLastTxt.Foreground);$($u.ExtOpenBtn.IsEnabled)|bk=$($u.BackupChk.IsChecked)|open=$($u.OpenAfterChk.IsChecked)|welcome=$($u.WelcomeText.Visibility)|logo=$lg"
+}
+function Get-CfgText {
+    $u = $script:UI; $f = $script:Cfg
+    return "lang=$($f.Language)|nat=$($f.DefaultNationality)|co=$($f.CompanyName)|inv=$($f.InvName);$($f.InvActivity);$($f.InvNif);$($f.InvIban);$($f.InvAddress);$($f.InvTown)|tasas=$($f.TasasCanje)|col=$(@($f.Colleagues) -join ',')|lists=$(@($script:Lists['colleagues']) -join ',')" +
+        "|bk=$($f.Backup)|open=$($f.OpenAfterSave)|ext=$($f.ExtBackupDir)|extLast=$($f.LastExtBackup)|docs=$([IO.Path]::GetFileName($f.DocsDir) -replace '^ps_', 'X_')|logo=$([IO.Path]::GetFileName($f.CompanyLogo))|logoFile=$([IO.File]::Exists("$($f.CompanyLogo)"))" +
+        "|title=$($script:Win.Title)|side=$($u.SideCompany.Text)/$($u.SideCompany.Visibility)|sess=$($u.SessCompany.Text)|about=$($u.AboutCompany.Text)|status=$($u.StatusText.Text)"
+}
+Load-SettingsPanel; [void]$o.Append("SP0 $(Get-SetText)`r`n")
+$u = $script:UI
+$u.CompanyBox.Text = '  Gestoría Prueba  '; $u.InvNifBox.Text = ' x123 '; $u.InvIbanBox.Text = 'es12 3456'; $u.InvPobBox.Text = ' Getafe '
+$u.TasasBox.Text = "B=40;C=90`r`n  D=95 ;; "; $u.InvNextBox.Text = ' 7 '; $u.ColleaguesBox.Text = 'ana, luis ,, Pepa'; $u.NatBox.Text = ' argelina '
+$u.BackupChk.IsChecked = $false; $u.OpenAfterChk.IsChecked = $true
+$lsrc = Join-Path $TestDir 'logo_ps.png'; [IO.File]::WriteAllBytes($lsrc, [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')); $script:PendingLogo = $lsrc
+$u.DocsDirBox.Text = Join-Path $TestDir 'ps_docs2'
+Save-Settings
+[void]$o.Append("SC1 $(Get-CfgText)`r`n"); [void]$o.Append("SP1 $(Get-SetText)`r`n")
+$droot = Join-Path $TestDir 'ps_docs2'; Add-Tree 'SD'
+$u.InvNextBox.Text = 'abc'; $u.CompanyBox.Text = ''; $script:PendingLogo = ''; Save-Settings
+[void]$o.Append("SC2 $(Get-CfgText)`r`n"); [void]$o.Append("SP2 $(Get-SetText)`r`n")
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))
