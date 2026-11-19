@@ -244,3 +244,7 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
       y bien). Red de verdad: --fbtest F12–F14 (solo _tests). AT (textos de admin) no compara la pestaña «Usuarios» (PowerShell no la
       tiene) y pstest usa el número de versión del C# (GESTEM.exe va por delante de GESTEM.ps1).
       Sin probar: dos PCs de verdad; crear contraseña en dos PCs a la vez antes de sincronizar (gana la última).
+- [x] 2.0.1 (solo GESTEM.exe) — «Manual de uso» al día (14 secciones, es/en/fr/ar en admin_tr.json «help»): entrada con contraseña,
+      Excel solo para importar, Factura PDF (emisor, tasas DGT sin IVA), compartir por internet, carpeta de documentos en Drive, clic
+      derecho, Eliminar + Deshacer/Ctrl+Z, Requerimientos, Regularización, Tasas, Colaboradores, Contraseña solo local, clave de GESTEM,
+      «Volver a GESTEM anterior». AT no compara PanelHelp, así que no rompe la paridad.
