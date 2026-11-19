@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.9.3'
+$script:AppVersion = '2.0.0'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:RepoApi    = 'https://api.github.com/repos/ghoulproton-dev/gestem-manager'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -8285,9 +8285,90 @@ function Start-Session([string]$who) {
 }
 
 # =====================================================================
+#  PASO A GESTEM.exe (2.0.0): solo los PC de control.json «exePcs» (lista de nombres de PC, o "*"); «exe»: "no" lo para
+# =====================================================================
+function Get-NetRelease { try { return [int](Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release -ErrorAction Stop).Release } catch { return 0 } }
+function Get-ShortcutDirs { return @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'), (Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar')) }
+function Get-OtherGestemPs {
+    # otras ventanas de GESTEM.ps1 abiertas (ni esta ni la que la abrió oculta)
+    try {
+        $me = Get-CimInstance Win32_Process -Filter "ProcessId=$PID"
+        return @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.ProcessId -ne $PID -and $_.ProcessId -ne $me.ParentProcessId -and "$($_.CommandLine)" -like '*GESTEM.ps1*' }).Count
+    } catch { return 0 }
+}
+# GESTEM.exe espera (--tras) a que esta ventana de PowerShell se cierre antes de abrirse
+function Start-GestemExe([string]$exe) { Start-Process -FilePath $exe -ArgumentList '--real', '--tras', $PID -WorkingDirectory (Split-Path -Parent $exe) }
+function Test-ExeAllowed($j) {
+    if (-not $j -or "$($j.exe)" -eq 'no') { return $false }
+    foreach ($x in @($j.exePcs)) { if ("$x" -eq '*' -or "$x" -ieq $env:COMPUTERNAME) { return $true } }
+    return $false
+}
+function Set-ExeShortcuts([string]$exe) {
+    # escritorio, Inicio y barra de tareas: los que abren este GESTEM.ps1 pasan a GESTEM.exe; devuelve cómo estaban (para volver)
+    $me = Join-Path $script:AppDir 'GESTEM.ps1'
+    $sh = New-Object -ComObject WScript.Shell; $old = @()
+    foreach ($d in (Get-ShortcutDirs)) {
+        if (-not (Test-Path -LiteralPath $d)) { continue }
+        foreach ($f in @(Get-ChildItem -LiteralPath $d -Filter '*.lnk' -File)) {
+            $l = $sh.CreateShortcut($f.FullName)
+            if ("$($l.TargetPath) $($l.Arguments)".IndexOf($me, [StringComparison]::OrdinalIgnoreCase) -lt 0 -or $l.Arguments -match '-Volver') { continue }
+            $old += [ordered]@{ Path = $f.FullName; Target = $l.TargetPath; Args = $l.Arguments; Dir = $l.WorkingDirectory; Icon = $l.IconLocation; Style = $l.WindowStyle }
+            $l.TargetPath = $exe; $l.Arguments = '--real'; $l.WorkingDirectory = (Split-Path -Parent $exe); $l.IconLocation = "$exe,0"; $l.WindowStyle = 1
+            $l.Save()
+            Write-Log "acceso directo a GESTEM.exe: $($f.FullName)"
+        }
+    }
+    return ,$old
+}
+function Install-GestemExe {
+    # al abrir, antes de la ventana. Si algo falla se sigue en PowerShell (al registro) y se reintenta al abrir: 3 veces por versión
+    $dir = $script:AppDir; $exe = Join-Path $dir 'GESTEM.exe'; $new = Join-Path $dir 'GESTEM.new.exe'
+    $triesPath = Join-Path $script:DataDir 'exe_intentos.txt'
+    if (Test-Path -LiteralPath (Join-Path $script:DataDir 'exe_desactivado.txt')) { return 'desactivado' }
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $j = Get-RepoFile 'control.json' $null 3 | ConvertFrom-Json
+        if (-not (Test-ExeAllowed $j)) { return 'no' }
+        $ver = "$(Get-RepoFile 'app/exe_version.txt')".Trim()
+        if ($ver -notmatch '^\d+(\.\d+){1,3}$') { throw "exe_version.txt no válido: $ver" }
+    } catch { Write-Log "GESTEM.exe: no se pudo mirar ($($_.Exception.Message))"; return 'sin conexión' }
+    $tries = 0
+    if (Test-Path -LiteralPath $triesPath) { $t = "$(Get-Content -Raw -LiteralPath $triesPath -Encoding UTF8)".Trim() -split '\|'; if ($t[0] -eq $ver) { $tries = [int]$t[1] } }
+    if ($tries -ge 3) { return 'espera' }
+    if ((Get-OtherGestemPs) -gt 0) { Write-Log 'GESTEM.exe: hay otra ventana de GESTEM abierta, se instala la próxima vez'; return 'otra ventana' }
+    try {
+        $rel = Get-NetRelease
+        if ($rel -lt 528040) { throw ".NET Framework 4.8 no está (Release=$rel)" }
+        Remove-Item -LiteralPath $new -Force -ErrorAction SilentlyContinue
+        Get-RepoFile 'app/GESTEM.exe' $new 120
+        $want = ("$(Get-RepoFile 'app/GESTEM.exe.sha256')".Trim() -split '\s+')[0]
+        $got = (Get-FileHash -LiteralPath $new -Algorithm SHA256).Hash
+        if (-not $want -or $got -ne $want) { throw "SHA-256 no coincide ($got)" }
+        $log = Join-Path $dir 'smoke.log'; Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
+        $p = Start-Process -FilePath $new -ArgumentList '--smoke' -WorkingDirectory $dir -PassThru
+        if (-not $p.WaitForExit(60000)) { try { $p.Kill() } catch { }; throw '--smoke no termina' }
+        $ok = (Test-Path -LiteralPath $log) -and ("$(Get-Content -Raw -LiteralPath $log)" -like 'OK xaml*')
+        if ($p.ExitCode -ne 0 -or -not $ok) { throw "--smoke falla (código $($p.ExitCode))" }
+        Move-Item -LiteralPath $new -Destination $exe -Force
+    } catch {
+        Remove-Item -LiteralPath $new -Force -ErrorAction SilentlyContinue
+        $tries++; Set-Content -LiteralPath $triesPath -Value "$ver|$tries" -Encoding UTF8
+        Write-Log "GESTEM.exe $ver no instalado (intento $tries de 3): $($_.Exception.Message)"
+        return 'fallo'
+    }
+    $old = Set-ExeShortcuts $exe
+    [ordered]@{ version = $ver; fecha = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'); antes = $old } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $script:DataDir 'exe_instalado.txt') -Encoding UTF8
+    Remove-Item -LiteralPath $triesPath -Force -ErrorAction SilentlyContinue
+    Write-Log "GESTEM.exe $ver instalado: se cierra GESTEM (PowerShell) y se abre GESTEM.exe"
+    Start-GestemExe $exe
+    return 'ok'
+}
+
+# =====================================================================
 #  INICIO
 # =====================================================================
 Load-Config
+if ((Install-GestemExe) -eq 'ok') { exit }
 $script:T = $script:Tramites | Where-Object { $_.Id -eq $script:Cfg.Tramite } | Select-Object -First 1
 if (-not $script:T) { $script:T = $script:Tramites[0] }
 $script:Lists = @{ 'nationalities' = $script:Nacionalidades; 'payments' = $script:FormasPago }
