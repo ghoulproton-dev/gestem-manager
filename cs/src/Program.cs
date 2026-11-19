@@ -45,6 +45,10 @@ namespace Gestem
                 // INICIO: config, trámite de la última vez, ventana
                 // hasta terminar el traslado: sin --real se trabaja con una COPIA (cs\data\prueba) y documentos de prueba (cs\data\docs)
                 App.Real = Array.IndexOf(args, "--real") >= 0;
+                // un solo GESTEM abierto (por usuario y modo): el segundo trae el primero al frente y se cierra sin tocar nada
+                bool first;
+                one = new System.Threading.Mutex(true, @"Local\GESTEM-MANAGER" + (App.Real ? "" : "-prueba"), out first);
+                if (!first) { ShowOther(); return 0; }
                 if (!App.Real) TestMode.Setup(); else Config.Load();
                 App.EnsureDirs();
                 AppDomain.CurrentDomain.UnhandledException += delegate(object s, UnhandledExceptionEventArgs e) { Exception x = e.ExceptionObject as Exception; if (x != null) App.LogError("programa", x); };
@@ -60,7 +64,26 @@ namespace Gestem
                 if (!(args.Length > 0 && args[0] == "--smoke")) MessageBox.Show(ex.GetType().Name + ": " + ex.Message + "\r\n\r\n" + App.LogPath, App.Name + " - error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return 1;
             }
+            GC.KeepAlive(one);
             return 0;
+        }
+
+        static System.Threading.Mutex one;    // se suelta al cerrar el programa
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+        // shortcut: trae la primera ventana de GESTEM.exe que encuentra; si a la vez hay uno de prueba y otro --real puede traer el otro
+        static void ShowOther()
+        {
+            System.Diagnostics.Process me = System.Diagnostics.Process.GetCurrentProcess();
+            foreach (System.Diagnostics.Process p in System.Diagnostics.Process.GetProcessesByName(me.ProcessName))
+            {
+                if (p.Id == me.Id || p.MainWindowHandle == IntPtr.Zero) continue;
+                if (IsIconic(p.MainWindowHandle)) ShowWindow(p.MainWindowHandle, 9);    // SW_RESTORE
+                SetForegroundWindow(p.MainWindowHandle);
+                return;
+            }
         }
     }
 }

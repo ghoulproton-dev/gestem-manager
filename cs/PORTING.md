@@ -211,3 +211,6 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         vacía, CSV (mismos bytes), PDF apaisado de 4 páginas (misma huella), diálogo cancelado. Solo C#: esa lista impresa de verdad
         con «Microsoft Print to PDF» (empieza por %PDF). Sin probar en paralelo: el texto de los filtros en el PDF (búsqueda, estado,
         «solo con deuda», «solo míos»): en pstest esos controles no existen.
+  - [x] Un solo GESTEM abierto (Program.cs): mutex por usuario y modo (prueba / --real); el segundo trae el primero al frente
+        y se cierra sin tocar nada. GESTEM.ps1 no lo tiene (no hay nada que comparar). Probado abriendo GESTEM.exe dos veces: el
+        segundo termina (código 0), queda uno; al cerrarlo se vuelve a abrir. No detecta un GESTEM.ps1 abierto a la vez.
