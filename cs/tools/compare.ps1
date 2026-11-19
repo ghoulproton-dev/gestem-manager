@@ -9,10 +9,10 @@ function Get-Canon([string]$p) {
     # los uid nuevos son GUID al azar en los dos lados
     return ($j | ConvertTo-Json -Depth 20 -Compress) -replace '"uid":"[0-9a-f]{32}"', '"uid":"GUID"'
 }
-$a = [IO.File]::ReadAllLines((Join-Path $TestDir 'ps_summary.txt')); $b = @()
+$a = @(); if (Test-Path (Join-Path $TestDir 'ps_summary.txt')) { $a = [IO.File]::ReadAllLines((Join-Path $TestDir 'ps_summary.txt')) }; $b = @()
 if (Test-Path (Join-Path $TestDir 'cs_summary.txt')) { $b = [IO.File]::ReadAllLines((Join-Path $TestDir 'cs_summary.txt')) }
 $d = @(Compare-Object $a $b -SyncWindow 5)
-[void]$out.AppendLine("summary: " + $(if ($d.Count) { "DISTINTO ($($d.Count) líneas)" } else { "IGUAL ($($a.Count) líneas)" }))
+if (-not (Test-Path (Join-Path $TestDir 'ps_summary.txt')) -or $a.Count -eq 0) { [void]$out.AppendLine('summary: MAL: falta ps_summary.txt (pstest.ps1 falla, ver ps_err.txt)') } else { [void]$out.AppendLine("summary: " + $(if ($d.Count) { "DISTINTO ($($d.Count) líneas)" } else { "IGUAL ($($a.Count) líneas)" })) }
 foreach ($x in ($d | Select-Object -First 20)) { [void]$out.AppendLine("  $($x.SideIndicator) $($x.InputObject)") }
 foreach ($f in Get-ChildItem (Join-Path $TestDir 'ps\GESTEM datos') -Filter '*.json') {
     $eq = (Get-Canon $f.FullName) -eq (Get-Canon (Join-Path $TestDir ('cs\GESTEM datos\' + $f.Name)))

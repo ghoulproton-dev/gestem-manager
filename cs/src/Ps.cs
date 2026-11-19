@@ -128,6 +128,52 @@ namespace Gestem
             return true;
         }
 
+        // Sort-Object de PowerShell 5.1: powershell.exe usa la ordenación antigua de .NET (quicksort NO estable), así que los
+        // empates salen en un orden concreto. Copiado de ArraySortHelper.DepthLimitedQuickSort; comprobado contra PS (n=4…40).
+        public static void Sort<T>(List<T> l, Comparison<T> c)
+        {
+            T[] a = l.ToArray(); if (a.Length > 1) QSort(a, 0, a.Length - 1, c, 32); l.Clear(); l.AddRange(a);
+        }
+        static void SwapIfGreater<T>(T[] a, Comparison<T> c, int i, int j) { if (i != j && c(a[i], a[j]) > 0) { T t = a[i]; a[i] = a[j]; a[j] = t; } }
+        static void QSort<T>(T[] k, int left, int right, Comparison<T> c, int depth)
+        {
+            do
+            {
+                if (depth == 0) { HSort(k, left, right, c); return; }
+                int i = left, j = right, mid = i + ((j - i) >> 1);
+                SwapIfGreater(k, c, i, mid); SwapIfGreater(k, c, i, j); SwapIfGreater(k, c, mid, j);
+                T x = k[mid];
+                do
+                {
+                    while (c(k[i], x) < 0) i++;
+                    while (c(x, k[j]) < 0) j--;
+                    if (i > j) break;
+                    if (i < j) { T t = k[i]; k[i] = k[j]; k[j] = t; }
+                    i++; j--;
+                } while (i <= j);
+                depth--;
+                if (j - left <= right - i) { if (left < j) QSort(k, left, j, c, depth); left = i; }
+                else { if (i < right) QSort(k, i, right, c, depth); right = j; }
+            } while (left < right);
+        }
+        static void HSort<T>(T[] k, int lo, int hi, Comparison<T> c)
+        {
+            int n = hi - lo + 1;
+            for (int i = n >> 1; i >= 1; i--) Down(k, i, n, lo, c);
+            for (int i = n; i > 1; i--) { T t = k[lo]; k[lo] = k[lo + i - 1]; k[lo + i - 1] = t; Down(k, 1, i - 1, lo, c); }
+        }
+        static void Down<T>(T[] k, int i, int n, int lo, Comparison<T> c)
+        {
+            T d = k[lo + i - 1];
+            while (i <= n >> 1)
+            {
+                int ch = 2 * i; if (ch < n && c(k[lo + ch - 1], k[lo + ch]) < 0) ch++;
+                if (!(c(d, k[lo + ch - 1]) < 0)) break;
+                k[lo + i - 1] = k[lo + ch - 1]; i = ch;
+            }
+            k[lo + i - 1] = d;
+        }
+
         public static string Upper(string s) { return (s ?? "").ToUpper(Inv); }
         public static string Trim(object v) { return Str(v).Trim(); }
 

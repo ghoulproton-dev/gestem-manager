@@ -89,6 +89,18 @@ namespace Gestem
                     o.Append("UI deuda=" + w.FilteredRows().Count + " esperado=" + debt + "\r\n");
                     w.U<ToggleButton>("OnlyDebt").IsChecked = false;
                 });
+                Try("resumen", delegate
+                {
+                    // Resumen en la ventana de verdad: la gráfica se dibuja (el lienzo tiene tamaño), cambiar alcance, periodo y modo
+                    w.U<ToggleButton>("NavStats").IsChecked = true; Pump(w);
+                    int drawn = w.U<Canvas>("ChartCanvas").Children.Count;
+                    w.U<ComboBox>("StatsScope").SelectedIndex = Tramite.All.IndexOf(Tramite.ById("canje")) + 1; Pump(w);
+                    w.U<ComboBox>("StatsPeriod").SelectedIndex = 3; Pump(w);
+                    foreach (string m in new string[] { "ChartDay", "ChartWeek", "ChartMonth" }) { w.U<RadioButton>(m).IsChecked = true; Pump(w); }
+                    w.U<Button>("StatsAllBtn").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent)); Pump(w);
+                    o.Append("UI resumen grafica=" + (drawn > 0 ? "OK" : "MAL") + " filas=" + w.U<Grid>("StatsGrid").RowDefinitions.Count + " alcance=" + (w.StatsScopeId ?? "todos") + "\r\n");
+                    w.U<ToggleButton>("NavClients").IsChecked = true;
+                });
                 Try("aviso req", delegate { w.UpdateReqBadge(); o.Append("UI aviso req=" + w.U<Border>("ReqBadge").Visibility + "\r\n"); });
                 Try("config", delegate
                 {

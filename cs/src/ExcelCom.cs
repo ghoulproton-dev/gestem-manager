@@ -153,7 +153,8 @@ namespace Gestem
             if (h == null) return;
             try
             {
-                if (save) { App.Guard(Ps.Str(Com.Get(h.Wb, "FullName")), "Excel"); Com.Call(h.Wb, "Save"); }
+                // el archivo que abrimos (FullName puede ser https://... en OneDrive)
+                if (save) { App.Guard(Config.Cur.ExcelPath, "Excel"); Com.Call(h.Wb, "Save"); }
                 if (h.Mine) { Com.Call(h.Wb, "Close", false); Com.Call(h.Xl, "Quit"); }
             }
             finally

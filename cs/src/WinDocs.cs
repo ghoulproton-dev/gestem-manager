@@ -95,13 +95,9 @@ namespace Gestem
             if (dir != null && Directory.Exists(dir))
             {
                 List<FileInfo> files = Docs.VisibleFiles(dir);
-                // Sort-Object LastWriteTime -Descending (estable: a igual hora, el orden de la carpeta)
-                List<KeyValuePair<int, FileInfo>> tmp = new List<KeyValuePair<int, FileInfo>>();
-                for (int i = 0; i < files.Count; i++) tmp.Add(new KeyValuePair<int, FileInfo>(i, files[i]));
-                tmp.Sort(delegate(KeyValuePair<int, FileInfo> a, KeyValuePair<int, FileInfo> b) { int c = b.Value.LastWriteTime.CompareTo(a.Value.LastWriteTime); return c != 0 ? c : a.Key.CompareTo(b.Key); });
-                foreach (KeyValuePair<int, FileInfo> kv in tmp)
+                Ps.Sort(files, delegate(FileInfo a, FileInfo b) { return b.LastWriteTime.CompareTo(a.LastWriteTime); });    // Sort-Object LastWriteTime -Descending (empates como PS)
+                foreach (FileInfo f in files)
                 {
-                    FileInfo f = kv.Value;
                     string ext = f.Extension.ToLowerInvariant();
                     string glyph = ((char)0xE8A5).ToString();
                     if (Array.IndexOf(new string[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".heic", ".webp" }, ext) >= 0) glyph = ((char)0xEB9F).ToString();

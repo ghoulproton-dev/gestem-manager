@@ -18,7 +18,7 @@ function F([string]$dir, [string]$name, $content, [double]$min) {
     (Get-Item -LiteralPath $p).LastWriteTime = $day.AddMinutes($min)
 }
 function D($x) { return (Join-Path $tdir ("$(Safe $x.id) - $(Safe $x.f.name)")) }
-F (D $c[0]) 'a.pdf' 'AAA' 0; F (D $c[0]) 'b.jpg' 'BB' 1; F (D $c[0]) 'grande.docx' 1572864 2; F (D $c[0]) 'c.pdf' 'CC' 2.5    # se ve con la misma hora que grande.docx (09:32) pero no empata: Sort-Object de PS 5.1 no fija el orden de los empates
+F (D $c[0]) 'a.pdf' 'AAA' 0; F (D $c[0]) 'b.jpg' 'BB' 1; F (D $c[0]) 'grande.docx' 1572864 2; F (D $c[0]) 'c.pdf' 'CC' 2    # misma hora que grande.docx: empate (Sort-Object de PS 5.1 no es estable; Ps.Sort lo copia)
 F (D $c[0]) 'desktop.ini' 'x' 3; (Get-Item -LiteralPath (Join-Path (D $c[0]) 'desktop.ini') -Force).Attributes = 'Hidden'
 $mis = Join-Path $tdir ("$(Safe $c[2].id) - $(Safe $c[1].f.name)")              # nº de otro cliente: pasa al de c1 (que ya tiene carpeta)
 F $mis 'x.pdf' 'XX' 10; F $mis 'y.pdf' 'Y1' 11

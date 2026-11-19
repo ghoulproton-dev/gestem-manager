@@ -269,4 +269,37 @@ Open-DocsPanel (Get-RowById $ids[0]); Add-ClientDocs @((Join-Path $TestDir 'docs
 Open-DocsPanel (Get-RowById $ids[8]); Add-ClientDocs @((Join-Path $TestDir 'docs_src\nuevo.pdf')); [void]$o.Append("DA 8 $(Get-DocsPanelText)`r`n")
 foreach ($r in $script:Rows) { $n = Get-DocsCount $r; if ($n) { [void]$o.Append("DM2 $($r.Row) $($r.Id) n=$n`r`n") } }
 Add-Tree 'DT2'
+# etapa 4a: Resumen (todas las pestañas en caché; hora fija; sin animación de cifras)
+$script:Cache = @{}
+foreach ($t in $script:Tramites) { $s = Read-Store $t; if ($s) { $script:Cache[$t.Id] = Build-TramiteData $t $s } }
+function Get-Date { param($Year, $Month, $Day, $Format) $d = $script:FixedNow; if ($Year) { $d = New-Object DateTime $Year, $Month, $Day, $d.Hour, $d.Minute, $d.Second }; if ($Format) { return $d.ToString($Format) }; return $d }
+function Start-CountUp($items) { foreach ($it in $items) { $it.Tb.Text = Format-Euro0 $it.To } }
+foreach ($n in 'StatsScope', 'StatsWho', 'StatsPeriod', 'StatsTitle', 'StatsAllBtn', 'StatsAllTxt', 'StatsSub', 'KpiBill', 'KpiBillF', 'KpiPaid', 'KpiPaidTrack', 'KpiPaidF', 'KpiPend', 'KpiPendF', 'KpiNet', 'KpiNetF',
+    'ChartDay', 'ChartWeek', 'ChartMonth', 'ChartTitle', 'ChartDeltaB', 'ChartDelta', 'ChartSub', 'ChartCanvas', 'ChartLabels', 'StatsTable', 'StatsGrid') { $script:UI[$n] = $script:Win.FindName($n) }
+$inv = [Globalization.CultureInfo]::InvariantCulture
+function Get-StatsText {
+    $u = $script:UI; $l = New-Object Collections.Generic.List[string]
+    foreach ($ch in $u.StatsGrid.Children) {
+        $r = [Windows.Controls.Grid]::GetRow($ch); $cl = [Windows.Controls.Grid]::GetColumn($ch)
+        if ($ch -is [Windows.Controls.TextBlock]) { $l.Add("$r,$cl=$($ch.Text)") }
+        elseif ($ch -is [Windows.Controls.StackPanel]) { $l.Add("$r,n=$($ch.Children[1].Text)|$($ch.Children[0].Fill)") }
+        elseif ($ch -is [Windows.Controls.Grid]) { $l.Add("$r,bar=$($ch.ColumnDefinitions[0].Width.Value.ToString('R', $inv))") }
+        elseif ($ch.Tag) { $l.Add("$r,hit=$($ch.Tag)") }
+    }
+    $lab = @($u.ChartLabels.Children | ForEach-Object { "$($_.Children[0].Text)/$($_.Children[1].Text)" }) -join ' '
+    $bk = @($script:ChartBuckets | ForEach-Object { "$($_.N):$($_.Paid.ToString('R', $inv))" }) -join ' '
+    return "sub=$($u.StatsSub.Text)|table=$($u.StatsTable.Text)|all=$($u.StatsAllBtn.Visibility)|kpi=$($u.KpiBill.Text);$($u.KpiBillF.Text);$($u.KpiPaid.Text);$($u.KpiPaidF.Text);$($u.KpiPend.Text);$($u.KpiPendF.Text);$($u.KpiNet.Text);$($u.KpiNetF.Text);$($u.KpiPaidTrack.ColumnDefinitions[0].Width.Value.ToString('R', $inv))`r`n  " +
+        ($l -join ' ; ') + "`r`n  chart=$($u.ChartTitle.Text)|$($u.ChartSub.Text)|$($u.ChartDelta.Text)|$lab|$bk"
+}
+foreach ($sc in $null, 'canje', 'tasas', 'traduccion') {
+    $script:StatsScopeId = $sc; Fill-StatsFilters
+    [void]$o.Append("SF $sc who=$(@($script:UI.StatsWho.Items) -join ',')|scope=$($script:UI.StatsScope.SelectedIndex)/$($script:UI.StatsScope.Items.Count)|per=$(@($script:UI.StatsPeriod.Items) -join ',')`r`n")
+    foreach ($p in 0, 1, 2, 3) { foreach ($wi in 0, 1, 3) {
+        $script:UI.StatsPeriod.SelectedIndex = $p; $script:UI.StatsWho.SelectedIndex = $wi; Update-Stats
+        [void]$o.Append("ST $sc p=$p w=$wi $(Get-StatsText)`r`n")
+    } }
+}
+$script:StatsScopeId = $null; Fill-StatsFilters; $script:UI.StatsPeriod.SelectedIndex = 0; $script:UI.StatsWho.SelectedIndex = 0
+foreach ($m in 'ChartDay', 'ChartWeek', 'ChartMonth') { $script:UI[$m].IsChecked = $true; Update-Chart; [void]$o.Append("CH $m $(Get-StatsText)`r`n") }
+Remove-Item function:Get-Date
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

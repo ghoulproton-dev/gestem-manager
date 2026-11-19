@@ -146,7 +146,12 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
       el registro de verdad no se toca. La ventana lo dice en el título. Prueba: selftest -> test\cs_guard.txt (GUARD OK).
       Quitar el modo prueba (o dejar --real por defecto) en la etapa 7.
 - [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto, Colaboradores, margen
-- [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
+  - [x] 4a Resumen (WinStats.cs): filtros, tabla por trámite o por estado, tarjetas, gráfica día/semana/mes. Prueba: SF/ST/CH en
+        el resumen (4 alcances x 4 periodos x 3 personas, y los 3 modos de la gráfica) + «UI resumen» (gráfica dibujada en la ventana).
+        Ps.Sort copia el Sort-Object de PS 5.1 (no estable: los empates salen en un orden concreto); también en la lista de documentos.
+        Ojo: los @{} de los trámites ya vienen del JSON en el orden en que PS los recorre; meterlos en otro Hashtable lo cambia.
+        Arreglado de paso: ExcelCom.Close comprobaba FullName (en OneDrive es https://…) -> ahora la ruta del Excel abierto;
+        compare.ps1 ya no da IGUAL si pstest.ps1 falla sin dejar ps_summary.txt.- [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
 - [ ] Etapa 5b — Firebase (sincronización, primera unión) y carpeta de documentos compartida
 - [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe

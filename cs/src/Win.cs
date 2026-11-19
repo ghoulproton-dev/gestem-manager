@@ -50,7 +50,7 @@ namespace Gestem
 
             U<ToggleButton>("NavClients").Checked += delegate { ShowPanel("PanelClients"); RefreshClientGrid(); U("SearchBox").Focus(); };
             U<ToggleButton>("NavNew").Checked += delegate { ShowPanel("PanelForm"); };
-            U<ToggleButton>("NavStats").Checked += delegate { ShowPanel("PanelStats"); };
+            U<ToggleButton>("NavStats").Checked += delegate { ShowPanel("PanelStats"); FillStatsFilters(); UpdateStats(); };
             U<ToggleButton>("NavColab").Checked += delegate { ShowPanel("PanelColab"); };
             U<ToggleButton>("NavSettings").Checked += delegate { ShowPanel("PanelSettings"); };
             U<ToggleButton>("NavAbout").Checked += delegate { ShowPanel("PanelAbout"); };
@@ -79,7 +79,7 @@ namespace Gestem
             Win.KeyDown += OnKeyDown;
             WireForm();
             WireMenu();
-            WireDocs();
+            WireDocs(); WireStats();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -165,6 +165,7 @@ namespace Gestem
             U<TextBlock>("SumPriceL").Text = L("sumPrice"); U<TextBlock>("SumPaidL").Text = L("sumPaid"); U<TextBlock>("SumPendL").Text = L("sumPend");
             SetCmHeaders();
             SetDocsTexts();
+            SetStatsTexts();
             BuildForm();
             ResetForm();
         }
@@ -191,6 +192,7 @@ namespace Gestem
                 G.T = Tramite.All[i]; Config.Cur.Tramite = G.T.Id; Config.Save();
                 G.Rows = null; U<DataGrid>("ClientsGrid").ItemsSource = null;
                 if (Data.CachedData()) ApplyLanguage(); else { BuildForm(); ResetForm(); }
+                if (StatsVisible) { StatsScopeId = G.T.Id; FillStatsFilters(); UpdateStats(); }
             }
             finally { switching = false; Win.Cursor = null; }
         }

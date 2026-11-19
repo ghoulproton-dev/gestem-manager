@@ -42,7 +42,7 @@ namespace Gestem
         {
             if (Real) return true;
             if (string.IsNullOrEmpty(path)) return false;
-            string f = Path.GetFullPath(path).TrimEnd('\\') + "\\";
+            string f; try { f = Path.GetFullPath(path).TrimEnd('\\') + "\\"; } catch { return false; }    // https://… u otra cosa: no es de prueba
             foreach (string r in safeRoots) if (f.StartsWith(r, StringComparison.OrdinalIgnoreCase)) return true;
             return false;
         }

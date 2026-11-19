@@ -256,6 +256,23 @@ namespace Gestem
             o.Append("DA 8 " + DocsPanelText(w) + "\r\n");
             foreach (ClientRow r in G.Rows) { int n = Docs.Count(r); if (n > 0) o.Append("DM2 " + r.Row + " " + r.Id + " n=" + n + "\r\n"); }
             DocsTree(o, "DT2", droot);
+            // etapa 4a: Resumen (todas las pestañas en caché; hora fija; sin animación de cifras)
+            App.Now = delegate { return new DateTime(2026, 11, 19, 12, 0, 0); };
+            G.Cache = new Dictionary<string, TramiteData>();
+            foreach (Tramite t in Tramite.All) { StoreData s = Store.Read(t); if (s != null) G.Cache[t.Id] = Store.BuildData(t, s); }
+            foreach (string sc in new string[] { null, "canje", "tasas", "traduccion" })
+            {
+                w.StatsScopeId = sc; w.FillStatsFilters();
+                o.Append("SF " + sc + " who=" + string.Join(",", Items(w.U<ComboBox>("StatsWho"))) + "|scope=" + w.U<ComboBox>("StatsScope").SelectedIndex + "/" + w.U<ComboBox>("StatsScope").Items.Count + "|per=" + string.Join(",", Items(w.U<ComboBox>("StatsPeriod"))) + "\r\n");
+                foreach (int p in new int[] { 0, 1, 2, 3 }) foreach (int wi in new int[] { 0, 1, 3 })
+                {
+                    w.U<ComboBox>("StatsPeriod").SelectedIndex = p; w.U<ComboBox>("StatsWho").SelectedIndex = wi; w.UpdateStats();
+                    o.Append("ST " + sc + " p=" + p + " w=" + wi + " " + StatsText(w) + "\r\n");
+                }
+            }
+            w.StatsScopeId = null; w.FillStatsFilters(); w.U<ComboBox>("StatsPeriod").SelectedIndex = 0; w.U<ComboBox>("StatsWho").SelectedIndex = 0;
+            foreach (string m in new string[] { "ChartDay", "ChartWeek", "ChartMonth" }) { w.U<RadioButton>(m).IsChecked = true; w.UpdateChart(); o.Append("CH " + m + " " + StatsText(w) + "\r\n"); }
+            App.Now = delegate { return DateTime.Now; };
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
@@ -333,7 +350,26 @@ namespace Gestem
             l.Sort(StringComparer.Ordinal);
             foreach (string x in l) o.Append(tag + " " + x + "\r\n");
         }
-        static string DocsPanelText(MainWin w)
+        static List<string> Items(ComboBox c) { List<string> l = new List<string>(); foreach (object x in c.Items) l.Add(Ps.Str(x)); return l; }
+        static string StatsText(MainWin w)
+        {
+            List<string> l = new List<string>();
+            foreach (UIElement ch in w.U<Grid>("StatsGrid").Children)
+            {
+                int r = Grid.GetRow(ch), cl = Grid.GetColumn(ch);
+                if (ch is TextBlock) l.Add(r + "," + cl + "=" + ((TextBlock)ch).Text);
+                else if (ch is StackPanel) { StackPanel sp = (StackPanel)ch; l.Add(r + ",n=" + ((TextBlock)sp.Children[1]).Text + "|" + ((System.Windows.Shapes.Ellipse)sp.Children[0]).Fill); }
+                else if (ch is Grid) l.Add(r + ",bar=" + ((Grid)ch).ColumnDefinitions[0].Width.Value.ToString("R", Ps.Inv));
+                else if (ch is FrameworkElement && ((FrameworkElement)ch).Tag != null) l.Add(r + ",hit=" + ((FrameworkElement)ch).Tag);
+            }
+            List<string> lab = new List<string>();
+            foreach (UIElement ch in w.U<Grid>("ChartLabels").Children) { StackPanel sp = (StackPanel)ch; lab.Add(((TextBlock)sp.Children[0]).Text + "/" + ((TextBlock)sp.Children[1]).Text); }
+            List<string> bk = new List<string>();
+            foreach (ChartBucket b in w.ChartBuckets) bk.Add(b.N + ":" + b.Paid.ToString("R", Ps.Inv));
+            Func<string, string> T = delegate(string n) { return w.U<TextBlock>(n).Text; };
+            return "sub=" + T("StatsSub") + "|table=" + T("StatsTable") + "|all=" + w.U<FrameworkElement>("StatsAllBtn").Visibility + "|kpi=" + T("KpiBill") + ";" + T("KpiBillF") + ";" + T("KpiPaid") + ";" + T("KpiPaidF") + ";" + T("KpiPend") + ";" + T("KpiPendF") + ";" + T("KpiNet") + ";" + T("KpiNetF") + ";" + w.U<Grid>("KpiPaidTrack").ColumnDefinitions[0].Width.Value.ToString("R", Ps.Inv) + "\r\n  "
+                + string.Join(" ; ", l) + "\r\n  chart=" + T("ChartTitle") + "|" + T("ChartSub") + "|" + T("ChartDelta") + "|" + string.Join(" ", lab) + "|" + string.Join(" ", bk);
+        }        static string DocsPanelText(MainWin w)
         {
             List<string> it = new List<string>();
             foreach (DocItem d in (System.Collections.IEnumerable)w.U<ListBox>("DocsList").ItemsSource ?? new DocItem[0]) it.Add(d.Name + "|" + d.Info + "|" + (int)d.Glyph[0]);
