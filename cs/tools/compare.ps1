@@ -27,5 +27,8 @@ function Get-FbCanon([string]$p) {
 }
 $eq = (Get-FbCanon (Join-Path $TestDir 'ps_firebase.json')) -eq (Get-FbCanon (Join-Path $TestDir 'cs_firebase.json'))
 [void]$out.AppendLine("firebase.json (pendientes): " + $(if ($eq) { 'IGUAL' } else { 'DISTINTO' }))
+# solo C#: al abrir no se pierde ningún cliente con uid (adoptados mano- incluidos); no es una comparación
+$kp = Join-Path $TestDir 'cs_keep.txt'
+[void]$out.AppendLine('al abrir, clientes con uid (solo C#): ' + $(if ((Test-Path $kp) -and (Get-Content $kp -Encoding UTF8)[-1] -eq 'KEEP OK') { 'OK' } else { 'MAL (ver cs_keep.txt)' }))
 [IO.File]::WriteAllText((Join-Path $TestDir 'result.txt'), $out.ToString(), (New-Object Text.UTF8Encoding $true))
 $out.ToString()

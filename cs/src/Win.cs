@@ -308,7 +308,7 @@ namespace Gestem
             {
                 try { InitializeDocsFolder(); } catch (Exception e) { App.Log("documentos: " + e.Message); }
                 try { Docs.RepairAll(); } catch (Exception e) { App.Log("documentos: " + e.Message); }    // carpetas que quedaron con el nº de otro cliente
-                try { Hand.SyncTabs(true, true); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); }
+                try { Hand.SyncTabs(true); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); }
                 if (Data.LoadData(true, false))
                 {
                     ApplyLanguage();

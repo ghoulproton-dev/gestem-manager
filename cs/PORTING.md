@@ -47,10 +47,11 @@ La versión PowerShell (GESTEM.ps1) sigue siendo la que usa la gestoría hasta e
       valores leídos y textos de la tarjeta idénticos (658 líneas). Config guarda ya los ajustes 1.8–1.9 (clave, FbSync…).
 
 ## Encontrado al trasladar (arreglado en PowerShell 1.7.4)
-- Clientes repetidos (AUT-2026-001 y AUT-001): una versión antigua importó pestañas hechas a mano como si fueran de GESTEM y
-  marcó el trámite en TabsChecked, así que el arreglo de Load-Data no vuelve a pasar (PowerShell 1.9.2 también los muestra).
-  C#: al abrir, Hand.SyncTabs(true, true) quita los By=Excel sin editar cuyo nombre está en la pestaña a mano (si no hay
-  pestaña con formato de GESTEM). La prueba de igualdad no lo hace; selftest lo comprueba aparte en test_dups.txt.
+- Clientes repetidos (AUT-2026-001 y AUT-001) en la copia real: una versión antigua importó pestañas hechas a mano como si fueran
+  de GESTEM. C# los quitaba al abrir (Hand.StaleImports, solo por nombre y by=Excel), pero eso borraba también los clientes
+  adoptados de la pestaña a mano al unirse a Firebase (mano-…, by=Excel): 171 de 274 en los datos de verdad. Quitado (19/11/2026):
+  C# no quita nada al abrir, como PowerShell. selftest -> test\cs_keep.txt (KEEP OK, línea en result.txt): los clientes con uid,
+  adoptados mano- incluidos, salen iguales de dos aperturas. Los datos de verdad en Firestore no tienen esas copias antiguas.
 - La ficha recuerda su trámite (formT): al cambiar de trámite, los avisos tardíos de los campos viejos ya no rompen.
 - La escritura directa dejaba calcChain.xml apuntando a celdas sin fórmula -> Excel no abría el archivo. Ahora se quita calcChain.xml.
 - Textos con espacios al principio/final: SetAttribute('space', ns, …) escribía «d1p1:space» -> Excel no abría el archivo. Ahora xml:space.
@@ -192,8 +193,6 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
       en los dos. dump lee por UI Automation las 14 listas de trámites, la ficha del 1.er cliente de cada uno, resumen, colaboradores
       y ajustes. Prueba 19/11/2026: 1035 líneas idénticas. Diferencias encontradas:
       1) línea de estado sin deudas: PowerShell «(-)», C# «(0,00 €)» -> arreglado en C#.
-      2) a propósito: C# quita al abrir los clientes repetidos de pestañas a mano (ver «Encontrado al trasladar»); PowerShell
-         los sigue mostrando (Homologación 14/7, Autónomo 34/17…, resumen 190/152 expedientes). Para comparar lo demás, dump ps
-         se hizo con los «GESTEM datos» ya limpiados por C#.
+      2) C# quitaba al abrir los «repetidos» de pestañas a mano (Homologación 14/7, Autónomo 34/17…): esa purga ya no existe
       Ojo: abrir el GESTEM.ps1 copiado cambia los accesos directos -> fix_shortcuts.bat después.
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe

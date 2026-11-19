@@ -24,7 +24,7 @@ namespace Gestem
             Directory.CreateDirectory(App.BackupDir);
             Config.Cur = new Config();
             Config.Cur.ExcelPath = Path.Combine(testDir, "cs", "x.xlsx");
-            // copia de los datos tal como llegan, para comprobar al final que no quedan clientes repetidos (test\dups)
+            // copia de los datos tal como llegan, para comprobar al final que al abrir no se pierde ningún cliente con uid (test\dups)
             string dd = Path.Combine(testDir, "dups"), dsrc = Path.GetDirectoryName(Config.Cur.ExcelPath);
             Directory.CreateDirectory(Path.Combine(dd, "GESTEM datos"));
             File.Copy(Config.Cur.ExcelPath, Path.Combine(dd, "x.xlsx"), true);
@@ -433,25 +433,69 @@ namespace Gestem
                 w.ToastHook = keepToast5; Fb.Notify = null;
             }
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
-            // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
-            System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
-            int bad = 0;
-            // sobre una copia (test\dups): los datos de test\cs se comparan después con los de PowerShell
+            // aparte del resumen: al abrir GESTEM no se quita ni cambia ningún cliente con uid, tampoco los adoptados de la pestaña
+            // hecha a mano (mano-…, by=Excel, su nombre sigue en la pestaña). Antes una «purga de repetidos» los borraba.
+            // Sobre una copia (test\dups) y con su propio firebase.json: test\cs y cs_firebase.json se comparan después con PowerShell.
+            StringBuilder dupOut = new StringBuilder(); bool kok = true;
+            string keepFbPath = FbState.Path; FbState.Path = Path.Combine(dd, "firebase.json");
             Config.Cur.ExcelPath = Path.Combine(dd, "x.xlsx");
-            int before = 0;
-            foreach (Tramite t in Tramite.All) { StoreData s0 = Store.Read(t); if (s0 != null) before += s0.Clients.Count; }
-            Hand.SyncTabs(true, true);
-            dupOut.Append("DUP antes: clientes=" + before + "\r\n");
-            foreach (Tramite t in Tramite.All)
+            int adopted = 0, oldVictims = 0;
+            FbState.Applying = true;    // preparar: como al unirse (nada queda por enviar)
+            foreach (Tramite k_t in Tramite.All)
             {
-                StoreData s = Store.Read(t); if (s == null) continue;
-                HashSet<string> gest = new HashSet<string>(); int dup = 0;
-                foreach (ClientRec c in s.Clients) if (c.Row < Hand.RowBase && c.Del == null) gest.Add(Hand.HandKey(Ps.Str(Store.Get(c.F, "name"))));
-                foreach (ClientRec c in s.Clients) if (c.Row >= Hand.RowBase && gest.Contains(Hand.HandKey(Ps.Str(Store.Get(c.F, "name"))))) dup++;
-                bad += dup;
-                dupOut.Append("DUP " + t.Id + " clientes=" + s.Clients.Count + " repetidos=" + dup + "\r\n");
+                StoreData k_s = Store.Read(k_t); if (k_s == null) continue;
+                ClientRec k_h = null; int k_max = 0;
+                foreach (ClientRec k_c in k_s.Clients) { if (k_c.Row >= Hand.RowBase) { if (k_h == null || k_c.Row < k_h.Row) k_h = k_c; } else if (k_c.Row > k_max) k_max = k_c.Row; }
+                if (k_h != null)
+                {
+                    // adoptar el 1.º de la pestaña a mano como hace la unión con Firebase (FbSync): nº libre, uid mano-…, by sigue «Excel»
+                    string k_nm = Ps.Str(Store.Get(k_h.F, "name"));
+                    k_h.Row = k_max + 1; k_h.Id = Store.RowId(k_t, k_s.Meta, k_h.Row); k_h.Uid = Data.HandDelUid(k_t, Hand.HandKey(k_nm), "mano-"); k_h.By = "Excel";
+                    k_h.Sync = true; k_h.New = false; k_h.H = null;
+                    if (!k_s.Adopted.Contains(k_nm)) k_s.Adopted.Add(k_nm);
+                    adopted++;
+                }
+                Store.Write(k_t, k_s);    // los clientes de GESTEM sin uid reciben uno
+                // los que la purga quitaba: de GESTEM, by=Excel, sin borrar, con el nombre de la pestaña a mano
+                HashSet<string> k_hk = new HashSet<string>();
+                foreach (ClientRec k_c in k_s.Clients) if (k_c.Row >= Hand.RowBase) k_hk.Add(Hand.HandKey(Ps.Str(Store.Get(k_c.F, "name"))));
+                foreach (string k_x in k_s.Adopted) k_hk.Add(Hand.HandKey(k_x));
+                foreach (ClientRec k_c in k_s.Clients) if (k_c.Row < Hand.RowBase && k_c.By == "Excel" && k_c.Del == null && k_hk.Contains(Hand.HandKey(Ps.Str(Store.Get(k_c.F, "name"))))) oldVictims++;
             }
-            dupOut.Append(bad == 0 ? "DUP OK\r\n" : "DUP MAL\r\n");
+            FbState.Applying = false;
+            Func<string> snap = delegate
+            {
+                List<string> k_l = new List<string>();
+                foreach (Tramite k_t in Tramite.All)
+                {
+                    StoreData k_s = Store.Read(k_t); if (k_s == null) continue;
+                    foreach (ClientRec k_c in k_s.Clients)
+                    {
+                        if (string.IsNullOrEmpty(k_c.Uid)) continue;
+                        List<string> k_v = new List<string>(); foreach (Field k_f in k_t.Fields) k_v.Add(Ps.Str(Store.ToStoreValue(k_f, Store.Get(k_c.F, k_f.Key))));
+                        k_l.Add(k_t.Id + "|" + k_c.Uid + "|" + k_c.Row + "|" + k_c.Id + "|" + k_c.By + "|" + k_c.Updated + "|" + (k_c.Del != null) + "|" + string.Join("|", k_v.ToArray()));
+                    }
+                }
+                k_l.Sort(StringComparer.Ordinal); return string.Join("\n", k_l.ToArray());
+            };
+            string s0 = snap(); int nUid = s0.Length == 0 ? 0 : s0.Split('\n').Length, nMano = 0, nManoExcel = 0;
+            foreach (string k_x in s0.Split('\n')) { string[] kq = k_x.Split('|'); if (kq.Length > 4 && kq[1].StartsWith("mano-")) { nMano++; if (kq[4] == "Excel") nManoExcel++; } }
+            dupOut.Append("KEEP antes: con uid=" + nUid + " adoptados mano- (by=Excel)=" + nManoExcel + "/" + nMano + " que la purga quitaba=" + oldVictims + "\r\n");
+            kok &= nManoExcel > 0 && oldVictims > 0;    // si no, la prueba no prueba nada
+            for (int k_k = 1; k_k <= 2; k_k++)
+            {
+                // lo que hace la ventana al abrir con los datos (MainWin: SyncTabs y LoadData)
+                Hand.SyncTabs(true); Data.LoadData(true, true);
+                string k_s1 = snap(); bool k_same = k_s1 == s0;
+                if (!k_same)
+                {
+                    List<string> k_a0 = new List<string>(s0.Split('\n')), k_a1 = new List<string>(k_s1.Split('\n'));
+                    foreach (string k_x in k_a0) if (!k_a1.Contains(k_x)) dupOut.Append("  cambia/falta: " + k_x.Substring(0, Math.Min(160, k_x.Length)) + "\r\n");
+                }
+                dupOut.Append("KEEP al abrir " + k_k + ": " + (k_same ? "iguales" : "CAMBIAN") + "\r\n"); kok &= k_same;
+            }
+            dupOut.Append(kok ? "KEEP OK\r\n" : "KEEP MAL\r\n");
+            FbState.Path = keepFbPath;
             // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
             StringBuilder gd = new StringBuilder(); bool gok = true;
             string appd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GESTEM");
@@ -472,7 +516,7 @@ namespace Gestem
             try { Directory.Delete(outside, true); } catch { }
             Config.Cur.DocsDir = droot;
             gd.Append(gok ? "GUARD OK\r\n" : "GUARD MAL\r\n");
-            File.WriteAllText(Path.Combine(testDir, "cs_guard.txt"), gd.ToString(), new UTF8Encoding(false));            File.WriteAllText(Path.Combine(testDir, "cs_dups.txt"), dupOut.ToString(), new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(testDir, "cs_guard.txt"), gd.ToString(), new UTF8Encoding(false));            File.WriteAllText(Path.Combine(testDir, "cs_keep.txt"), dupOut.ToString(), new UTF8Encoding(false));
             return 0;
         }
 
