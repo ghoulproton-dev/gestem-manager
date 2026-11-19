@@ -283,6 +283,7 @@ namespace Gestem
             App.CfgPath = Path.Combine(testDir, "config_ui.json"); FbState.Path = Path.Combine(testDir, "ui_firebase.json");
             Directory.CreateDirectory(App.BackupDir);
             Config.Cur = new Config(); Config.Cur.ExcelPath = Path.Combine(testDir, "cs", "x.xlsx");
+            Config.Cur.UpdateKey = "clave-prueba"; Config.Cur.FbSync = false; Config.Cur.DocsDir = "D:/docs"; Config.Cur.Collaborators.Add("ABOGADO X");
             Config.Cur.TabsChecked = new List<string>(); foreach (Tramite t in Tramite.All) Config.Cur.TabsChecked.Add(t.Id);   // sin abrir Excel
             G.T = Tramite.ById("canje");
             Application app = new Application();
@@ -308,6 +309,10 @@ namespace Gestem
                     int debt = 0; foreach (ClientRow r in G.Rows) if (r.Pending > 0) debt++;
                     o.Append("UI deuda=" + w.FilteredRows().Count + " esperado=" + debt + "\r\n");
                     w.UpdateReqBadge();
+                    // los ajustes de 1.8–1.9 sobreviven a un guardado (cambiar de trámite guarda config)
+                    Config.Load();
+                    Config c = Config.Cur;
+                    o.Append("UI config " + (c.UpdateKey == "clave-prueba" && !c.FbSync && c.DocsDir == "D:/docs" && c.Collaborators.Contains("ABOGADO X") && c.TradProfit == 3 ? "OK" : "MAL") + "\r\n");
                     o.Append("UI aviso req=" + w.U<Border>("ReqBadge").Visibility + "\r\n");
                 }
                 catch (Exception e) { o.Append("UI! " + e + "\r\n"); }

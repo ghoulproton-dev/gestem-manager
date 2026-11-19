@@ -17,6 +17,12 @@ namespace Gestem
         public string InvName = "El Mahi Hmidat Chaymae", InvActivity = "Gestión de Trámites Administrativos", InvNif = "55141554C",
                       InvAddress = "Calle Los Albaladejos, 2", InvTown = "30700 Torre Pacheco (Murcia)", InvIban = "";
 
+        // 1.8 – 1.9 (Load-Config): se guardan siempre, aunque esta versión aún no los use (UpdateKey = la clave de GESTEM)
+        public bool FbSync = true;
+        public string DocsDir = "", TasasCanje = "B=33; C=100; D=100", UpdateKey = "";
+        public double TradProfit = 3;
+        public List<string> Collaborators = new List<string>();
+
         public static Config Cur = new Config();
 
         public static void Load()
@@ -40,10 +46,16 @@ namespace Gestem
                     c.InvNif = S(j, "InvNif", c.InvNif); c.InvAddress = S(j, "InvAddress", c.InvAddress);
                     c.InvTown = S(j, "InvTown", c.InvTown); c.InvIban = S(j, "InvIban", c.InvIban);
                     c.SumsRepaired = B(j, "SumsRepaired", c.SumsRepaired); c.ExcelRepaired = B(j, "ExcelRepaired", c.ExcelRepaired);
+                    c.FbSync = B(j, "FbSync", c.FbSync); c.DocsDir = S(j, "DocsDir", c.DocsDir);
+                    c.TasasCanje = S(j, "TasasCanje", c.TasasCanje); c.UpdateKey = S(j, "UpdateKey", c.UpdateKey);
+                    if (Json.Get(j, "TradProfit") != null) { double? tp = Ps.Num(Json.Get(j, "TradProfit")); if (tp.HasValue) c.TradProfit = tp.Value; }
+                    if (Json.Get(j, "Collaborators") != null) c.Collaborators = Ps.StrList(Json.Get(j, "Collaborators"));
                 }
                 catch (Exception ex) { App.Log("config ilegible: " + ex.Message); }
             }
             if (Array.IndexOf(Tx.Langs, c.Language) < 0) c.Language = "es";
+            // sincronización apagada: también en un archivo aparte (una versión 1.8.x borra FbSync al guardar config.json)
+            if (File.Exists(Path.Combine(Path.GetDirectoryName(App.CfgPath), "firebase_apagado.txt"))) c.FbSync = false;
             Cur = c;
             Tx.Lang = c.Language;
         }
@@ -52,6 +64,7 @@ namespace Gestem
         {
             Config c = Cur;
             Dictionary<string, object> o = new Dictionary<string, object>();
+            o["FbSync"] = c.FbSync; o["DocsDir"] = c.DocsDir;
             o["ExcelPath"] = c.ExcelPath; o["Language"] = c.Language; o["DefaultNationality"] = c.DefaultNationality;
             o["Backup"] = c.Backup; o["OpenAfterSave"] = c.OpenAfterSave; o["Tramite"] = c.Tramite;
             o["TabsChecked"] = c.TabsChecked; o["Colleagues"] = c.Colleagues; o["LastUser"] = c.LastUser;
@@ -59,6 +72,7 @@ namespace Gestem
             o["LastExtBackup"] = c.LastExtBackup; o["InvName"] = c.InvName; o["InvActivity"] = c.InvActivity;
             o["InvNif"] = c.InvNif; o["InvAddress"] = c.InvAddress; o["InvTown"] = c.InvTown; o["InvIban"] = c.InvIban;
             o["SumsRepaired"] = c.SumsRepaired; o["ExcelRepaired"] = c.ExcelRepaired;
+            o["TasasCanje"] = c.TasasCanje; o["TradProfit"] = c.TradProfit; o["Collaborators"] = c.Collaborators; o["UpdateKey"] = c.UpdateKey;
             File.WriteAllText(App.CfgPath, Json.Write(o), new UTF8Encoding(true));
         }
 
