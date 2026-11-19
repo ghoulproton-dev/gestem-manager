@@ -443,6 +443,7 @@ namespace Gestem
                 round(new List<FbDoc>(), "", false); FbDump(o, "S3"); FbPushDump(o, "S3", push);
                 w.ToastHook = keepToast5; Fb.Notify = null;
             }
+            SelfTest7.Run(w, o, testDir);    // etapa 7 (secciÃ³n 0)
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen: al abrir GESTEM no se quita ni cambia ningún cliente con uid, tampoco los adoptados de la pestaña
             // hecha a mano (mano-…, by=Excel, su nombre sigue en la pestaña). Antes una «purga de repetidos» los borraba.

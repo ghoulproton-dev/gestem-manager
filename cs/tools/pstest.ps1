@@ -499,4 +499,5 @@ $script:FbSyncScript = New-FbStub 'W10=' '' $false; Step-FbSync; Wait-Fb; Get-Fb
 $script:FbSyncScript = New-FbStub 'W10=' '' $false; Step-FbSync; Wait-Fb; Get-FbDump 'S3'; Get-FbPushDump 'S3'
 if ($script:FbJob) { [void]$script:FbJob.PS.EndInvoke($script:FbJob.H); $script:FbJob.PS.Dispose(); $script:FbJob = $null }
 $script:FbSyncScript = $keepScript; $script:Cfg.UpdateKey = $keepKey; $script:Cfg.FbSync = $false; ${function:Show-Toast} = $keepToast
+. (Join-Path $here 'pstest7.ps1')    # etapa 7 (secciÃ³n 0)
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

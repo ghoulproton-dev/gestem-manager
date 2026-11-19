@@ -466,6 +466,7 @@ namespace Gestem
                 if (!res.Synced) SetStatus(string.Format(L("savedNoExcel"), res.Id));
                 ResetForm();
                 if (wasEdit) U<ToggleButton>("NavClients").IsChecked = true;
+                if (Config.Cur.OpenAfterSave) OpenExcelWindow(0);
             }
             catch (Exception e)
             {

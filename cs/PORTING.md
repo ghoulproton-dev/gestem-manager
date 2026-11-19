@@ -201,3 +201,6 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
   - [x] config.json: C# guarda tal cual las claves que no conoce (PowerShell las pierde: Load-Config solo copia las suyas).
         Prueba: «solo C#» en result.txt (cs_only.txt).
   - [x] Al iniciar sesión, «actividad GESTEM - PC.txt» en la carpeta externa (Start-Session). Prueba: SSA en el resumen.
+  - [x] Abrir el Excel (WinExcel.cs, Open-ExcelWindow): botón, clic derecho y «abrir después de guardar». Prueba XL0–XL2 (sin archivo, y
+        abrir el archivo cuando Excel no lo tiene abierto). Sin probar: con el libro ya abierto en Excel (ir a la pestaña y la fila):
+        desde las pruebas Excel no se ve por COM (GetActiveObject: MK_E_UNAVAILABLE).
