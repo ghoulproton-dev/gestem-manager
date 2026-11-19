@@ -30,5 +30,7 @@ $eq = (Get-FbCanon (Join-Path $TestDir 'ps_firebase.json')) -eq (Get-FbCanon (Jo
 # solo C#: al abrir no se pierde ningún cliente con uid (adoptados mano- incluidos); no es una comparación
 $kp = Join-Path $TestDir 'cs_keep.txt'
 [void]$out.AppendLine('al abrir, clientes con uid (solo C#): ' + $(if ((Test-Path $kp) -and (Get-Content $kp -Encoding UTF8)[-1] -eq 'KEEP OK') { 'OK' } else { 'MAL (ver cs_keep.txt)' }))
+$op = Join-Path $TestDir 'cs_only.txt'
+if (Test-Path $op) { foreach ($l in (Get-Content $op -Encoding UTF8)) { if ($l -match '^(OK|MAL) ([^:]+)(:.*)?$') { [void]$out.AppendLine("solo C#: $($Matches[2]): $($Matches[1])$($Matches[3])") } } } else { [void]$out.AppendLine('solo C#: MAL (falta cs_only.txt)') }
 [IO.File]::WriteAllText((Join-Path $TestDir 'result.txt'), $out.ToString(), (New-Object Text.UTF8Encoding $true))
 $out.ToString()

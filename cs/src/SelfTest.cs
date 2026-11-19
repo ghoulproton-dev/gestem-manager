@@ -496,7 +496,20 @@ namespace Gestem
             }
             dupOut.Append(kok ? "KEEP OK\r\n" : "KEEP MAL\r\n");
             FbState.Path = keepFbPath;
-            // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
+            // comprobaciones solo de C# (no hay nada igual en PowerShell): una línea «OK nombre» o «MAL nombre: …» -> result.txt
+            StringBuilder only = new StringBuilder();
+            {
+                // config.json: las claves que esta versión no conoce se guardan tal cual (al volver a PowerShell no se pierde nada)
+                Config keepCfg = Config.Cur; string keepCfgPath = App.CfgPath;
+                App.CfgPath = Path.Combine(testDir, "config_claves.json");
+                File.WriteAllText(App.CfgPath, "{\"Language\":\"fr\",\"ZzNueva\":{\"a\":[1,\"x\"],\"b\":null},\"zzFlag\":true,\"LastUser\":\"ANA\",\"ExcelPath\":\"C:\\\\x.xlsx\"}", new UTF8Encoding(true));
+                Config.Load(); Config.Cur.LastUser = "LUIS"; Config.Save(); Config.Load();
+                object j = Json.Parse(File.ReadAllText(App.CfgPath, Encoding.UTF8));
+                string a = Json.WriteCompact(Json.Get(j, "ZzNueva")), fl = Ps.Str(Json.Get(j, "zzFlag"));
+                bool ok = a == "{\"a\":[1,\"x\"],\"b\":null}" && fl == "True" && Config.Cur.LastUser == "LUIS" && Config.Cur.Language == "fr" && Config.Cur.ExcelPath == "C:\\x.xlsx";
+                only.Append(ok ? "OK config.json conserva las claves desconocidas\r\n" : "MAL config.json conserva las claves desconocidas: ZzNueva=" + a + " zzFlag=" + fl + " user=" + Config.Cur.LastUser + "\r\n");
+                App.CfgPath = keepCfgPath; Config.Cur = keepCfg; Tx.Lang = keepCfg.Language;
+            }            // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
             StringBuilder gd = new StringBuilder(); bool gok = true;
             string appd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GESTEM");
             foreach (string rp in new string[] { Path.Combine(appd, "config.json"), Path.Combine(appd, "gestem.log"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM datos"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM documentos") })
@@ -516,7 +529,7 @@ namespace Gestem
             try { Directory.Delete(outside, true); } catch { }
             Config.Cur.DocsDir = droot;
             gd.Append(gok ? "GUARD OK\r\n" : "GUARD MAL\r\n");
-            File.WriteAllText(Path.Combine(testDir, "cs_guard.txt"), gd.ToString(), new UTF8Encoding(false));            File.WriteAllText(Path.Combine(testDir, "cs_keep.txt"), dupOut.ToString(), new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(testDir, "cs_guard.txt"), gd.ToString(), new UTF8Encoding(false));            File.WriteAllText(Path.Combine(testDir, "cs_keep.txt"), dupOut.ToString(), new UTF8Encoding(false)); File.WriteAllText(Path.Combine(testDir, "cs_only.txt"), only.ToString(), new UTF8Encoding(false));
             return 0;
         }
 

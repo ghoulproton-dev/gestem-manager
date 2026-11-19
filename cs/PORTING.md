@@ -197,3 +197,6 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
          Repetido 19/11/2026 con cs\data\prueba nuevo (copia real completa) y sin igualar los datos: 1073 líneas idénticas.
       Ojo: abrir el GESTEM.ps1 copiado cambia los accesos directos -> fix_shortcuts.bat después.
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe
+  Antes (sección 0 del plan):
+  - [x] config.json: C# guarda tal cual las claves que no conoce (PowerShell las pierde: Load-Config solo copia las suyas).
+        Prueba: «solo C#» en result.txt (cs_only.txt).

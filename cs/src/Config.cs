@@ -24,6 +24,8 @@ namespace Gestem
         public List<string> Collaborators = new List<string>();
 
         public static Config Cur = new Config();
+        // claves que esta versión no conoce (de otra versión de GESTEM): se guardan tal cual, para que nada se pierda al volver a PowerShell
+        public Dictionary<string, object> Extra = new Dictionary<string, object>();
 
         public static void Load()
         {
@@ -50,6 +52,8 @@ namespace Gestem
                     c.TasasCanje = S(j, "TasasCanje", c.TasasCanje); c.UpdateKey = S(j, "UpdateKey", c.UpdateKey);
                     if (Json.Get(j, "TradProfit") != null) { double? tp = Ps.Num(Json.Get(j, "TradProfit")); if (tp.HasValue) c.TradProfit = tp.Value; }
                     if (Json.Get(j, "Collaborators") != null) c.Collaborators = Ps.StrList(Json.Get(j, "Collaborators"));
+                    Dictionary<string, object> all = Json.Obj(j);
+                    if (all != null) foreach (KeyValuePair<string, object> kv in all) if (Array.FindIndex(Known, delegate(string k) { return string.Equals(k, kv.Key, StringComparison.OrdinalIgnoreCase); }) < 0) c.Extra[kv.Key] = kv.Value;
                 }
                 catch (Exception ex) { App.Log("config ilegible: " + ex.Message); }
             }
@@ -73,9 +77,12 @@ namespace Gestem
             o["InvNif"] = c.InvNif; o["InvAddress"] = c.InvAddress; o["InvTown"] = c.InvTown; o["InvIban"] = c.InvIban;
             o["SumsRepaired"] = c.SumsRepaired; o["ExcelRepaired"] = c.ExcelRepaired;
             o["TasasCanje"] = c.TasasCanje; o["TradProfit"] = c.TradProfit; o["Collaborators"] = c.Collaborators; o["UpdateKey"] = c.UpdateKey;
+            foreach (KeyValuePair<string, object> kv in c.Extra) if (!o.ContainsKey(kv.Key)) o[kv.Key] = kv.Value;
             App.Guard(App.CfgPath, "config");
             File.WriteAllText(App.CfgPath, Json.Write(o), new UTF8Encoding(true));
         }
+
+        static readonly string[] Known = { "FbSync", "DocsDir", "ExcelPath", "Language", "DefaultNationality", "Backup", "OpenAfterSave", "Tramite", "TabsChecked", "Colleagues", "LastUser", "CompanyName", "CompanyLogo", "ExtBackupDir", "LastExtBackup", "InvName", "InvActivity", "InvNif", "InvAddress", "InvTown", "InvIban", "SumsRepaired", "ExcelRepaired", "TasasCanje", "TradProfit", "Collaborators", "UpdateKey" };
 
         // en PowerShell: if ($null -ne $j.$k) { $cfg[$k] = $j.$k }
         static string S(object j, string k, string def) { object v = Json.Get(j, k); return v == null ? def : Ps.Str(v); }
