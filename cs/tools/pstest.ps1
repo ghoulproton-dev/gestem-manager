@@ -6,21 +6,10 @@ $src = Join-Path (Split-Path -Parent (Split-Path -Parent $here)) 'GESTEM.ps1'   
 $lines = [IO.File]::ReadAllLines($src, [Text.Encoding]::UTF8)
 $tokens = $null; $errs = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($src, [ref]$tokens, [ref]$errs)
-# errores de GESTEM.ps1 que el C# trae ya arreglados: la prueba compara con PowerShell con SOLO estas líneas corregidas
-#  - Fill-CmMenu (1.9.2): @(Get-List …) no deshace el ,$arr de Get-List -> el submenú «Estado» sale como UNA opción con todos
-#    los estados juntos, y al pulsarla se guarda ese texto como estado del cliente
-$psFixes = @{ 'Fill-CmMenu' = @(, @('foreach ($s in @(Get-List $f.List))', 'foreach ($s in (Get-List $f.List))')) }
 foreach ($fd in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) {
     if ($fd.Parent -ne $null -and $fd.Parent.Parent -ne $null -and $fd.Parent.Parent -ne $ast) { continue }
-    $code = $fd.Extent.Text
-    if ($psFixes.ContainsKey($fd.Name)) {
-        foreach ($fx in $psFixes[$fd.Name]) {
-            if ($code.Contains($fx[0])) { $code = $code.Replace($fx[0], $fx[1]) } else { Write-Warning "pstest: arreglo de $($fd.Name) ya no aplica (¿corregido en GESTEM.ps1?): $($fx[0])" }
-        }
-    }
-    . ([ScriptBlock]::Create($code))
-}
-foreach ($code in (& (Join-Path $here 'psblocks.ps1') $lines)) { . ([ScriptBlock]::Create($code)) }
+    . ([ScriptBlock]::Create($fd.Extent.Text))
+}foreach ($code in (& (Join-Path $here 'psblocks.ps1') $lines)) { . ([ScriptBlock]::Create($code)) }
 $script:ES = [Globalization.CultureInfo]::GetCultureInfo('es-ES')
 $script:BackupDir = Join-Path $TestDir 'copias_ps'
 $script:LogPath = Join-Path $TestDir 'ps_log.txt'
