@@ -14,9 +14,17 @@ namespace Gestem
         void WireSession()
         {
             U<Button>("UserBtn").Click += delegate { ShowSession(); };
-            U<Button>("SessGo").Click += delegate { StartSession(U<TextBox>("SessNew").Text); };
-            U<TextBox>("SessNew").KeyDown += delegate(object s, KeyEventArgs e) { if (e.Key == Key.Return) StartSession(U<TextBox>("SessNew").Text); };
+            U<Button>("SessGo").Click += delegate { PickNew(); };
+            U<TextBox>("SessNew").KeyDown += delegate(object s, KeyEventArgs e) { if (e.Key == Key.Return) PickNew(); };
             U<TextBox>("SessNew").TextChanged += delegate { U("SessNewHint").Visibility = U<TextBox>("SessNew").Text.Length > 0 ? Visibility.Collapsed : Visibility.Visible; };
+        }
+
+        // nombre nuevo (o vacío: la última persona) -> su contraseña (crearla si es la primera vez)
+        void PickNew()
+        {
+            string who = Ps.Str(U<TextBox>("SessNew").Text).Trim();
+            if (who.Length == 0) who = Ps.Str(Config.Cur.LastUser).Trim();
+            ShowAuth(who);
         }
 
         static List<string> People()
@@ -32,7 +40,7 @@ namespace Gestem
             U<ContentControl>("SessGo").Content = L("sessGo"); U<TextBlock>("SessNewHint").Text = L("sessNew");
             Panel names = U<Panel>("SessNames");
             names.Children.Clear();
-            List<string> people = People();
+            List<string> people = LoginNames(People());
             string last = Ps.Str(Config.Cur.LastUser);
             if (last.Length > 0)
             {
@@ -44,14 +52,18 @@ namespace Gestem
             {
                 Button b = new Button();
                 b.Style = (Style)Win.FindResource("Btn");
-                b.Content = p; b.Tag = p;
-                b.Height = 42; b.FontSize = 15; b.Padding = new Thickness(20, 0, 20, 0); b.Margin = new Thickness(0, 0, 8, 8);
+                StackPanel c = new StackPanel(); c.Orientation = Orientation.Horizontal;
+                FrameworkElement av = Avatar(p, 28); av.Margin = new Thickness(0, 0, 10, 0); c.Children.Add(av);
+                TextBlock tn = new TextBlock(); tn.Text = p; tn.VerticalAlignment = VerticalAlignment.Center; c.Children.Add(tn);
+                b.Content = c; b.Tag = p;
+                b.Height = 46; b.FontSize = 15; b.Padding = new Thickness(10, 0, 20, 0); b.Margin = new Thickness(0, 0, 8, 8);
                 if (string.Equals(p, last, StringComparison.CurrentCultureIgnoreCase)) b.FontWeight = FontWeights.SemiBold;
-                b.Click += delegate { StartSession((string)b.Tag); };
+                b.Click += delegate { ShowAuth((string)b.Tag); };
                 names.Children.Add(b);
             }
             U<TextBox>("SessNew").Text = "";
             U("SessNewHint").Visibility = Visibility.Visible;
+            U("SessAuth").Visibility = Visibility.Collapsed; U("SessPick").Visibility = Visibility.Visible;
             U("PanelSession").Visibility = Visibility.Visible;
         }
 

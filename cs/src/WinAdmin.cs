@@ -276,7 +276,7 @@ namespace Gestem
         {
             return PsH.Is(txt, @"^(fatal: |UI ERROR|aviso mostrado: |Load-Data: |Save-FromForm: |Guardar ERROR|Excel no actualizado|sincronizar con el Excel: |actualizar desde el Excel: |actualización: |pestaña no leída|listas \(|importar \(|config ilegible|accesos directos: |icono: |logo: |logo no válido|recibo: |exportar PDF: |calendario: |copia externa fallida|copia de seguridad fallida|admin: no se pudo|DEBUG (error|editar|conflicto|actualización automática): )");
         }
-        void ShowAdminTab(string name) { foreach (string p in new string[] { "AdmPageLocks", "AdmPageLog", "AdmPageTools" }) U(p).Visibility = p == name ? Visibility.Visible : Visibility.Collapsed; }
+        void ShowAdminTab(string name) { foreach (string p in new string[] { "AdmPageLocks", "AdmPageLog", "AdmPageTools", "AdmPageUsers" }) U(p).Visibility = p == name ? Visibility.Visible : Visibility.Collapsed; }
         public void SaveAdminLocks()
         {
             foreach (string k in LockKeys) Admin.Locks[k] = U<ToggleButton>("AdmLock" + k).IsChecked == true;

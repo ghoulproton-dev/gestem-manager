@@ -79,7 +79,7 @@ namespace Gestem
             Win.KeyDown += OnKeyDown;
             WireForm();
             WireMenu();
-            WireDocs(); WireStats(); WireSettings(); WireSession(); WireAdmin(); WireColab(); WireExt(); WireUpdater();
+            WireDocs(); WireStats(); WireSettings(); WireSession(); WireLogin(); WireAdmin(); WireColab(); WireExt(); WireUpdater();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -303,6 +303,7 @@ namespace Gestem
             {
                 SetStatus(L("noFile"));
                 U<ToggleButton>("NavSettings").IsChecked = true;
+                ShowLogin();    // contraseña también sin Excel
                 return;
             }
             Win.Cursor = Cursors.Wait;
@@ -321,14 +322,8 @@ namespace Gestem
             finally { Win.Cursor = null; }
             try { StartupExtBackup(); } catch (Exception e) { App.Log("copia externa: " + e.Message); }    // copia al abrir
             U<ToggleButton>("NavClients").IsChecked = true;
-            // la última persona que usó este PC entra directamente; «¿No eres tú?» abre la lista de nombres
-            string last = Ps.Str(Config.Cur.LastUser).Trim();
-            if (last.Length > 0)
-            {
-                StartSession(last);
-                ShowToast(string.Format(L("userHello"), last), L("userSwitch"), ShowSession, 8);
-            }
-            else ShowSession();
+            // siempre con contraseña (solo GESTEM.exe): la última persona va directa a la suya; «Cambiar de usuario» abre la lista
+            ShowLogin();
         }
 
     }

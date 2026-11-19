@@ -40,7 +40,7 @@ namespace Gestem
             if (!(name + "/").StartsWith(Base + "/", StringComparison.Ordinal) && name != Base) throw new InvalidOperationException("Firebase: ruta fuera de gestorias/" + Gest + ": " + name);
         }
 
-        static object J(string method, string uri, object body, string token, string tracePath)
+        internal static object J(string method, string uri, object body, string token, string tracePath)
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             if (Trace != null && tracePath != null) Trace(method, tracePath);
@@ -58,8 +58,8 @@ namespace Gestem
                 }
             }
         }
-        static Dictionary<string, object> D(params object[] kv) { Dictionary<string, object> d = new Dictionary<string, object>(); for (int i = 0; i < kv.Length; i += 2) d[(string)kv[i]] = kv[i + 1]; return d; }
-        static string S(object fields, string k, string type) { return Ps.Str(Json.Get(Json.Get(fields, k), type)); }
+        internal static Dictionary<string, object> D(params object[] kv) { Dictionary<string, object> d = new Dictionary<string, object>(); for (int i = 0; i < kv.Length; i += 2) d[(string)kv[i]] = kv[i + 1]; return d; }
+        internal static string S(object fields, string k, string type) { return Ps.Str(Json.Get(Json.Get(fields, k), type)); }
 
         public static FbAuth SignIn(string key)
         {
@@ -484,7 +484,8 @@ namespace Gestem
             {
                 liveTick++; bool own = false;
                 try { Hand.SyncTabs(false); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); }    // ¿se guardó el Excel? se vuelven a leer sus pestañas
-                try { Fb.Step(); } catch (Exception e) { App.Log("firebase: " + e.Message); }    // lo recibido cambia los datos: la lista se recarga abajo
+                try { Fb.Step(); } catch (Exception e) { App.Log("firebase: " + e.Message); }
+                if (liveTick % 3 == 0) { try { SyncProfiles(false); } catch (Exception e) { App.Log("usuarios (Firebase): " + e.Message); } }    // contraseñas, cada minuto    // lo recibido cambia los datos: la lista se recarga abajo
                 // cada 3 min, lo pendiente del Excel. shortcut: sin Test-ExcelFree; hoy no hay nada pendiente (Data.ExcelWrites = false), portarlo si vuelve la escritura
                 if (liveTick % 9 == 0 && Data.PendingSyncCount() > 0) { if (Data.SyncPendingToExcel() > 0) { own = true; G.CacheStamp = -1; } }
                 if (Store.FileStamp() != G.CacheStamp)

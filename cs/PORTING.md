@@ -233,3 +233,14 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         Publicar: tools\publish_exe.ps1 (app\GESTEM.exe, .sha256, exe_version.txt), commit y push solo cuando lo diga Yano.
         Sin probar: barra de tareas de verdad (Windows puede necesitar reiniciar el Explorador para el icono anclado), descarga de verdad
         desde GitHub, el aviso «actualizado a…» después de la actualización de GESTEM.exe (GESTEM.exe no lee actualizado.txt).
+- [x] 2.0.1 (solo GESTEM.exe) — usuarios con contraseña e icono (Profiles.cs, WinLogin.cs). Al abrir siempre se entra con contraseña
+      (la última persona va directa a la suya; «Cambiar de usuario» abre la lista con iconos). Primera vez o restablecida: contraseña
+      (mín. 4, repetida) e icono (color con iniciales o foto, 128 px en %APPDATA%\GESTEM\fotos). Solo un hash PBKDF2-SHA256 con sal
+      (100000 vueltas) en %APPDATA%\GESTEM\usuarios.json. Admin, pestaña «Usuarios»: «Restablecer contraseña».
+      Firebase (si está encendido): gestorias/elmahi/usuarios con hash, sal y estado (el icono no viaja); gana el último cambio; al abrir
+      (antes de control.json) y cada minuto. control.json «resetPass»: ["SAFAE"]: una vez por petición (ResetSeen, también sincronizado);
+      quitar el nombre y volver a ponerlo restablece otra vez. Sin bloqueo por inactividad.
+      Pruebas «solo C#»: hash, reglas, admin, resetPass, dos PCs con un Firebase de mentira, pantalla (crear con color y foto, entrar mal
+      y bien). Red de verdad: --fbtest F12–F14 (solo _tests). AT (textos de admin) no compara la pestaña «Usuarios» (PowerShell no la
+      tiene) y pstest usa el número de versión del C# (GESTEM.exe va por delante de GESTEM.ps1).
+      Sin probar: dos PCs de verdad; crear contraseña en dos PCs a la vez antes de sincronizar (gana la última).

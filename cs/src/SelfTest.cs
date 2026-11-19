@@ -570,6 +570,82 @@ namespace Gestem
                 }
                 finally { Updater.FetchBytesHook = null; Updater.FetchHook = null; ExeSwitch.StartHook = null; ExeSwitch.Dir = keepDir; }
             }
+            {
+                // perfiles con contraseña (solo GESTEM.exe): hash, reglas, restablecer, control.json «resetPass», dos PCs con un Firebase de mentira, pantalla de entrada
+                string keepData = App.DataDir, keepLast = Config.Cur.LastUser, keepUser = App.User; List<string> keepCols = new List<string>(Config.Cur.Colleagues);
+                string[] keepLc; G.Lists.TryGetValue("colleagues", out keepLc);
+                string pa = Path.Combine(testDir, "cs_perfil_a"), pb = Path.Combine(testDir, "cs_perfil_b");
+                foreach (string d in new string[] { pa, pb }) { if (Directory.Exists(d)) Directory.Delete(d, true); Directory.CreateDirectory(d); }
+                Func<bool, string, string> R = delegate(bool ok, string what) { return (ok ? "OK " : "MAL ") + what + "\r\n"; };
+                Dictionary<string, Profile> server = new Dictionary<string, Profile>(StringComparer.OrdinalIgnoreCase); List<string> sentColors = new List<string>();
+                Profiles.RemoteHook = delegate(List<Profile> local)
+                {
+                    foreach (Profile l in local) { sentColors.Add(l.Color + l.Photo); Profile r; if (!server.TryGetValue(l.Name, out r) || string.CompareOrdinal(l.Updated, r.Updated) > 0) server[l.Name] = l.CopySync(); }
+                    List<Profile> res = new List<Profile>(); foreach (Profile p in server.Values) res.Add(p.CopySync()); return res;
+                };
+                Action<string> At = delegate(string d) { App.DataDir = d; Profiles.Reload(); };
+                try
+                {
+                    At(pa);
+                    Profiles.SetPassword("ANA", "abcd"); Profiles.SetPassword("LUIS", "abcd");
+                    string file = File.ReadAllText(Profiles.FilePath, Encoding.UTF8);
+                    Profile an = Profiles.Get("ana");
+                    bool h1 = !file.Contains("abcd") && an.Iter == 100000 && Convert.FromBase64String(an.Hash).Length == 32 && Convert.FromBase64String(an.Salt).Length == 16 && an.Hash != Profiles.Get("LUIS").Hash
+                        && Profiles.Check("ANA", "abcd") && !Profiles.Check("ANA", "abcD") && !Profiles.Check("ANA", "") && !Profiles.Check("NADIE", "abcd");
+                    only.Append(R(h1, "contraseñas, solo hash PBKDF2-SHA256 con sal (100000 vueltas), acierta y falla"));
+                    only.Append(R(Profiles.Validate("abc", "abc") == "pwShort" && Profiles.Validate("abcd", "abce") == "pwDiff" && Profiles.Validate("abcd", "abcd") == "", "contraseñas, mínimo 4 y repetida igual"));
+                    w.AdminResetPassword("LUIS");
+                    only.Append(R(!Profiles.HasPassword("LUIS") && Profiles.HasPassword("ANA") && w.U<TextBlock>("AdmUsersMsg").Text.Contains("LUIS"), "contraseñas, restablecer desde admin"));
+                    // control.json «resetPass»: una vez por petición; quitar el nombre y volver a ponerlo restablece otra vez
+                    w.Remote = null; object keepFetch = Updater.FetchHook; Updater.FetchHook = delegate(string n) { return "{\"resetPass\":[\"ana\"]}"; };
+                    w.CheckRemote(); bool r1 = !Profiles.HasPassword("ANA") && Profiles.Get("ANA").ResetSeen;
+                    Profiles.SetPassword("ANA", "nueva1"); w.CheckRemote(); bool r2 = Profiles.Check("ANA", "nueva1");
+                    Updater.FetchHook = delegate(string n) { return "{\"resetPass\":[]}"; }; w.CheckRemote(); bool r3 = Profiles.Check("ANA", "nueva1") && !Profiles.Get("ANA").ResetSeen;
+                    Updater.FetchHook = delegate(string n) { return "{\"resetPass\":\"ANA\"}"; }; w.CheckRemote(); bool r4 = !Profiles.HasPassword("ANA");
+                    Updater.FetchHook = null; w.Remote = null; w.ApplyPause(); foreach (string f in new string[] { "control.cache", "control.visto" }) File.Delete(Path.Combine(pa, f));
+                    only.Append(R(r1 && r2 && r3 && r4, "contraseñas, control.json resetPass una vez por petición (" + r1 + r2 + r3 + r4 + ")"));
+                    // dos PCs: A crea, B la recibe y entra; B restablece, A lo recibe; un resetPass ya hecho en A no se repite en B; el icono no viaja
+                    Profiles.SetIcon("ANA", "#1D4ED8", ""); Profiles.SetPassword("ANA", "clave-a"); w.SyncProfiles(true);
+                    At(pb); w.SyncProfiles(true); bool s1 = Profiles.Check("ANA", "clave-a") && Profiles.Get("ANA").Color == "";
+                    Profiles.Reset("ANA", "admin"); w.SyncProfiles(true);
+                    At(pa); w.SyncProfiles(true); bool s2 = !Profiles.HasPassword("ANA") && Profiles.Get("ANA").Color == "#1D4ED8";
+                    Profiles.SetPassword("ANA", "clave-a2"); Profiles.ApplyRemoteReset(new string[] { "ANA" }); w.SyncProfiles(true);    // A: restablecida por control.json
+                    At(pb); w.SyncProfiles(true); Profiles.SetPassword("ANA", "clave-b"); w.SyncProfiles(true);    // B la recibe y ANA crea la nueva en B
+                    bool s3 = Profiles.ApplyRemoteReset(new string[] { "ANA" }).Count == 0 && Profiles.Check("ANA", "clave-b");    // B ve el mismo resetPass: ya estaba hecho
+                    At(pa); w.SyncProfiles(true); bool s4 = Profiles.Check("ANA", "clave-b");
+                    bool noIcon = true; foreach (string c in sentColors) if (c.Length > 0) noIcon = false;
+                    bool noPw = true; foreach (Profile p in server.Values) if (p.Hash.Contains("clave")) noPw = false;
+                    only.Append(R(s1 && s2 && s3 && s4 && noIcon && noPw, "contraseñas, dos PCs por Firebase (solo hash; restablecer viaja; resetPass no se repite) (" + s1 + s2 + s3 + s4 + noIcon + noPw + ")"));
+                    // pantalla: crear (corta, distinta, bien con color y foto) y entrar (mal y bien)
+                    At(pa); Config.Cur.Colleagues = new List<string> { "ANA" }; Config.Cur.LastUser = "";
+                    string img = Path.Combine(testDir, "cs_foto.png");
+                    { System.Windows.Media.Imaging.WriteableBitmap wb = new System.Windows.Media.Imaging.WriteableBitmap(200, 100, 96, 96, System.Windows.Media.PixelFormats.Bgr32, null);
+                      System.Windows.Media.Imaging.PngBitmapEncoder en = new System.Windows.Media.Imaging.PngBitmapEncoder(); en.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(wb)); using (FileStream fs = File.Create(img)) en.Save(fs); }
+                    PasswordBox p1 = w.U<PasswordBox>("SessPw"), p2 = w.U<PasswordBox>("SessPw2"); Func<string> msg = delegate { return w.U<TextBlock>("SessMsg").Text; };
+                    App.User = ""; w.ShowLogin(); bool u0 = w.U<FrameworkElement>("SessPick").Visibility == Visibility.Visible && w.U<FrameworkElement>("SessAuth").Visibility == Visibility.Collapsed;
+                    w.ShowAuth("nueva"); bool u1 = w.U<FrameworkElement>("SessIconBox").Visibility == Visibility.Visible && w.U<FrameworkElement>("SessPw2").Visibility == Visibility.Visible;
+                    p1.Password = "abc"; p2.Password = "abc"; w.AuthSubmit(); bool u2 = msg() == Tx.L("pwShort");
+                    p1.Password = "abcd"; p2.Password = "abcx"; w.AuthSubmit(); bool u3 = msg() == Tx.L("pwDiff") && App.User == "";
+                    w.PickColor(Profiles.Colors[3]); MainWin.PhotoPickHook = delegate { return img; };
+                    w.U<Button>("SessPhoto").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent)); MainWin.PhotoPickHook = null;
+                    p1.Password = "abcd"; p2.Password = "abcd"; w.AuthSubmit();
+                    string ph = Profiles.PhotoPath("NUEVA"); int px = 0; if (ph != null) px = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(ph), System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad).PixelWidth;
+                    bool u4 = App.User == "NUEVA" && w.U<FrameworkElement>("PanelSession").Visibility == Visibility.Collapsed && Profiles.Check("NUEVA", "abcd") && Profiles.Get("NUEVA").Color == Profiles.Colors[3] && px == 128;
+                    App.User = ""; w.ShowLogin(); bool u5 = w.U<FrameworkElement>("SessAuth").Visibility == Visibility.Visible && w.U<TextBlock>("SessWho").Text == "NUEVA" && w.U<FrameworkElement>("SessIconBox").Visibility == Visibility.Collapsed;
+                    p1.Password = "abce"; w.AuthSubmit(); bool u6 = msg() == Tx.L("loginBad") && App.User == "" && p1.Password == "";
+                    p1.Password = "abcd"; w.AuthSubmit(); bool u7 = App.User == "NUEVA";
+                    int tiles = 0; w.ShowSession(); foreach (UIElement ch in w.U<Panel>("SessNames").Children) tiles++;
+                    w.FillAdminUsers(); int rows = w.U<Panel>("AdmUsersList").Children.Count;
+                    only.Append(R(u0 && u1 && u2 && u3 && u4 && u5 && u6 && u7 && tiles == 3 && rows == 3, "contraseñas, pantalla de entrada, crear con color y foto, entrar (" + u0 + u1 + u2 + u3 + u4 + u5 + u6 + u7 + " fichas=" + tiles + " admin=" + rows + ")"));
+                }
+                catch (Exception e) { only.Append("MAL contraseñas: " + e.GetType().Name + " " + e.Message + "\r\n"); }
+                finally
+                {
+                    Profiles.RemoteHook = null; MainWin.PhotoPickHook = null; App.DataDir = keepData; Profiles.Reload();
+                    Config.Cur.LastUser = keepLast; App.User = keepUser; Config.Cur.Colleagues = keepCols; if (keepLc != null) G.Lists["colleagues"] = keepLc; Config.Save();
+                    w.U<FrameworkElement>("PanelSession").Visibility = Visibility.Collapsed;
+                }
+            }
             // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
             StringBuilder gd = new StringBuilder(); bool gok = true;
             string appd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GESTEM");
@@ -667,7 +743,7 @@ namespace Gestem
         }        static string SessText(MainWin w)
         {
             List<string> nm = new List<string>();
-            foreach (UIElement ch in w.U<Panel>("SessNames").Children) { Button b = (Button)ch; nm.Add(Ps.Str(b.Content) + (b.FontWeight == FontWeights.SemiBold ? "*" : "")); }
+            foreach (UIElement ch in w.U<Panel>("SessNames").Children) { Button b = (Button)ch; nm.Add(Ps.Str(b.Tag) + (b.FontWeight == FontWeights.SemiBold ? "*" : "")); }
             string[] lc; G.Lists.TryGetValue("colleagues", out lc);
             return "names=" + string.Join(",", nm) + "|vis=" + w.U<FrameworkElement>("PanelSession").Visibility + "|hint=" + w.U<FrameworkElement>("SessNewHint").Visibility + "|user=" + App.User + "|last=" + Config.Cur.LastUser
                 + "|col=" + string.Join(",", Config.Cur.Colleagues) + "|lists=" + (lc == null ? "" : string.Join(",", lc)) + "|btn=" + Ps.Str(w.U<ContentControl>("UserBtn").Content) + "|title=" + w.U<TextBlock>("SessTitle").Text;
@@ -710,6 +786,7 @@ namespace Gestem
         }        static void AdmTree(object node, List<string> l)
         {
             DependencyObject d = node as DependencyObject; if (d == null) return;
+            FrameworkElement fe = d as FrameworkElement; if (fe != null && (fe.Name == "AdmTabUsers" || fe.Name == "AdmPageUsers")) return;    // solo GESTEM.exe (usuarios con contraseña): PowerShell no lo tiene
             if (d is TextBlock) l.Add(((TextBlock)d).Text); else if (d is ContentControl && ((ContentControl)d).Content is string) l.Add((string)((ContentControl)d).Content);
             foreach (object ch in LogicalTreeHelper.GetChildren(d)) AdmTree(ch, l);
         }

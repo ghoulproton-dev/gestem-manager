@@ -1416,16 +1416,45 @@
             <TextBlock FontSize="12" Foreground="#667085" Margin="0,2,0,0"><Run Text="GESTEM" FontWeight="SemiBold" Foreground="#C4161C"/><Run Text=" Manager"/></TextBlock>
           </StackPanel>
         </StackPanel>
-        <TextBlock x:Name="SessTitle" Style="{StaticResource Heading}" FontSize="22" Margin="0,26,0,6"/>
-        <TextBlock x:Name="SessHint" Foreground="#667085" TextWrapping="Wrap"/>
-        <WrapPanel x:Name="SessNames" Margin="0,18,0,6"/>
-        <DockPanel Margin="0,8,0,0">
-          <Button x:Name="SessGo" Style="{StaticResource Primary}" DockPanel.Dock="Right" Height="38" MinWidth="100" FontSize="13" Margin="8,0,0,0"/>
-          <Grid>
-            <TextBox x:Name="SessNew" CharacterCasing="Upper" Height="38"/>
-            <TextBlock x:Name="SessNewHint" IsHitTestVisible="False" Foreground="#98A2B3" Margin="11,0,0,0" VerticalAlignment="Center"/>
-          </Grid>
-        </DockPanel>
+        <StackPanel x:Name="SessPick">
+          <TextBlock x:Name="SessTitle" Style="{StaticResource Heading}" FontSize="22" Margin="0,26,0,6"/>
+          <TextBlock x:Name="SessHint" Foreground="#667085" TextWrapping="Wrap"/>
+          <WrapPanel x:Name="SessNames" Margin="0,18,0,6"/>
+          <DockPanel Margin="0,8,0,0">
+            <Button x:Name="SessGo" Style="{StaticResource Primary}" DockPanel.Dock="Right" Height="38" MinWidth="100" FontSize="13" Margin="8,0,0,0"/>
+            <Grid>
+              <TextBox x:Name="SessNew" CharacterCasing="Upper" Height="38"/>
+              <TextBlock x:Name="SessNewHint" IsHitTestVisible="False" Foreground="#98A2B3" Margin="11,0,0,0" VerticalAlignment="Center"/>
+            </Grid>
+          </DockPanel>
+        </StackPanel>
+        <!-- contraseña (entrar) o crear contraseña e icono (primera vez o restablecida) -->
+        <StackPanel x:Name="SessAuth" Visibility="Collapsed">
+          <StackPanel Orientation="Horizontal" Margin="0,26,0,0">
+            <Grid x:Name="SessAvatar" Width="64" Height="64"/>
+            <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+              <TextBlock x:Name="SessWho" Style="{StaticResource Heading}" FontSize="22"/>
+              <TextBlock x:Name="SessAuthHint" Foreground="#667085" TextWrapping="Wrap" MaxWidth="370" Margin="0,2,0,0"/>
+            </StackPanel>
+          </StackPanel>
+          <StackPanel x:Name="SessIconBox" Margin="0,18,0,0">
+            <TextBlock x:Name="SessIconLbl" FontWeight="SemiBold" Foreground="#344054"/>
+            <WrapPanel x:Name="SessColors" Margin="0,8,0,0"/>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+              <Button x:Name="SessPhoto" Style="{StaticResource Btn}" Height="32" Padding="14,0" FontSize="12.5"/>
+              <Button x:Name="SessNoPhoto" Style="{StaticResource Btn}" Height="32" Padding="14,0" FontSize="12.5" Margin="8,0,0,0"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock x:Name="SessPwLbl" FontWeight="SemiBold" Foreground="#344054" Margin="0,18,0,6"/>
+          <PasswordBox x:Name="SessPw" Height="38" Padding="10,0" VerticalContentAlignment="Center" BorderBrush="#D9D4D5"/>
+          <TextBlock x:Name="SessPw2Lbl" FontWeight="SemiBold" Foreground="#344054" Margin="0,12,0,6"/>
+          <PasswordBox x:Name="SessPw2" Height="38" Padding="10,0" VerticalContentAlignment="Center" BorderBrush="#D9D4D5"/>
+          <TextBlock x:Name="SessMsg" Foreground="#B42318" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,0"/>
+          <DockPanel Margin="0,14,0,0">
+            <Button x:Name="SessEnter" Style="{StaticResource Primary}" DockPanel.Dock="Right" Height="38" MinWidth="130" FontSize="13" Padding="18,0"/>
+            <Button x:Name="SessBack" Style="{StaticResource Btn}" Height="38" Padding="14,0" FontSize="12.5" HorizontalAlignment="Left"/>
+          </DockPanel>
+        </StackPanel>
       </StackPanel>
     </Border>
   </Grid>
@@ -1774,6 +1803,7 @@
               <RadioButton x:Name="AdmTabLocks" Style="{StaticResource Seg}" GroupName="adm" IsChecked="True" Content="Bloqueos"/>
               <RadioButton x:Name="AdmTabLog" Style="{StaticResource Seg}" GroupName="adm" Content="Actividad"/>
               <RadioButton x:Name="AdmTabTools" Style="{StaticResource Seg}" GroupName="adm" Content="Herramientas"/>
+              <RadioButton x:Name="AdmTabUsers" Style="{StaticResource Seg}" GroupName="adm" Content="Usuarios"/>
             </StackPanel>
           </Border>
         </Border>
@@ -1799,6 +1829,15 @@
                 <Button x:Name="AdmSaveLocks" Style="{StaticResource Primary}" Height="40" Padding="22,0" FontSize="14" Content="Guardar bloqueos"/>
                 <TextBlock x:Name="AdmLocksMsg" Foreground="#1B7F45" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0"/>
               </StackPanel>
+            </StackPanel>
+          </Border>
+          <!-- USUARIOS (solo GESTEM.exe) -->
+          <Border x:Name="AdmPageUsers" Style="{StaticResource Card}" Padding="26,22" VerticalAlignment="Top" Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock Text="Contraseñas de los usuarios" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="16" FontWeight="SemiBold" Foreground="#1E1A1B"/>
+              <TextBlock Text="«Restablecer contraseña»: esa persona crea una nueva la próxima vez que entre. Con Firebase encendido vale para todos los PCs." Foreground="#6E6466" TextWrapping="Wrap" Margin="0,4,0,14"/>
+              <StackPanel x:Name="AdmUsersList"/>
+              <TextBlock x:Name="AdmUsersMsg" Foreground="#1B7F45" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0"/>
             </StackPanel>
           </Border>
           <!-- ACTIVIDAD -->

@@ -123,6 +123,7 @@ namespace Gestem
         {
             if (Updater.GetKey().Length == 0) { try { AskGestemKey(); } catch (Exception e) { App.Log("clave de GESTEM: " + e.Message); } }
             StartUpdateCheckAsync();
+            try { SyncProfiles(true); } catch (Exception e) { App.Log("usuarios (Firebase): " + e.Message); }    // antes de control.json «resetPass»
             CheckRemote();
         }
 
@@ -201,6 +202,7 @@ namespace Gestem
             Remote = j;
             if (j == null) return;
             if (App.Real && ExeSwitch.WantsPs(j)) { leaving = true; ExeSwitch.BackToPs(); Win.Close(); return; }    // vuelta remota a PowerShell
+            if (Profiles.ApplyRemoteReset(Profiles.ResetNames(j)).Count > 0) SyncProfiles(false);    // «resetPass»: crear contraseña nueva al entrar
             string msg = Ps.Str(Json.Str(j, "mensaje")).Trim();
             if (msg.Length > 0)
             {

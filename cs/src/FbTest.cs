@@ -94,6 +94,24 @@ namespace Gestem
                 FbResult r5 = Fb.SyncOnce(key, a, r4.Mod.Length > 0 ? r4.Mod : r3.Mod, new List<FbPush>(), "OTROPC");    // F7 no recibió nada: su Mod viene vacío
                 string got = ""; foreach (FbDoc d in r5.Pulled) if (d.Datos.Contains("CAMBIO 20 S")) got = "CAMBIO 20 S";
                 o.Append("F11 pend=" + FbState.Load().Pend.Count + " otroRecibe=" + r5.Pulled.Count + " estado=" + got + " err=" + Fb.LastErr + "\r\n");
+                // usuarios: en Firestore solo hash, sal y estado (ni la contraseña ni el icono); otro PC la recibe y la restablece; este lo recibe
+                {
+                    string keepData = App.DataDir, otro = Path.Combine(dir, "cs_fb_otro_pc"); if (Directory.Exists(otro)) Directory.Delete(otro, true); Directory.CreateDirectory(otro);
+                    foreach (string f in new string[] { "usuarios.json" }) if (File.Exists(Path.Combine(dir, f))) File.Delete(Path.Combine(dir, f));
+                    Profiles.Reload(); Profiles.SetIcon("PRUEBA USUARIO", "#15803D", ""); Profiles.SetPassword("PRUEBA USUARIO", "clave-prueba-1");
+                    FbAuth ua = a; List<Profile> u1 = Profiles.SyncOnce(key, ref ua, Profiles.Snapshot());
+                    object raw = Fb.J("POST", "https://firestore.googleapis.com/v1/" + Fb.Base + ":runQuery", Fb.D("structuredQuery", Fb.D("from", new List<object> { Fb.D("collectionId", "usuarios") })), a.Id, null);
+                    string rt = Json.WriteCompact(raw);
+                    o.Append("F12 enFirebase=" + u1.Count + " hash=" + rt.Contains(Profiles.Get("PRUEBA USUARIO").Hash) + " contraseña=" + rt.Contains("clave-prueba-1") + " icono=" + rt.Contains("15803D") + "\r\n");
+                    App.DataDir = otro; Profiles.Reload();
+                    bool recv = Profiles.Merge(Profiles.SyncOnce(key, ref ua, Profiles.Snapshot()));
+                    bool ok = Profiles.Check("PRUEBA USUARIO", "clave-prueba-1");
+                    Profiles.Reset("PRUEBA USUARIO", "admin"); Profiles.SyncOnce(key, ref ua, Profiles.Snapshot());
+                    o.Append("F13 otroPC recibe=" + recv + " entra=" + ok + " icono=" + (Profiles.Get("PRUEBA USUARIO").Color == "" ? "no" : "sí") + "\r\n");
+                    App.DataDir = keepData; Profiles.Reload();
+                    bool back = Profiles.Merge(Profiles.SyncOnce(key, ref ua, Profiles.Snapshot()));
+                    o.Append("F14 esteRecibeRestablecida=" + back + " tieneContraseña=" + Profiles.HasPassword("PRUEBA USUARIO") + " icono=" + Profiles.Get("PRUEBA USUARIO").Color + "\r\n");
+                }
                 // gestoría de verdad: la puerta no deja ni mirarla sin --real
                 string keep = Fb.Gest; Fb.Gest = "elmahi"; try { Fb.CheckName(Fb.Base + "/clientes/x"); o.Append("F8 puerta=MAL\r\n"); } catch (InvalidOperationException) { o.Append("F8 puerta=OK\r\n"); } finally { Fb.Gest = keep; }
                 try { Fb.CheckName(Fb.Root + "/gestorias/elmahi/clientes/x"); o.Append("F9 fuera=MAL\r\n"); } catch (InvalidOperationException) { o.Append("F9 fuera=OK\r\n"); }

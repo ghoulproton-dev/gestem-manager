@@ -10,6 +10,8 @@ foreach ($fd in $ast.FindAll({ param($n) $n -is [System.Management.Automation.La
     if ($fd.Parent -ne $null -and $fd.Parent.Parent -ne $null -and $fd.Parent.Parent -ne $ast) { continue }
     . ([ScriptBlock]::Create($fd.Extent.Text))
 }foreach ($code in (& (Join-Path $here 'psblocks.ps1') $lines)) { . ([ScriptBlock]::Create($code)) }
+# GESTEM.exe puede ir por delante de GESTEM.ps1 (2.0.1+ solo C#): se compara la lógica de versiones con el número del C#
+$script:AppVersion = [regex]::Match([IO.File]::ReadAllText((Join-Path (Split-Path -Parent $here) 'src\App.cs')), 'const string Version = "([^"]+)"').Groups[1].Value
 $script:ES = [Globalization.CultureInfo]::GetCultureInfo('es-ES')
 $script:BackupDir = Join-Path $TestDir 'copias_ps'
 $script:LogPath = Join-Path $TestDir 'ps_log.txt'
