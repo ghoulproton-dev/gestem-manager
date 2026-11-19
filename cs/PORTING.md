@@ -187,5 +187,13 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         Prueba: DC find/off/on/none con dos «nubes» de prueba. ToastHook va ahora en ShowToast (todos los avisos, como pstest).
         build.bat compila a GESTEM.new.exe y solo cambia GESTEM.exe si compila y arranca (--smoke); si falla, queda el anterior.
   - [x] 5d Firebase (FbSync.cs): unión, envío, recibir, interruptor de admin (solo con --real), actualización cada 20 s. En modo prueba nunca sincroniza; Fb.CheckName no deja usar nada fuera de gestorias/elmahi/_tests/ sin --real; los campos Local (contraseñas) nunca se suben. Igualdad sin red en test.bat (FB S0–S3). Red de verdad aparte: `GESTEM.exe --fbtest <carpeta> elmahi/_tests/<nombre>` (datos inventados, empieza vacía, lo borra todo al final, escribe cs_fb.txt y cs_fb_paths.txt; F10/F11: la vuelta de 20 s de la ventana, Fb.Step, con el interruptor apagado y encendido; Fb.TestRun solo lo pone --fbtest). Restos de una prueba cortada: `GESTEM.exe --fbclean <carpeta>` (busca con una consulta limitada a _tests/, borra solo ahí; cs_fbclean.txt).
-- [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos
+- [x] Etapa 6 — las dos versiones lado a lado con una copia de los datos (tools\side.ps1: prep / start / dump ps|cs / stop).
+      PowerShell 1.9.3 corre desde una copia del script con su propio APPDATA (cs\test\side), C# en modo prueba; Firebase apagado
+      en los dos. dump lee por UI Automation las 14 listas de trámites, la ficha del 1.er cliente de cada uno, resumen, colaboradores
+      y ajustes. Prueba 19/11/2026: 1035 líneas idénticas. Diferencias encontradas:
+      1) línea de estado sin deudas: PowerShell «(-)», C# «(0,00 €)» -> arreglado en C#.
+      2) a propósito: C# quita al abrir los clientes repetidos de pestañas a mano (ver «Encontrado al trasladar»); PowerShell
+         los sigue mostrando (Homologación 14/7, Autónomo 34/17…, resumen 190/152 expedientes). Para comparar lo demás, dump ps
+         se hizo con los «GESTEM datos» ya limpiados por C#.
+      Ojo: abrir el GESTEM.ps1 copiado cambia los accesos directos -> fix_shortcuts.bat después.
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe

@@ -241,7 +241,7 @@ namespace Gestem
             if (G.Rows == null) return;
             int n = 0; double sum = 0;
             foreach (ClientRow r in G.Rows) if (r.Pending > 0) { n++; sum += r.Pending; }
-            SetStatus(string.Format(L("ready"), G.Rows.Count, n, Ps.Money(sum)));
+            SetStatus(string.Format(L("ready"), G.Rows.Count, n, n == 0 ? Ps.Money(null) : Ps.Money(sum)));    // PS: la suma de nada es $null -> «-»
         }
 
         // requerimientos abiertos que vencen en ≤3 días hábiles o ya vencidos; rojo si alguno venció
