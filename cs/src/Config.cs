@@ -73,6 +73,7 @@ namespace Gestem
             o["InvNif"] = c.InvNif; o["InvAddress"] = c.InvAddress; o["InvTown"] = c.InvTown; o["InvIban"] = c.InvIban;
             o["SumsRepaired"] = c.SumsRepaired; o["ExcelRepaired"] = c.ExcelRepaired;
             o["TasasCanje"] = c.TasasCanje; o["TradProfit"] = c.TradProfit; o["Collaborators"] = c.Collaborators; o["UpdateKey"] = c.UpdateKey;
+            App.Guard(App.CfgPath, "config");
             File.WriteAllText(App.CfgPath, Json.Write(o), new UTF8Encoding(true));
         }
 

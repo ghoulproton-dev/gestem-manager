@@ -112,6 +112,7 @@ namespace Gestem
         public static string EnterLock()
         {
             string d = Dir();
+            App.Guard(d, "datos de GESTEM");
             if (!Directory.Exists(d)) Directory.CreateDirectory(d);
             string lk = Path.Combine(d, "bloqueo.lock");
             for (int i = 0; i < 50; i++)
@@ -280,6 +281,7 @@ namespace Gestem
             obj["borradosMano"] = hd;
             string json = Json.Write(obj);
             string tmp = p + ".tmp";
+            App.Guard(p, "datos de GESTEM");
             File.WriteAllText(tmp, json, new UTF8Encoding(true));
             if (File.Exists(p))
             {

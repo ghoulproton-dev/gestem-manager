@@ -153,7 +153,7 @@ namespace Gestem
             if (h == null) return;
             try
             {
-                if (save) Com.Call(h.Wb, "Save");
+                if (save) { App.Guard(Ps.Str(Com.Get(h.Wb, "FullName")), "Excel"); Com.Call(h.Wb, "Save"); }
                 if (h.Mine) { Com.Call(h.Wb, "Close", false); Com.Call(h.Xl, "Quit"); }
             }
             finally

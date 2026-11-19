@@ -534,6 +534,7 @@ namespace Gestem
             string root = Store.Dir();
             if (root == null || !Directory.Exists(root)) return;
             string dst = Path.Combine(dir, "datos GESTEM");
+            App.Guard(dst, "copia externa");
             if (!Directory.Exists(dst)) Directory.CreateDirectory(dst);
             foreach (string f in Directory.GetFiles(root, "*.json")) { try { File.Copy(f, Path.Combine(dst, Path.GetFileName(f)), true); } catch { } }
         }

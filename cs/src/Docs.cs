@@ -44,7 +44,7 @@ namespace Gestem
                     string n = Path.GetFileName(d);
                     if (n == id || n.StartsWith(id + " - ", StringComparison.Ordinal)) return d;
                 }
-            if (create) Directory.CreateDirectory(p);
+            if (create) { App.Guard(p, "documentos"); Directory.CreateDirectory(p); }
             return p;
         }
 
@@ -59,6 +59,7 @@ namespace Gestem
         {
             MergeResult res = new MergeResult();
             if (string.IsNullOrEmpty(from) || !Directory.Exists(from)) return res;
+            App.Guard(from, "documentos"); App.Guard(to, "documentos");
             string src = Path.GetFullPath(from).TrimEnd('\\');
             if (!Directory.Exists(to)) Directory.CreateDirectory(to);
             string dst = Path.GetFullPath(to).TrimEnd('\\');
@@ -122,6 +123,7 @@ namespace Gestem
             if (root == null || s == null) return 0;
             string tdir = Path.Combine(root, SafeName(t.Sheet));
             if (!Directory.Exists(tdir)) return 0;
+            App.Guard(tdir, "documentos");    // arreglar carpetas: nunca en los documentos de verdad sin --real
             Dictionary<string, ClientRec> byId = new Dictionary<string, ClientRec>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, ClientRec> byName = new Dictionary<string, ClientRec>(StringComparer.OrdinalIgnoreCase);
             HashSet<string> many = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

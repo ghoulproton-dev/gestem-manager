@@ -168,6 +168,7 @@ namespace Gestem
             if (ask && MessageBox.Show(Win, string.Format(L("docsRemoveAsk"), it.Name), App.Name, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
             try
             {
+                App.Guard(it.Path, "documentos");
                 Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(it.Path, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
                 App.Log(string.Format("quitó un documento del expediente {0}", DocsRow.Id));
             }

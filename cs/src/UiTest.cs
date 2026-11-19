@@ -18,12 +18,12 @@ namespace Gestem
         {
             StringBuilder o = new StringBuilder();
             int errors = 0;
-            App.Quiet = true;
+            App.Quiet = true; App.AddSafeRoot(testDir);
             App.DataDir = testDir; App.BackupDir = Path.Combine(testDir, "copias"); App.LogPath = Path.Combine(testDir, "ui_log.txt");
             App.CfgPath = Path.Combine(testDir, "config_ui.json"); FbState.Path = Path.Combine(testDir, "ui_firebase.json");
             Directory.CreateDirectory(App.BackupDir);
             Config.Cur = new Config(); Config.Cur.ExcelPath = Path.Combine(testDir, "cs", "x.xlsx");
-            Config.Cur.UpdateKey = "clave-prueba"; Config.Cur.FbSync = false; Config.Cur.DocsDir = "D:/docs"; Config.Cur.Collaborators.Add("ABOGADO X");
+            Config.Cur.UpdateKey = "clave-prueba"; Config.Cur.FbSync = false; Config.Cur.DocsDir = Path.Combine(testDir, "docs"); Config.Cur.Collaborators.Add("ABOGADO X");
             Config.Cur.TabsChecked = new List<string>();
             if (scenario != "recheck") foreach (Tramite t in Tramite.All) Config.Cur.TabsChecked.Add(t.Id);   // sin abrir Excel
             if (scenario == "fr" || scenario == "ar") Config.Cur.Language = scenario;
@@ -95,7 +95,7 @@ namespace Gestem
                     // los ajustes de 1.8–1.9 sobreviven a un guardado (cambiar de trámite guarda config)
                     Config.Load();
                     Config c = Config.Cur;
-                    o.Append("UI config " + (c.UpdateKey == "clave-prueba" && !c.FbSync && c.DocsDir == "D:/docs" && c.Collaborators.Contains("ABOGADO X") && c.TradProfit == 3 ? "OK" : "MAL") + "\r\n");
+                    o.Append("UI config " + (c.UpdateKey == "clave-prueba" && !c.FbSync && c.DocsDir == Path.Combine(testDir, "docs") && c.Collaborators.Contains("ABOGADO X") && c.TradProfit == 3 ? "OK" : "MAL") + "\r\n");
                 });
                 Pump(w);
                 // también los que recogió el aviso de error de la ventana (eventos que llegan más tarde)

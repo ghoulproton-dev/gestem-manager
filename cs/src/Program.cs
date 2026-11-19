@@ -33,13 +33,17 @@ namespace Gestem
                     return 0;
                 }
                 // INICIO: config, trámite de la última vez, ventana
+                // hasta terminar el traslado: sin --real se trabaja con una COPIA (cs\data\prueba) y documentos de prueba (cs\data\docs)
+                App.Real = Array.IndexOf(args, "--real") >= 0;
+                if (!App.Real) TestMode.Setup(); else Config.Load();
                 App.EnsureDirs();
                 AppDomain.CurrentDomain.UnhandledException += delegate(object s, UnhandledExceptionEventArgs e) { Exception x = e.ExceptionObject as Exception; if (x != null) App.LogError("programa", x); };
-                Config.Load();
                 Tx.Lang = Config.Cur.Language;
                 G.T = Tramite.ById(Config.Cur.Tramite) ?? Tramite.All[0];
                 Application app = new Application();
-                app.Run(new MainWin().Win);
+                MainWin mw = new MainWin();
+                if (!App.Real) mw.Win.Title += "  —  " + TestMode.Banner;
+                app.Run(mw.Win);
             }
             catch (Exception ex)
             {

@@ -46,6 +46,7 @@ namespace Gestem
                 pend[(string)e.Key] = x;
             }
             Dictionary<string, object> o = new Dictionary<string, object>(); o["lastMod"] = LastMod; o["joined"] = Joined; o["pend"] = pend;
+            App.Guard(Path, "firebase.json");
             string tmp = Path + ".tmp";
             File.WriteAllText(tmp, Json.Write(o), new UTF8Encoding(true));
             if (File.Exists(Path)) File.Delete(Path);

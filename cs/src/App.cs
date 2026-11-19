@@ -25,12 +25,32 @@ namespace Gestem
 
         public static void EnsureDirs()
         {
+            Guard(DataDir, "carpeta de GESTEM"); Guard(BackupDir, "copias");
             Directory.CreateDirectory(DataDir);
             Directory.CreateDirectory(BackupDir);
         }
 
-        public static bool Quiet;
-        public static Func<DateTime> Now = delegate { return DateTime.Now; };    // Get-Date (la prueba la fija)      // pruebas (--uitest): sin ventanas de aviso que bloqueen
+        public static bool Quiet;      // pruebas (--uitest): sin ventanas de aviso que bloqueen
+        public static Func<DateTime> Now = delegate { return DateTime.Now; };    // Get-Date (la prueba la fija)
+
+        // MODO PRUEBA (hasta terminar el traslado): GESTEM.exe solo escribe dentro de las carpetas de prueba registradas.
+        // Los datos, documentos, config y registro de verdad solo con «GESTEM.exe --real».
+        public static bool Real;
+        static readonly List<string> safeRoots = new List<string>();
+        public static void AddSafeRoot(string dir) { safeRoots.Add(Path.GetFullPath(dir).TrimEnd('\\') + "\\"); }
+        public static bool IsSafe(string path)
+        {
+            if (Real) return true;
+            if (string.IsNullOrEmpty(path)) return false;
+            string f = Path.GetFullPath(path).TrimEnd('\\') + "\\";
+            foreach (string r in safeRoots) if (f.StartsWith(r, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+        // antes de crear, cambiar, mover o borrar algo: fuera de las carpetas de prueba, error (nunca se toca)
+        public static void Guard(string path, string what)
+        {
+            if (!IsSafe(path)) throw new GestemException("Modo de prueba: GESTEM.exe no toca datos reales (" + what + ": " + path + "). Para usarlos: GESTEM.exe --real");
+        }
 
         // error inesperado: al registro con el tipo, la pila completa y las excepciones internas
         public static void LogError(string where, Exception e)
@@ -45,6 +65,7 @@ namespace Gestem
             try
             {
                 string line = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", Ps.Inv) + "  [" + who + "] " + msg + "\r\n";
+                if (!IsSafe(LogPath)) return;    // modo prueba: nunca en el registro de verdad
                 File.AppendAllText(LogPath, line, new UTF8Encoding(!File.Exists(LogPath)));
             }
             catch { }

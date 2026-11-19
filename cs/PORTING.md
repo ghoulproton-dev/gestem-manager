@@ -140,6 +140,11 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
       carpeta para los dos; árbol, cuentas, panel y añadir idénticos. Sin probar (diálogos): quitar, abrir, diálogo de añadir.
       Pendiente: elegir carpeta en Ajustes (etapa 4), buscarla en la nube (5b), copia a la carpeta externa (5).
       Versión del C#: 1.9.3.
+- [x] MODO PRUEBA (hasta terminar el traslado): GESTEM.exe sin --real trabaja con una copia (cs\data\prueba: config, registro,
+      Excel y «GESTEM datos» copiados la primera vez; borrar la carpeta para copiar de nuevo) y documentos de prueba (cs\data\docs).
+      App.Guard para toda escritura fuera de las carpetas de prueba (datos, documentos, Excel, config, copias, firebase.json);
+      el registro de verdad no se toca. La ventana lo dice en el título. Prueba: selftest -> test\cs_guard.txt (GUARD OK).
+      Quitar el modo prueba (o dejar --real por defecto) en la etapa 7.
 - [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto, Colaboradores, margen
 - [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
 - [ ] Etapa 5b — Firebase (sincronización, primera unión) y carpeta de documentos compartida

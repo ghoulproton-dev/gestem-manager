@@ -19,6 +19,7 @@ namespace Gestem
         public static int Run(string testDir)
         {
             StringBuilder o = new StringBuilder();
+            App.AddSafeRoot(testDir);
             App.DataDir = testDir; App.BackupDir = Path.Combine(testDir, "copias"); App.LogPath = Path.Combine(testDir, "cs_log.txt"); App.CfgPath = Path.Combine(testDir, "config_cs.json"); FbState.Path = Path.Combine(testDir, "cs_firebase.json");
             Directory.CreateDirectory(App.BackupDir);
             Config.Cur = new Config();
@@ -275,7 +276,27 @@ namespace Gestem
                 dupOut.Append("DUP " + t.Id + " clientes=" + s.Clients.Count + " repetidos=" + dup + "\r\n");
             }
             dupOut.Append(bad == 0 ? "DUP OK\r\n" : "DUP MAL\r\n");
-            File.WriteAllText(Path.Combine(testDir, "cs_dups.txt"), dupOut.ToString(), new UTF8Encoding(false));
+            // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
+            StringBuilder gd = new StringBuilder(); bool gok = true;
+            string appd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GESTEM");
+            foreach (string rp in new string[] { Path.Combine(appd, "config.json"), Path.Combine(appd, "gestem.log"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM datos"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM documentos") })
+            {
+                bool blocked = false; try { App.Guard(rp, "prueba"); } catch (GestemException) { blocked = true; }
+                gd.Append("GUARD " + (blocked ? "parado " : "PERMITIDO ") + rp + "\r\n"); gok &= blocked;
+            }
+            gd.Append("GUARD " + (App.IsSafe(testDir) ? "permitido " : "PARADO ") + "carpeta de prueba\r\n"); gok &= App.IsSafe(testDir);
+            // arreglar carpetas en unos documentos que no son de prueba: no se mueve nada
+            string outside = Path.Combine(Path.GetTempPath(), "gestem_guard_" + Guid.NewGuid().ToString("N"));
+            string mis = Path.Combine(outside, "DGT ACTUALIZADO", ids[2] + " - " + Docs.SafeName(RowById(ids[1]).Name));
+            Directory.CreateDirectory(mis); File.WriteAllText(Path.Combine(mis, "x.pdf"), "X");
+            Config.Cur.DocsDir = outside;
+            Docs.RepairAll();
+            bool still = Directory.Exists(mis) && File.Exists(Path.Combine(mis, "x.pdf"));
+            gd.Append("GUARD arreglar documentos fuera de prueba: " + (still ? "no tocados" : "MOVIDOS") + "\r\n"); gok &= still;
+            try { Directory.Delete(outside, true); } catch { }
+            Config.Cur.DocsDir = droot;
+            gd.Append(gok ? "GUARD OK\r\n" : "GUARD MAL\r\n");
+            File.WriteAllText(Path.Combine(testDir, "cs_guard.txt"), gd.ToString(), new UTF8Encoding(false));            File.WriteAllText(Path.Combine(testDir, "cs_dups.txt"), dupOut.ToString(), new UTF8Encoding(false));
             return 0;
         }
 

@@ -66,6 +66,7 @@ namespace Gestem
         {
             try
             {
+                App.Guard(App.BackupDir, "copias");
                 string src = Config.Cur.ExcelPath;
                 string name = Path.GetFileNameWithoutExtension(src);
                 string dst = Path.Combine(App.BackupDir, name + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".xlsx");
@@ -128,6 +129,7 @@ namespace Gestem
             if (Config.Cur.ExcelRepaired) return;
             string path = Config.Cur.ExcelPath ?? "";
             if (path.Length == 0 || !File.Exists(path)) return;
+            App.Guard(path, "Excel");
             try { using (FileStream probe = File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { } }
             catch { App.Log("reparar Excel: el archivo está abierto, se hará otro día"); return; }
             string tmp = Path.Combine(Path.GetTempPath(), "GESTEM_reparar_" + Guid.NewGuid().ToString("N") + ".xlsx");
@@ -276,6 +278,7 @@ namespace Gestem
             SumFixed = 0;
             string path = Config.Cur.ExcelPath ?? "";
             if (path.Length == 0 || !File.Exists(path)) return null;
+            App.Guard(path, "Excel");
             // abierto en Excel (aquí o en otro PC): Excel tiene el archivo bloqueado -> se usa Excel
             try { using (FileStream probe = File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { } }
             catch { App.Log("Excel directo: el archivo está abierto en otro programa"); return null; }
