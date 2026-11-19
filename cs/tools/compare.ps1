@@ -18,7 +18,14 @@ foreach ($f in Get-ChildItem (Join-Path $TestDir 'ps\GESTEM datos') -Filter '*.j
     $eq = (Get-Canon $f.FullName) -eq (Get-Canon (Join-Path $TestDir ('cs\GESTEM datos\' + $f.Name)))
     [void]$out.AppendLine("$($f.Name): " + $(if ($eq) { 'IGUAL' } else { 'DISTINTO' }))
 }
-$eq = (Get-Canon (Join-Path $TestDir 'ps_firebase.json')) -eq (Get-Canon (Join-Path $TestDir 'cs_firebase.json'))
+# pendientes: es un @{} (el orden no cuenta) y los uid nuevos son GUID al azar
+function Get-FbCanon([string]$p) {
+    if (-not (Test-Path -LiteralPath $p)) { return '(no existe)' }
+    $j = [IO.File]::ReadAllText($p, [Text.Encoding]::UTF8) | ConvertFrom-Json
+    $l = @($j.pend.PSObject.Properties | ForEach-Object { ($_.Name -replace '^[0-9a-f]{32}$', 'GUID') + "|$($_.Value.t)|$($_.Value.h)|$($_.Value.n)" } | Sort-Object)
+    return "$($j.lastMod)|$($j.joined)`n" + ($l -join "`n")
+}
+$eq = (Get-FbCanon (Join-Path $TestDir 'ps_firebase.json')) -eq (Get-FbCanon (Join-Path $TestDir 'cs_firebase.json'))
 [void]$out.AppendLine("firebase.json (pendientes): " + $(if ($eq) { 'IGUAL' } else { 'DISTINTO' }))
 [IO.File]::WriteAllText((Join-Path $TestDir 'result.txt'), $out.ToString(), (New-Object Text.UTF8Encoding $true))
 $out.ToString()

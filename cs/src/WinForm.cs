@@ -438,20 +438,22 @@ namespace Gestem
         public void SaveFromForm()
         {
             App.Log("Save-FromForm inicio");
-            // shortcut: Ctrl+Z de la última acción rápida (UndoInfo) llega en la etapa 3c
+            Undo = null;   // un cambio nuevo: lo anterior ya no se deshace con Ctrl+Z
             Dictionary<string, object> vals = GetFormValues();
             if (V(vals, "name").Length == 0) { ShowError(L("reqName")); FocusCtl("name"); return; }
             string nl = Environment.NewLine + Environment.NewLine;
             ClientRow dup = FindDuplicateDoc(V(vals, "doc"));
             if (dup != null && MessageBox.Show(Win, string.Format(L("dupAsk"), dup.Id, dup.Name, nl), App.Name, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            Busy = true;
             ClientRec conf = EditConflict();
+            Busy = false;
             if (conf != null)
             {
                 string[] ww = WhoWhen(conf);
                 if (MessageBox.Show(Win, string.Format(L("conflictAsk"), ww[0], ww[1]), App.Name, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             }
             Button save = U<Button>("SaveBtn");
-            save.IsEnabled = false; Win.Cursor = Cursors.Wait;
+            save.IsEnabled = false; Busy = true; Win.Cursor = Cursors.Wait;
             SetStatus(L("savingMsg"));
             try
             {
@@ -471,7 +473,7 @@ namespace Gestem
                 ShowError(L("errGeneric") + Environment.NewLine + e.Message);
                 SetStatus("");
             }
-            finally { save.IsEnabled = true; Win.Cursor = null; }
+            finally { save.IsEnabled = true; Busy = false; Win.Cursor = null; }
         }
 
         public void EditSelected()

@@ -29,7 +29,8 @@ namespace Gestem
             Directory.CreateDirectory(BackupDir);
         }
 
-        public static bool Quiet;      // pruebas (--uitest): sin ventanas de aviso que bloqueen
+        public static bool Quiet;
+        public static Func<DateTime> Now = delegate { return DateTime.Now; };    // Get-Date (la prueba la fija)      // pruebas (--uitest): sin ventanas de aviso que bloqueen
 
         // error inesperado: al registro con el tipo, la pila completa y las excepciones internas
         public static void LogError(string where, Exception e)

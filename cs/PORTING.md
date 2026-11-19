@@ -129,8 +129,13 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
 
 ## Pendiente
 - [x] Etapa 2d — ver «Hecho»
-- [ ] Etapa 3c–3d — ventana (3a y 3b hechas): lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos,
-      eliminar cliente, aviso de requerimientos
+- [x] Etapa 3c — menú del clic derecho (WinMenu.cs): estados, «pagado», asignar responsable (varios a la vez), copiar nombre/NIE/teléfono,
+      eliminar cliente (marca borrado; pestaña a mano: borradosMano), Ctrl+Z (un dato, responsable, eliminar). Prueba: pstest.ps1 usa
+      las funciones reales con la hora fija (Get-Date) y pinta el menú de cada cliente (2375 líneas iguales, datos y firebase.json iguales).
+      Recibo, documentos, carpeta y abrir Excel salen desactivados hasta su etapa.
+      ERROR DE POWERSHELL 1.9.2 (arreglado en C#): en Fill-CmMenu, @(Get-List …) no deshace el ,$arr -> el submenú «Estado» sale como
+      UNA opción con todos los estados juntos y al pulsarla guarda ese texto como estado. pstest.ps1 corrige solo esa línea ($psFixes).
+- [ ] Etapa 3d — documentos (panel, carpeta, nº de documentos en la lista), aviso de requerimientos al pulsar
 - [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto, Colaboradores, margen
 - [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
 - [ ] Etapa 5b — Firebase (sincronización, primera unión) y carpeta de documentos compartida

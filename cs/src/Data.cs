@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Gestem
@@ -152,7 +153,7 @@ namespace Gestem
                     store.Clients.Add(rec);
                 }
                 rec.Sync = false;
-                rec.Updated = DateTime.Now.ToString("s", Ps.Inv);
+                rec.Updated = App.Now().ToString("s", Ps.Inv);
                 rec.By = App.User.Length > 0 ? App.User : "ADMIN";
                 Store.Write(t, store);
             }
@@ -364,6 +365,56 @@ namespace Gestem
         }
 
         // Load-Data: lee los datos de GESTEM (rápido, sin Excel); la primera vez los importa del Excel
+        // Get-HandDelUid: id en Firebase de un cliente de una pestaña hecha a mano (el mismo en todos los PC: trámite + nombre)
+        public static string HandDelUid(Tramite t, string key, string prefix)
+        {
+            using (System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create())
+            {
+                StringBuilder sb = new StringBuilder();
+                foreach (byte b in md5.ComputeHash(Encoding.UTF8.GetBytes(key))) sb.Append(b.ToString("x2"));
+                return prefix + t.Id + "-" + sb;
+            }
+        }
+        // Add-FbPend
+        public static void AddFbPend(Tramite t, string uid, string h) { FbState st = FbState.Load(); PendItem i = new PendItem(); i.T = t.Id; i.H = h; i.N = false; st.Pend[uid] = i; st.Save(); }
+
+        // Set-ClientDeleted: eliminar (o volver a poner) un cliente sin borrarlo: queda una marca que se sincroniza y que el Excel no deshace
+        public static void SetClientDeleted(Tramite t, UndoInfo u, bool on)
+        {
+            string who = App.User.Length > 0 ? App.User : "ADMIN", now = App.Now().ToString("s", Ps.Inv);
+            string lk = Store.EnterLock();
+            try
+            {
+                StoreData s = Store.Read(t);
+                if (s == null) throw new GestemException(Tx.L("errNoStore"));
+                if (u.Hand)
+                {
+                    string key = Hand.HandKey(u.Name), uid = HandDelUid(t, key, "hand-");
+                    HandDelRec e = null; foreach (HandDelRec x in s.HandDel) if (x != null && x.Uid == uid) { e = x; break; }
+                    if (e == null) { e = new HandDelRec(); e.Uid = uid; e.Key = key; e.Name = u.Name; s.HandDel.Add(e); }
+                    e.On = on; e.By = who; e.At = now;
+                    if (on)
+                    {
+                        List<ClientRec> keep = new List<ClientRec>();
+                        foreach (ClientRec c in s.Clients) if (c.Row < Hand.RowBase || Hand.HandKey(Ps.Str(Store.Get(c.F, "name"))) != key) keep.Add(c);
+                        s.Clients = keep;
+                    }
+                    Store.Write(t, s);
+                    AddFbPend(t, uid, (on ? "True" : "False") + "|" + now);
+                }
+                else
+                {
+                    ClientRec c = null; foreach (ClientRec x in s.Clients) if (x.Uid == u.Uid) { c = x; break; }
+                    if (c == null) throw new GestemException(Tx.L("cmUndoFail"));
+                    if (on) { c.Del = new DelMark(); c.Del.By = who; c.Del.At = now; } else c.Del = null;
+                    c.Updated = now; c.By = who;
+                    Store.Write(t, s);    // cambia la huella: queda por enviar a Firebase
+                }
+            }
+            finally { Store.ExitLock(lk); }
+            if (u.Hand && !on) { try { Hand.SyncTabs(true); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); } }
+        }
+
         public static bool LoadData(bool all, bool quiet)
         {
             if (!quiet) G.Status(Tx.L("loading"));

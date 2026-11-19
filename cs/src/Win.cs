@@ -78,6 +78,7 @@ namespace Gestem
             U<Button>("ToastClose").Click += delegate { HideToast(); };
             Win.KeyDown += OnKeyDown;
             WireForm();
+            WireMenu();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -97,6 +98,7 @@ namespace Gestem
         public void ShowError(string msg)
         {
             App.Log("aviso mostrado: " + PsH.Rep(msg, @"\s+", " "));    // lo que ve la usuaria queda en «Errores» del admin
+            if (ErrorHook != null) ErrorHook(msg);
             if (!App.Quiet) MessageBox.Show(Win, msg, App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         // aviso pequeño abajo a la derecha (sin ventana que haya que cerrar)
@@ -160,6 +162,7 @@ namespace Gestem
             finally { switching = false; }
             U<TextBlock>("FileText").Text = string.IsNullOrEmpty(Config.Cur.ExcelPath) ? "" : Path.GetFileName(Config.Cur.ExcelPath);
             U<TextBlock>("SumPriceL").Text = L("sumPrice"); U<TextBlock>("SumPaidL").Text = L("sumPaid"); U<TextBlock>("SumPendL").Text = L("sumPend");
+            SetCmHeaders();
             BuildForm();
             ResetForm();
         }
@@ -256,6 +259,11 @@ namespace Gestem
             {
                 U<ToggleButton>("NavNew").IsChecked = true;
                 if (EditRow == null) FocusCtl("name");
+                e.Handled = true; return;
+            }
+            if (ctrl && e.Key == Key.Z && !(Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase))
+            {
+                if (!Busy) InvokeQuickUndo();
                 e.Handled = true; return;
             }
             if (e.Key == Key.Escape)

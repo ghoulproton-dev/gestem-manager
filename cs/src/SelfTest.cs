@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows.Controls;
 using System.Text;
 
 namespace Gestem
@@ -198,6 +199,46 @@ namespace Gestem
                     o.Append(FormLine("FE " + t.Id + " " + r.Row, t, w.GetFormValues()) + "\r\nFC " + t.Id + " " + r.Row + " " + Card(w) + "\r\n");
                 }
             }
+            // etapa 3c: menú del clic derecho, atajos, responsable, eliminar y deshacer (hora fija, como pstest.ps1)
+            App.Now = delegate { return new DateTime(2026, 11, 19, 12, 0, 0); };
+            App.User = "PRUEBA"; App.Quiet = true;
+            Config.Cur.Colleagues = new List<string>(new string[] { "ana", " LUIS", "ANA" }); Config.Cur.OpenAfterSave = false;
+            Config.Cur.TabsChecked = new List<string>(); foreach (Tramite t in Tramite.All) Config.Cur.TabsChecked.Add(t.Id);   // Load-Data sin Excel
+            w.ToastHook = delegate(string a, string b) { o.Append("TOAST " + a + "|" + b + "\r\n"); };
+            w.ErrorHook = delegate(string m) { o.Append("ERR " + PsH.Rep(m, @"\s+", " ") + "\r\n"); };
+            DataGrid grid = w.U<DataGrid>("ClientsGrid");
+            foreach (Tramite t in Tramite.All)
+            {
+                if (Store.Read(t) == null) continue;
+                G.T = t; Data.LoadData(false, false);
+                foreach (ClientRow r in G.Rows) { grid.SelectedItem = r; w.FillCmMenu(r); o.Append("CM " + t.Id + " " + r.Row + " " + w.CmMenuText() + "\r\n"); }
+            }
+            Tramite tc = Tramite.ById("canje"); G.T = tc; Data.LoadData(false, false); w.BuildForm(); w.ResetForm();
+            ClientRow q = TestRow(0); int qn = q.Row;
+            List<string> sts = new List<string>(); foreach (string x in MainWin.GetList(tc.FieldByKey("status").List)) if (Ps.Str(x).Trim().Length > 0 && x != Ps.Str(q.Status)) sts.Add(x);
+            grid.SelectedItem = q; w.QuickSetField("status", sts[sts.Count - 1], false); o.Append(RowText("QS", qn) + " undo=" + w.Undo.Key + "/" + Ps.Str(w.Undo.Old) + "\r\n");
+            w.InvokeQuickUndo(); o.Append(RowText("QU", qn) + "\r\n");
+            grid.SelectedItem = RowAt(qn); w.QuickSetField("paystate", "Pagado", false); o.Append(RowText("QS", qn) + "\r\n");
+            w.InvokeQuickUndo(); o.Append(RowText("QU", qn) + "\r\n");
+            w.InvokeQuickUndo();
+            grid.SelectedItem = RowAt(qn); w.SetRespBulk("ANA", false); o.Append(RowText("RS", qn) + "\r\n");
+            w.InvokeQuickUndo(); o.Append(RowText("RU", qn) + "\r\n");
+            ClientRow q2 = TestRow(1); int q2n = q2.Row;
+            w.RemoveClient(q2, false); o.Append(RowText("DL", q2n) + "\r\n");
+            w.InvokeQuickUndo(); o.Append(RowText("DU", q2n) + "\r\n");
+            // pestaña hecha a mano (tasas)
+            Tramite tt = Tramite.ById("tasas"); G.T = tt; Data.LoadData(false, false); w.BuildForm(); w.ResetForm();
+            grid.SelectedItem = HandRows()[0]; w.SetRespBulk("LUIS", false); string nid = w.Undo.Items[0].Id;
+            ClientRow nr = null; foreach (ClientRow r in G.Rows) if (r.Id == nid) { nr = r; break; }
+            int nrow = nr.Row; o.Append(RowText("RH", nrow) + "\r\n");
+            w.InvokeQuickUndo(); o.Append(RowText("RHU", nrow) + "\r\n");
+            foreach (int i in new int[] { 1, 2 })
+            {
+                w.RemoveClient(HandRows()[i], false);
+                o.Append("DH " + i + " n=" + G.Rows.Count + "\r\n");
+                if (i == 1) { w.InvokeQuickUndo(); o.Append("DHU n=" + G.Rows.Count + "\r\n"); }
+            }
+            App.Now = delegate { return DateTime.Now; };
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
@@ -222,6 +263,27 @@ namespace Gestem
             return 0;
         }
 
+        // Get-TestRow de pstest.ps1: cliente de GESTEM sin NIE repetido
+        static ClientRow TestRow(int skip)
+        {
+            int k = 0;
+            foreach (ClientRow r in G.Rows)
+            {
+                if (r.Row >= Hand.RowBase) continue;
+                string dc = Ps.Str(r.Doc).Trim();
+                if (dc.Length > 0) { int n = 0; foreach (ClientRow x in G.Rows) if (string.Equals(Ps.Str(x.Doc).Trim(), dc, StringComparison.OrdinalIgnoreCase)) n++; if (n != 1) continue; }
+                if (k == skip) return r; k++;
+            }
+            return null;
+        }
+        static ClientRow RowAt(int row) { foreach (ClientRow r in G.Rows) if (r.Row == row) return r; return null; }
+        static List<ClientRow> HandRows() { List<ClientRow> l = new List<ClientRow>(); foreach (ClientRow r in G.Rows) if (r.Row >= Hand.RowBase) l.Add(r); return l; }
+        static string RowText(string tag, int row)
+        {
+            ClientRow r = RowAt(row);
+            if (r == null) return tag + " " + row + " null";
+            return tag + " " + row + " " + r.Id + "|" + r.Name + "|" + r.Status + "|" + r.Pay + "|" + N(r.Pending) + "|" + r.Resp + " n=" + G.Rows.Count;
+        }
         static string FormLine(string head, Tramite t, Dictionary<string, object> v)
         {
             StringBuilder line = new StringBuilder(head);

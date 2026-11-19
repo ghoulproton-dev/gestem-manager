@@ -6,9 +6,19 @@ $src = Join-Path (Split-Path -Parent (Split-Path -Parent $here)) 'GESTEM.ps1'   
 $lines = [IO.File]::ReadAllLines($src, [Text.Encoding]::UTF8)
 $tokens = $null; $errs = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($src, [ref]$tokens, [ref]$errs)
+# errores de GESTEM.ps1 que el C# trae ya arreglados: la prueba compara con PowerShell con SOLO estas líneas corregidas
+#  - Fill-CmMenu (1.9.2): @(Get-List …) no deshace el ,$arr de Get-List -> el submenú «Estado» sale como UNA opción con todos
+#    los estados juntos, y al pulsarla se guarda ese texto como estado del cliente
+$psFixes = @{ 'Fill-CmMenu' = @(, @('foreach ($s in @(Get-List $f.List))', 'foreach ($s in (Get-List $f.List))')) }
 foreach ($fd in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) {
     if ($fd.Parent -ne $null -and $fd.Parent.Parent -ne $null -and $fd.Parent.Parent -ne $ast) { continue }
-    . ([ScriptBlock]::Create($fd.Extent.Text))
+    $code = $fd.Extent.Text
+    if ($psFixes.ContainsKey($fd.Name)) {
+        foreach ($fx in $psFixes[$fd.Name]) {
+            if ($code.Contains($fx[0])) { $code = $code.Replace($fx[0], $fx[1]) } else { Write-Warning "pstest: arreglo de $($fd.Name) ya no aplica (¿corregido en GESTEM.ps1?): $($fx[0])" }
+        }
+    }
+    . ([ScriptBlock]::Create($code))
 }
 foreach ($code in (& (Join-Path $here 'psblocks.ps1') $lines)) { . ([ScriptBlock]::Create($code)) }
 $script:ES = [Globalization.CultureInfo]::GetCultureInfo('es-ES')
@@ -183,4 +193,67 @@ foreach ($t in $script:Tramites) {
         [void]$o.Append("$line`r`nFC $($t.Id) $($r.Row) $(Get-Card)`r`n")
     }
 }
+# etapa 3c: menú del clic derecho, atajos (estado, pagado), responsable, eliminar y deshacer — con la hora fija
+$script:FixedNow = New-Object DateTime 2026, 11, 19, 12, 0, 0
+function Get-Date { if ($args.Count) { Microsoft.PowerShell.Utility\Get-Date @args } else { $script:FixedNow } }
+$script:User = 'PRUEBA'; $script:Cfg.Colleagues = @('ana', ' LUIS', 'ANA'); $script:Cfg.OpenAfterSave = $false
+foreach ($n in 'ClientsGrid', 'StatusText', 'NavClients', 'NavNew') { $script:UI[$n] = $script:Win.FindName($n) }
+foreach ($n in 'CmFolder', 'CmStatus', 'CmPaid', 'CmResp', 'CmCopyName', 'CmCopyDoc', 'CmCopyTel', 'CmExcel') { $script:UI[$n] = New-Object Windows.Controls.MenuItem }
+# sin Excel ni ventana completa: Load-Data relee el trámite y rellena la lista; los avisos se apuntan
+function Load-Data { $s = Read-Store $script:T; $d = Build-TramiteData $script:T $s; $script:Rows = $d.Rows; $script:Lists = $d.Lists; $script:Tariff = $d.Tariff; $script:DefaultPrice = $d.DefaultPrice; $script:NextId = $d.NextId; $script:UI.ClientsGrid.ItemsSource = $script:Rows; return $true }
+function Show-Toast([string]$text, [string]$btnText = '', $action = $null, [int]$seconds = 7) { [void]$o.Append("TOAST $text|$btnText`r`n") }
+function Show-Error([string]$msg) { [void]$o.Append("ERR $($msg -replace '\s+', ' ')`r`n") }
+function Get-CmText {
+    $u = $script:UI
+    $st = @($u.CmStatus.Items | ForEach-Object { "$($_.Tag)" + $(if ($_.IsChecked) { '*' }) }) -join ','
+    $rs = @($u.CmResp.Items | ForEach-Object { "$($_.Tag)" + $(if ($_.IsChecked) { '*' }) }) -join ','
+    return "st=$st|$($u.CmStatus.IsEnabled) resp=$($u.CmResp.Header)|$rs|$($u.CmResp.IsEnabled) paid=$($u.CmPaid.IsEnabled) doc=$($u.CmCopyDoc.IsEnabled) tel=$($u.CmCopyTel.IsEnabled)"
+}
+function Get-TestRow([int]$skip) {
+    # cliente de GESTEM sin NIE repetido (si no, guardar pregunta)
+    $k = 0
+    foreach ($r in $script:Rows) {
+        if ([int]$r.Row -ge $script:HandRowBase) { continue }
+        $dc = "$($r.Doc)".Trim(); if ($dc -and @($script:Rows | Where-Object { "$($_.Doc)".Trim() -ieq $dc }).Count -ne 1) { continue }
+        if ($k -eq $skip) { return $r }; $k++
+    }
+    return $null
+}
+function Get-RowText($tag, [int]$row) { $r = @($script:Rows | Where-Object { [int]$_.Row -eq $row })[0]; if (-not $r) { return "$tag $row null" }; return "$tag $row $($r.Id)|$($r.Name)|$($r.Status)|$($r.Pay)|$(N $r.Pending)|$($r.Resp) n=$($script:Rows.Count)" }
+function Select-Row($r) { $script:UI.ClientsGrid.SelectedItem = $r }
+foreach ($t in $script:Tramites) {
+    if (-not (Read-Store $t)) { continue }
+    $script:T = $t; [void](Load-Data)
+    foreach ($r in $script:Rows) { Select-Row $r; Fill-CmMenu $r; [void]$o.Append("CM $($t.Id) $($r.Row) $(Get-CmText)`r`n") }
+}
+$t = $script:Tramites | Where-Object { $_.Id -eq 'canje' }; $script:T = $t; [void](Load-Data); Build-Form; Reset-Form
+$q = Get-TestRow 0; $qn = [int]$q.Row
+$all = Get-List (@($t.Fields | Where-Object { $_.Key -eq 'status' })[0]).List; $sts = @($all | Where-Object { "$_".Trim() -and "$_" -ne "$($q.Status)" })
+Select-Row $q; Quick-SetField 'status' $sts[-1]; [void]$o.Append("$(Get-RowText 'QS' $qn) undo=$($script:UndoInfo.Key)/$($script:UndoInfo.Old)`r`n")
+Invoke-QuickUndo; [void]$o.Append("$(Get-RowText 'QU' $qn)`r`n")
+Select-Row (@($script:Rows | Where-Object { [int]$_.Row -eq $qn })[0]); Quick-SetField 'paystate' 'Pagado'; [void]$o.Append("$(Get-RowText 'QS' $qn)`r`n")
+Invoke-QuickUndo; [void]$o.Append("$(Get-RowText 'QU' $qn)`r`n")
+Invoke-QuickUndo
+Select-Row (@($script:Rows | Where-Object { [int]$_.Row -eq $qn })[0]); Set-RespBulk 'ANA'; [void]$o.Append("$(Get-RowText 'RS' $qn)`r`n")
+Invoke-QuickUndo; [void]$o.Append("$(Get-RowText 'RU' $qn)`r`n")
+$q2 = Get-TestRow 1; $q2n = [int]$q2.Row
+$u = @{ Kind = 'delete'; T = $t; Hand = $false; Name = "$($q2.Name)"; Id = "$($q2.Id)"; Uid = $null }
+$u.Uid = (Read-Store $t).Clients | Where-Object { [int]$_.Row -eq $q2n } | Select-Object -First 1 | ForEach-Object { $_.Uid }
+Set-ClientDeleted $t $u $true; [void](Load-Data); $script:UndoInfo = $u; Show-Toast ((L 'delDone') -f $u.Name) (L 'cmUndo') $null 15
+[void]$o.Append("$(Get-RowText 'DL' $q2n)`r`n")
+Invoke-QuickUndo; [void]$o.Append("$(Get-RowText 'DU' $q2n)`r`n")
+# pestaña hecha a mano (tasas): responsable (pasa a GESTEM), eliminar y deshacer, eliminar otro y dejarlo
+$t = $script:Tramites | Where-Object { $_.Id -eq 'tasas' }; $script:T = $t; [void](Load-Data); Build-Form; Reset-Form
+$h = @($script:Rows | Where-Object { [int]$_.Row -ge $script:HandRowBase })
+Select-Row $h[0]; Set-RespBulk 'LUIS'; $nid = @($script:UndoInfo.Items)[0].Id
+$nr = @($script:Rows | Where-Object { "$($_.Id)" -eq $nid })[0]; [void]$o.Append("$(Get-RowText 'RH' ([int]$nr.Row))`r`n")
+Invoke-QuickUndo; [void]$o.Append("$(Get-RowText 'RHU' ([int]$nr.Row))`r`n")
+foreach ($i in 1, 2) {
+    $h = @($script:Rows | Where-Object { [int]$_.Row -ge $script:HandRowBase }); $hr = $h[$i]
+    $u = @{ Kind = 'delete'; T = $t; Hand = $true; Name = "$($hr.Name)"; Id = "$($hr.Id)"; Uid = $null }
+    Set-ClientDeleted $t $u $true; [void](Load-Data); $script:UndoInfo = $u; Show-Toast ((L 'delDone') -f $u.Name) (L 'cmUndo') $null 15
+    [void]$o.Append("DH $i n=$($script:Rows.Count)`r`n")
+    if ($i -eq 1) { Invoke-QuickUndo; [void]$o.Append("DHU n=$($script:Rows.Count)`r`n") }
+}
+Remove-Item function:Get-Date
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))
