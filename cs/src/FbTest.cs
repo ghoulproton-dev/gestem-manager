@@ -64,6 +64,7 @@ namespace Gestem
                     w.Add(wr);
                 }
                 Fb.Commit(a, w, names);
+                { int seen = 0; foreach (string n in Fb.ListUnderTests(a)) if (names.Contains(n)) seen++; o.Append("F0b limpieza ve=" + seen + "/2\r\n"); }
                 // este PC: unión (recibe todo), envío, y otra vuelta sin nada
                 FbResult r1 = Fb.SyncOnce(key, a, "", new List<FbPush>(), Environment.MachineName);
                 o.Append("F1 err=" + r1.Err + " recibidos=" + r1.Pulled.Count + " mod=" + (r1.Mod.Length > 0) + "\r\n");
@@ -95,6 +96,37 @@ namespace Gestem
                 touched.Sort(StringComparer.Ordinal);
                 File.WriteAllText(Path.Combine(dir, "cs_fb.txt"), o.ToString(), new UTF8Encoding(false));
                 File.WriteAllLines(Path.Combine(dir, "cs_fb_paths.txt"), touched.ToArray(), new UTF8Encoding(false));
+            }
+            return 0;
+        }
+        // cada carpeta de gestorias/elmahi/_tests: todos sus documentos (y ella misma si existe) se borran; resultado en cs_fbclean.txt
+        public static int Clean(string dir)
+        {
+            StringBuilder o = new StringBuilder(); List<string> touched = new List<string>();
+            string realCfg = App.CfgPath; App.Quiet = true; App.Real = false; App.AddSafeRoot(dir);
+            App.DataDir = dir; App.BackupDir = Path.Combine(dir, "copias"); App.LogPath = Path.Combine(dir, "cs_fbclean_log.txt"); App.CfgPath = Path.Combine(dir, "config_fb.json");
+            Config.Cur = new Config(); Config.Cur.UpdateKey = Json.Str(Json.Parse(File.ReadAllText(realCfg, Encoding.UTF8)), "UpdateKey") ?? "";
+            string key = Updater.GetKey(); if (key.Length == 0) throw new Exception("falta la clave de GESTEM en la config de este PC");
+            Fb.Trace = delegate(string m, string p) { string k = m + " " + p.Replace(Fb.Root + "/", ""); if (!touched.Contains(k)) touched.Add(k); };
+            string keep = Fb.Gest;
+            try
+            {
+                Fb.Gest = "elmahi/_tests/x"; FbAuth a = Fb.SignIn(key);
+                List<string> docs = Fb.ListUnderTests(a);
+                o.Append("encontrados=" + docs.Count + "\r\n");
+                foreach (string d in docs)
+                {
+                    string rel = d.Substring((Fb.Root + "/gestorias/elmahi/_tests/").Length);
+                    Fb.Gest = "elmahi/_tests/" + rel.Split('/')[0];    // Fb.CheckName: solo dentro de esa carpeta de prueba
+                    Fb.DeleteDoc(a, d);
+                    o.Append("borrado " + d.Replace(Fb.Root + "/", "") + "\r\n");
+                }
+                Fb.Gest = "elmahi/_tests/x"; o.Append("quedan=" + Fb.ListUnderTests(a).Count + "\r\n");
+            }            finally
+            {
+                Fb.Gest = keep; Fb.Trace = null; touched.Sort(StringComparer.Ordinal);
+                File.WriteAllText(Path.Combine(dir, "cs_fbclean.txt"), o.ToString(), new UTF8Encoding(false));
+                File.WriteAllLines(Path.Combine(dir, "cs_fbclean_paths.txt"), touched.ToArray(), new UTF8Encoding(false));
             }
             return 0;
         }

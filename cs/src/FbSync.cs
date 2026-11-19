@@ -138,7 +138,24 @@ namespace Gestem
             if (arr != null) foreach (object x in arr) { object doc = Json.Get(x, "document"); if (doc != null) l.Add(Ps.Str(Json.Get(doc, "name"))); }
             return l;
         }
-        public static void DeleteDoc(FbAuth a, string name)
+        // pruebas: todos los documentos debajo de gestorias/elmahi/_tests (listar la colección no lo dejan las reglas). El servidor solo
+        // devuelve nombres entre _tests/! y _tests0/!; aun así, si llegara uno de fuera, error (no se borra nada)
+        public static List<string> ListUnderTests(FbAuth a)
+        {
+            string p = Root + "/gestorias/elmahi/_tests";
+            Func<string, string, object> ff = delegate(string op, string v) { return D("fieldFilter", D("field", D("fieldPath", "__name__"), "op", op, "value", D("referenceValue", v))); };
+            object q = D("structuredQuery", D("from", new List<object> { D("allDescendants", true) }, "where", D("compositeFilter", D("op", "AND", "filters", new List<object> { ff("GREATER_THAN_OR_EQUAL", p + "/!"), ff("LESS_THAN", p + "0/!") }))));
+            object res = J("POST", "https://firestore.googleapis.com/v1/" + Root + "/gestorias/elmahi:runQuery", q, a.Id, "runQuery gestorias/elmahi/_tests/**");
+            List<string> l = new List<string>(); IList arr = res as IList;
+            if (arr != null) foreach (object x in arr)
+            {
+                object doc = Json.Get(x, "document"); if (doc == null) continue;
+                string n = Ps.Str(Json.Get(doc, "name"));
+                if (!n.StartsWith(p + "/", StringComparison.Ordinal)) throw new InvalidOperationException("Firebase: la consulta de pruebas devolvió algo fuera de _tests: " + n);
+                l.Add(n);
+            }
+            return l;
+        }        public static void DeleteDoc(FbAuth a, string name)
         {
             CheckName(name);
             if (!Gest.StartsWith("elmahi/_tests/", StringComparison.Ordinal)) throw new InvalidOperationException("Firebase: borrar solo en pruebas");
