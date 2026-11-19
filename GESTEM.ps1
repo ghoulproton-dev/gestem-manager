@@ -36,7 +36,7 @@ try {
 } catch { }
 
 $script:AppName    = 'GESTEM MANAGER'
-$script:AppVersion = '1.9.2'
+$script:AppVersion = '1.9.3'
 $script:UpdateBase = 'https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main'
 $script:RepoApi    = 'https://api.github.com/repos/ghoulproton-dev/gestem-manager'
 $script:AppDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -5898,7 +5898,7 @@ function Fill-CmMenu($sel) {
     $m = $ui.CmStatus; $m.Items.Clear()
     $f = @($script:T.Fields | Where-Object { $_.Key -eq 'status' })[0]
     if ($f) {
-        foreach ($s in @(Get-List $f.List)) {
+        foreach ($s in (Get-List $f.List)) {    # sin @(): Get-List devuelve ,$lista y @() la dejaba como UNA opción con todos los estados juntos
             if (-not "$s".Trim()) { continue }
             $it = New-Object Windows.Controls.MenuItem
             $it.Header = ("$s" -replace '_', '__'); $it.Tag = "$s"
