@@ -3507,6 +3507,16 @@ function Start-UpdateCheckAsync {
 function Check-Update([switch]$Manual) {
     $me = $MyInvocation.ScriptName
     if (-not $me) { $me = Join-Path $script:AppDir 'GESTEM.ps1' }
+    # una sola comprobación a la vez: en esta ventana (inicio, botón, aviso) y entre ventanas de GESTEM abiertas a la vez
+    if ($script:UpdChecking) { Write-Log 'actualización: ya se está mirando, se omite'; return }
+    $mx = $null; $owned = $false
+    try {
+        $mx = New-Object Threading.Mutex($false, 'Local\GESTEM_actualizacion')
+        try { $owned = $mx.WaitOne(0) } catch [Threading.AbandonedMutexException] { $owned = $true }    # otra ventana se cerró a medias: es nuestra
+    } catch { $owned = $true }    # sin mutex se sigue como antes (el archivo temporal ya no se comparte)
+    if (-not $owned) { Write-Log 'actualización: otra ventana de GESTEM ya está mirando, se omite'; if ($mx) { $mx.Dispose() }; return }
+    $script:UpdChecking = $true
+    $tmp = Join-Path $env:TEMP ("GESTEM_nuevo_{0}.ps1" -f [guid]::NewGuid().ToString('N'))    # propio de esta comprobación: nunca «utilizado por otro proceso»
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $remote = "$(Get-RepoFile 'version.txt')".Trim()
@@ -3516,7 +3526,6 @@ function Check-Update([switch]$Manual) {
             return
         }
         Set-Status ((L 'updating') -f $remote)
-        $tmp = Join-Path $env:TEMP 'GESTEM_nuevo.ps1'
         Get-RepoFile 'GESTEM.ps1' $tmp 30
         # comprobar que el archivo descargado está completo y es correcto antes de reemplazar nada
         $code = Get-Content -Raw -LiteralPath $tmp -Encoding UTF8
@@ -3539,6 +3548,10 @@ function Check-Update([switch]$Manual) {
     } catch {
         Write-Log "actualización: $($_.Exception.Message)"
         if ($Manual) { Show-Error ((L 'updateFail') + [Environment]::NewLine + $_.Exception.Message) }
+    } finally {
+        $script:UpdChecking = $false
+        try { if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force } } catch { }
+        if ($mx) { try { if ($owned) { $mx.ReleaseMutex() } } catch { }; $mx.Dispose() }
     }
 }
 # =====================================================================
