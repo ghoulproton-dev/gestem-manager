@@ -134,7 +134,12 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
       las funciones reales con la hora fija (Get-Date) y pinta el menú de cada cliente (2375 líneas iguales, datos y firebase.json iguales).
       Recibo, documentos, carpeta y abrir Excel salen desactivados hasta su etapa.
       El submenú «Estado» salía como una sola opción con todos los estados juntos en PowerShell 1.9.2; arreglado en 1.9.3.
-- [ ] Etapa 3d — documentos (panel, carpeta, nº de documentos en la lista), aviso de requerimientos al pulsar
+- [x] Etapa 3d — documentos (Docs.cs, WinDocs.cs): carpeta «GESTEM documentos\<pestaña>\<nº> - <nombre>», panel (lista, abrir,
+      añadir con diálogo o arrastrando, quitar a la papelera, abrir carpeta), nº de documentos en la lista (clip), carpetas que
+      quedaron con el nº de otro cliente se arreglan al abrir (Repair-AllDocsFolders). Prueba: tools\docsfixture.ps1 crea la misma
+      carpeta para los dos; árbol, cuentas, panel y añadir idénticos. Sin probar (diálogos): quitar, abrir, diálogo de añadir.
+      Pendiente: elegir carpeta en Ajustes (etapa 4), buscarla en la nube (5b), copia a la carpeta externa (5).
+      Versión del C#: 1.9.3.
 - [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto, Colaboradores, margen
 - [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
 - [ ] Etapa 5b — Firebase (sincronización, primera unión) y carpeta de documentos compartida

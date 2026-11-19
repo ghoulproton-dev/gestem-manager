@@ -10,7 +10,7 @@ namespace Gestem
     public static class App
     {
         public const string Name = "GESTEM MANAGER";
-        public const string Version = "1.9.2";          // misma versión que la de PowerShell que copia
+        public const string Version = "1.9.3";          // misma versión que la de PowerShell que copia
         public const string UpdateBase = "https://raw.githubusercontent.com/ghoulproton-dev/gestem-manager/main";
 
         public static readonly string AppDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');

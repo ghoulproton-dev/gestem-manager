@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows;
 using System.Windows.Controls;
 using System.Text;
 
@@ -239,6 +240,21 @@ namespace Gestem
                 if (i == 1) { w.InvokeQuickUndo(); o.Append("DHU n=" + G.Rows.Count + "\r\n"); }
             }
             App.Now = delegate { return DateTime.Now; };
+            // etapa 3d: documentos (carpeta de prueba de docsfixture.ps1)
+            Config.Cur.DocsDir = Path.Combine(testDir, "cs_docs"); string droot = Config.Cur.DocsDir;
+            DocsTree(o, "DT0", droot);
+            Docs.RepairAll();
+            DocsTree(o, "DT1", droot);
+            G.T = Tramite.ById("canje"); Data.LoadData(false, false);
+            foreach (ClientRow r in G.Rows) { int n = Docs.Count(r); if (n > 0) o.Append("DM " + r.Row + " " + r.Id + " n=" + n + "\r\n"); }
+            string[] ids = File.ReadAllText(Path.Combine(droot, "clientes.txt"), Encoding.UTF8).Trim().Split('|');
+            foreach (int k in new int[] { 0, 1, 4, 7, 8 }) { w.OpenDocsPanel(RowById(ids[k])); o.Append("DP " + k + " " + DocsPanelText(w) + "\r\n"); }
+            w.OpenDocsPanel(RowById(ids[0])); w.AddClientDocs(new string[] { Path.Combine(testDir, "docs_src\\nuevo.pdf"), Path.Combine(testDir, "docs_src\\a.pdf"), Path.Combine(testDir, "docs_src\\no-existe.pdf") });
+            o.Append("DA 0 " + DocsPanelText(w) + "\r\n");
+            w.OpenDocsPanel(RowById(ids[8])); w.AddClientDocs(new string[] { Path.Combine(testDir, "docs_src\\nuevo.pdf") });
+            o.Append("DA 8 " + DocsPanelText(w) + "\r\n");
+            foreach (ClientRow r in G.Rows) { int n = Docs.Count(r); if (n > 0) o.Append("DM2 " + r.Row + " " + r.Id + " n=" + n + "\r\n"); }
+            DocsTree(o, "DT2", droot);
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
@@ -283,6 +299,25 @@ namespace Gestem
             ClientRow r = RowAt(row);
             if (r == null) return tag + " " + row + " null";
             return tag + " " + row + " " + r.Id + "|" + r.Name + "|" + r.Status + "|" + r.Pay + "|" + N(r.Pending) + "|" + r.Resp + " n=" + G.Rows.Count;
+        }
+        static ClientRow RowById(string id) { foreach (ClientRow r in G.Rows) if (r.Id == id) return r; return null; }
+        static void DocsTree(StringBuilder o, string tag, string root)
+        {
+            List<string> l = new List<string>();
+            foreach (string e in Directory.GetFileSystemEntries(root, "*", SearchOption.AllDirectories))
+            {
+                if (Path.GetFileName(e) == "clientes.txt") continue;
+                l.Add(e.Substring(root.Length + 1) + (File.Exists(e) ? " " + new FileInfo(e).Length : ""));
+            }
+            l.Sort(StringComparer.Ordinal);
+            foreach (string x in l) o.Append(tag + " " + x + "\r\n");
+        }
+        static string DocsPanelText(MainWin w)
+        {
+            List<string> it = new List<string>();
+            foreach (DocItem d in (System.Collections.IEnumerable)w.U<ListBox>("DocsList").ItemsSource ?? new DocItem[0]) it.Add(d.Name + "|" + d.Info + "|" + (int)d.Glyph[0]);
+            return "title=" + w.U<TextBlock>("DocsTitle").Text + "|sub=" + w.U<TextBlock>("DocsSub").Text + "|msg=" + w.U<TextBlock>("DocsMsg").Text + "|count=" + w.U<TextBlock>("DocsCount").Text
+                + "|empty=" + w.U<FrameworkElement>("DocsEmpty").Visibility + "|vis=" + w.U<FrameworkElement>("PanelDocs").Visibility + "|" + string.Join(" ; ", it.ToArray());
         }
         static string FormLine(string head, Tramite t, Dictionary<string, object> v)
         {

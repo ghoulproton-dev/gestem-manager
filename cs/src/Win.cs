@@ -79,6 +79,7 @@ namespace Gestem
             Win.KeyDown += OnKeyDown;
             WireForm();
             WireMenu();
+            WireDocs();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -163,6 +164,7 @@ namespace Gestem
             U<TextBlock>("FileText").Text = string.IsNullOrEmpty(Config.Cur.ExcelPath) ? "" : Path.GetFileName(Config.Cur.ExcelPath);
             U<TextBlock>("SumPriceL").Text = L("sumPrice"); U<TextBlock>("SumPaidL").Text = L("sumPaid"); U<TextBlock>("SumPendL").Text = L("sumPend");
             SetCmHeaders();
+            SetDocsTexts();
             BuildForm();
             ResetForm();
         }
@@ -196,6 +198,7 @@ namespace Gestem
         // Use-TramiteData (lo llama Data.UseData)
         void UseTramiteData(TramiteData d)
         {
+            Docs.UpdateMap();
             RefreshClientGrid();
             UpdateStatusLine();
         }
@@ -215,8 +218,8 @@ namespace Gestem
                 if (fb.SelectedIndex > 0 && r.Status != st) continue;
                 if (onlyDebt && r.Pending <= 0) continue;
                 if (onlyMine && App.User.Length > 0 && !Ps.EqI(r.Resp, App.User)) continue;
-                // shortcut: nº de documentos (clip de la columna Docs) llega con los documentos (etapa 3d)
-                r.DocsN = 0; r.DocsVis = "Collapsed";
+                int nd = Docs.Count(r);
+                r.DocsN = nd; r.DocsVis = nd > 0 ? "Visible" : "Collapsed";
                 list.Add(r);
             }
             return list;
@@ -269,6 +272,7 @@ namespace Gestem
             if (e.Key == Key.Escape)
             {
                 if (U("Toast").Visibility == Visibility.Visible) HideToast();
+                if (U("PanelDocs").Visibility == Visibility.Visible) { U("PanelDocs").Visibility = Visibility.Collapsed; e.Handled = true; return; }
                 if (U("PanelForm").Visibility == Visibility.Visible && EditRow != null) { ResetForm(); U<ToggleButton>("NavClients").IsChecked = true; e.Handled = true; return; }
             }
         }
@@ -287,6 +291,7 @@ namespace Gestem
             Win.Cursor = Cursors.Wait;
             try
             {
+                try { Docs.RepairAll(); } catch (Exception e) { App.Log("documentos: " + e.Message); }    // carpetas que quedaron con el nº de otro cliente
                 try { Hand.SyncTabs(true, true); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); }
                 if (Data.LoadData(true, false))
                 {

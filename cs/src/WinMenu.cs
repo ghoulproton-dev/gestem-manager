@@ -48,8 +48,8 @@ namespace Gestem
             cmFolder = NewCmItem(0xE838); cmStatus = NewCmItem(0xE7C1); cmPaid = NewCmItem(0xE8C7); cmCopyName = NewCmItem(0xE8C8);
             cmCopyDoc = NewCmItem(0xE8C8); cmCopyTel = NewCmItem(0xE717); cmExcel = NewCmItem(0xE8A7); cmResp = NewCmItem(0xE77B);
             foreach (Control it in new Control[] { cmFolder, new Separator(), cmStatus, cmPaid, cmResp, new Separator(), cmCopyName, cmCopyDoc, cmCopyTel, new Separator(), cmExcel }) cm.Items.Add(it);
-            // shortcut: recibo (etapa 5), documentos y carpeta (etapa 3d) y abrir el Excel (etapa 4) aún no están: se ven desactivados
-            foreach (MenuItem it in new MenuItem[] { U<MenuItem>("CmReceipt"), U<MenuItem>("CmDocs"), cmFolder, cmExcel }) it.IsEnabled = false;
+            // shortcut: recibo (etapa 5) y abrir el Excel (etapa 4) aún no están: se ven desactivados
+            foreach (MenuItem it in new MenuItem[] { U<MenuItem>("CmReceipt"), cmExcel }) it.IsEnabled = false;
 
             U<MenuItem>("CmEdit").Click += delegate { EditSelected(); };
             U<MenuItem>("CmDelete").Click += delegate { ClientRow r = SelectedClient(); if (r != null) RemoveClient(r, true); };

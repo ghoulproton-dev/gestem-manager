@@ -245,4 +245,28 @@ foreach ($i in 1, 2) {
     if ($i -eq 1) { Invoke-QuickUndo; [void]$o.Append("DHU n=$($script:Rows.Count)`r`n") }
 }
 Remove-Item function:Get-Date
+# etapa 3d: documentos (carpeta de prueba de docsfixture.ps1): arreglar carpetas, contar, panel, añadir
+$script:Cfg.DocsDir = Join-Path $TestDir 'ps_docs'; $droot = $script:Cfg.DocsDir
+foreach ($n in 'DocsTitle', 'DocsSub', 'DocsMsg', 'DocsList', 'DocsEmpty', 'DocsCount', 'PanelDocs') { $script:UI[$n] = $script:Win.FindName($n) }
+function Refresh-ClientGrid { }
+function Add-Tree($tag) {
+    [string[]]$l = @(Get-ChildItem -LiteralPath $droot -Recurse -Force | Where-Object { $_.Name -ne 'clientes.txt' } | ForEach-Object { $_.FullName.Substring($droot.Length + 1) + $(if (-not $_.PSIsContainer) { " $($_.Length)" }) })
+    [Array]::Sort($l, [StringComparer]::Ordinal); foreach ($x in $l) { [void]$o.Append("$tag $x`r`n") }
+}
+function Get-DocsPanelText {
+    $u = $script:UI; $it = @($u.DocsList.ItemsSource | ForEach-Object { "$($_.Name)|$($_.Info)|$([int][char]$_.Glyph)" }) -join ' ; '
+    return "title=$($u.DocsTitle.Text)|sub=$($u.DocsSub.Text)|msg=$($u.DocsMsg.Text)|count=$($u.DocsCount.Text)|empty=$($u.DocsEmpty.Visibility)|vis=$($u.PanelDocs.Visibility)|$it"
+}
+Add-Tree 'DT0'
+Repair-AllDocsFolders
+Add-Tree 'DT1'
+$t = $script:Tramites | Where-Object { $_.Id -eq 'canje' }; $script:T = $t; [void](Load-Data); Update-DocsMap
+foreach ($r in $script:Rows) { $n = Get-DocsCount $r; if ($n) { [void]$o.Append("DM $($r.Row) $($r.Id) n=$n`r`n") } }
+$ids = ([IO.File]::ReadAllText((Join-Path $droot 'clientes.txt'), [Text.Encoding]::UTF8)).Trim().Split('|')
+function Get-RowById($id) { return @($script:Rows | Where-Object { "$($_.Id)" -eq $id })[0] }
+foreach ($k in 0, 1, 4, 7, 8) { Open-DocsPanel (Get-RowById $ids[$k]); [void]$o.Append("DP $k $(Get-DocsPanelText)`r`n") }
+Open-DocsPanel (Get-RowById $ids[0]); Add-ClientDocs @((Join-Path $TestDir 'docs_src\nuevo.pdf'), (Join-Path $TestDir 'docs_src\a.pdf'), (Join-Path $TestDir 'docs_src\no-existe.pdf')); [void]$o.Append("DA 0 $(Get-DocsPanelText)`r`n")
+Open-DocsPanel (Get-RowById $ids[8]); Add-ClientDocs @((Join-Path $TestDir 'docs_src\nuevo.pdf')); [void]$o.Append("DA 8 $(Get-DocsPanelText)`r`n")
+foreach ($r in $script:Rows) { $n = Get-DocsCount $r; if ($n) { [void]$o.Append("DM2 $($r.Row) $($r.Id) n=$n`r`n") } }
+Add-Tree 'DT2'
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

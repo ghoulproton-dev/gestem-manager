@@ -1,6 +1,6 @@
 @echo off
 cd /d "%~dp0"
-rem datos de prueba: «GESTEM MANAGER» junto a cs (copia de trabajo) o en Descargas
+rem datos de prueba: ?GESTEM MANAGER? junto a cs (copia de trabajo) o en Descargas
 set SRC=..\GESTEM MANAGER
 if not exist "%SRC%\GESTEM datos" set SRC=%USERPROFILE%\Downloads\GESTEM_MANAGER_1\GESTEM MANAGER
 rmdir /s /q test 2>nul
@@ -10,6 +10,9 @@ copy /Y "%SRC%\GESTEM datos\*.json" "test\cs\GESTEM datos\" >nul
 copy /Y "%SRC%\GESTEM datos\*.json" "test\ps\GESTEM datos\" >nul
 copy /Y "%SRC%\CRM 2026CLIENTES (copia real).xlsx" "test\cs\x.xlsx" >nul
 copy /Y "%SRC%\CRM 2026CLIENTES (copia real).xlsx" "test\ps\x.xlsx" >nul
+rem documentos de prueba (etapa 3d): la misma carpeta para los dos
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\docsfixture.ps1 "%cd%\test\ps_docs" "%SRC%\GESTEM datos\canje.json" "%cd%\test\docs_src" > test\fixture_err.txt 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\docsfixture.ps1 "%cd%\test\cs_docs" "%SRC%\GESTEM datos\canje.json" "%cd%\test\docs_src" >> test\fixture_err.txt 2>&1
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\pstest.ps1 "%cd%\test" > test\ps_err.txt 2>&1
 start /wait "" GESTEM.exe --selftest "%cd%\test"
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\compare.ps1 "%cd%\test" > test\compare_err.txt 2>&1
