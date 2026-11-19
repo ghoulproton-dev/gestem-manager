@@ -17,10 +17,15 @@ namespace Gestem
         public int IdWidth = 3;
     }
 
+    public class DelMark { public string By = "", At = ""; }     // cliente eliminado (marca «borrado»)
+    public class HandDelRec { public string Uid = "", Key = "", Name = "", By = "", At = ""; public bool On; }   // eliminado de una pestaña a mano
+
     public class ClientRec
     {
         public int Row;
         public string Id = "", Updated = "", By = "";
+        public string Uid, H;          // id en Firebase y huella de lo último guardado/recibido (null = cliente nuevo)
+        public DelMark Del;
         public bool Sync, New;
         public Dictionary<string, object> F = new Dictionary<string, object>();
     }
@@ -30,6 +35,7 @@ namespace Gestem
         public Meta Meta = new Meta();
         public List<ClientRec> Clients = new List<ClientRec>();
         public List<string> Adopted = new List<string>();
+        public List<HandDelRec> HandDel = new List<HandDelRec>();
     }
 
     // una fila de la lista de clientes (las propiedades son las que usa la tabla de la ventana)
@@ -171,6 +177,7 @@ namespace Gestem
             if (tn != null) foreach (KeyValuePair<string, object> kv in tn) m.TariffNet[kv.Key] = Convert.ToDouble(kv.Value);
             object dp = Json.Get(jm, "defaultPrice");
             if (dp != null) m.DefaultPrice = Convert.ToDouble(dp);
+            HashSet<string> seen = new HashSet<string>();
             foreach (object c in Json.Arr(Json.Get(j, "clients")))
             {
                 if (c == null) continue;
@@ -178,6 +185,18 @@ namespace Gestem
                 object jf = Json.Get(c, "f");
                 foreach (Field f in t.Fields) r.F[f.Key] = FromStoreValue(f, Json.Get(jf, f.Key));
                 r.Row = Convert.ToInt32(Json.Get(c, "row") ?? 0L);
+                // id único para Firebase; los clientes de antes de Firebase lo sacan de su nº, así todos los PC dan el mismo
+                r.Uid = Ps.Str(Json.Get(c, "uid"));
+                object del = Json.Get(c, "borrado");
+                if (r.Row < Hand.RowBase)
+                {
+                    string id0 = Ps.Str(Json.Get(c, "id"));
+                    if (r.Uid.Length == 0) r.Uid = PsH.Rep(id0.Length > 0 ? t.Id + "-" + id0 : t.Id + "-r" + r.Row, @"[^\w-]", "_");
+                    if (!seen.Add(r.Uid)) r.Uid = Guid.NewGuid().ToString("N");
+                    List<object> raw = new List<object>(); foreach (Field f in FbFields(t)) raw.Add(Json.Get(jf, f.Key));
+                    r.H = FbHash(FbKey(id0, Truthy(del)), raw);
+                }
+                if (Truthy(del)) { r.Del = new DelMark(); r.Del.By = Ps.Str(Json.Get(del, "by")); r.Del.At = Ps.Str(Json.Get(del, "at")); }
                 r.Id = Ps.Str(Json.Get(c, "id"));
                 r.Sync = Truthy(Json.Get(c, "sync"));
                 r.New = Truthy(Json.Get(c, "nuevo"));
@@ -186,6 +205,14 @@ namespace Gestem
                 s.Clients.Add(r);
             }
             foreach (object a in Json.Arr(Json.Get(j, "adoptados"))) if (Ps.Str(a).Trim().Length > 0) s.Adopted.Add(Ps.Str(a));
+            // clientes de pestañas hechas a mano eliminados en GESTEM (por nombre); On = false si se deshizo
+            foreach (object e in Json.Arr(Json.Get(j, "borradosMano")))
+            {
+                if (e == null || !Truthy(Json.Get(e, "uid"))) continue;
+                HandDelRec x = new HandDelRec(); x.Uid = Ps.Str(Json.Get(e, "uid")); x.Key = Ps.Str(Json.Get(e, "key")); x.Name = Ps.Str(Json.Get(e, "name"));
+                x.On = Truthy(Json.Get(e, "on")); x.By = Ps.Str(Json.Get(e, "by")); x.At = Ps.Str(Json.Get(e, "at"));
+                s.HandDel.Add(x);
+            }
             return s;
         }
         static bool Truthy(object v) { if (v == null) return false; if (v is bool) return (bool)v; if (v is string) return ((string)v).Length > 0; if (Ps.IsNum(v)) return Convert.ToDouble(v) != 0; return true; }
@@ -196,26 +223,61 @@ namespace Gestem
             List<ClientRec> sorted = new List<ClientRec>(store.Clients);
             StableSortByRow(sorted);
             List<object> list = new List<object>();
+            Dictionary<int, ClientRec> prev = null; FbState st = null;
             foreach (ClientRec c in sorted)
             {
                 Dictionary<string, object> o = new Dictionary<string, object>();
                 foreach (Field f in t.Fields) { object v; c.F.TryGetValue(f.Key, out v); o[f.Key] = ToStoreValue(f, v); }
+                if (c.Row < Hand.RowBase)
+                {
+                    if (string.IsNullOrEmpty(c.Uid))
+                    {
+                        // cliente nuevo o vuelto a importar del Excel: conserva el id si es el mismo cliente en la misma fila
+                        if (prev == null)
+                        {
+                            prev = new Dictionary<int, ClientRec>();
+                            try { StoreData ps = Read(t); if (ps != null) foreach (ClientRec x0 in ps.Clients) prev[x0.Row] = x0; } catch { }
+                        }
+                        ClientRec x; prev.TryGetValue(c.Row, out x);
+                        if (x != null && !string.IsNullOrEmpty(x.Uid) && Ps.Str(Get(x.F, "name")) == Ps.Str(Get(c.F, "name"))) { c.Uid = x.Uid; c.H = x.H; }
+                        else c.Uid = Guid.NewGuid().ToString("N");
+                    }
+                    // cambiado en este PC: queda «por enviar» a Firebase (lo que llega de Firebase no se reenvía)
+                    List<object> vals = new List<object>(); foreach (Field f in FbFields(t)) vals.Add(o[f.Key]);
+                    string h = FbHash(FbKey(c.Id, c.Del != null), vals);
+                    if (h != c.H && !FbState.Applying)
+                    {
+                        if (st == null) st = FbState.Load();
+                        PendItem pi = new PendItem(); pi.T = t.Id; pi.H = h; pi.N = st.Pend.ContainsKey(c.Uid) && ((PendItem)st.Pend[c.Uid]).N;
+                        st.Pend[c.Uid] = pi;
+                    }
+                    c.H = h;
+                }
                 Dictionary<string, object> rec = new Dictionary<string, object>();
-                rec["row"] = (long)c.Row; rec["id"] = c.Id; rec["sync"] = c.Sync; rec["nuevo"] = c.New;
+                rec["row"] = (long)c.Row; rec["id"] = c.Id; rec["uid"] = c.Uid; rec["sync"] = c.Sync; rec["nuevo"] = c.New;
                 rec["updated"] = c.Updated; rec["by"] = c.By; rec["f"] = o;
+                if (c.Del != null) { Dictionary<string, object> b = new Dictionary<string, object>(); b["by"] = c.Del.By; b["at"] = c.Del.At; rec["borrado"] = b; }
                 list.Add(rec);
             }
             Meta m = store.Meta;
             Dictionary<string, object> meta = new Dictionary<string, object>();
             meta["idPrefix"] = m.IdPrefix; meta["idWidth"] = (long)m.IdWidth;
             meta["defaultPrice"] = m.DefaultPrice.HasValue ? (object)m.DefaultPrice.Value : null;
-            meta["tariff"] = m.Tariff; meta["tariffNet"] = m.TariffNet; meta["lists"] = m.Lists;
+            meta["tariff"] = AsPsH(m.Tariff); meta["tariffNet"] = AsPsH(m.TariffNet); meta["lists"] = AsPsH(m.Lists);    // @{} en PowerShell: su orden al guardar
             List<string> adopted = new List<string>();
             foreach (string a in store.Adopted) if ((a ?? "").Trim().Length > 0) adopted.Add(a);
             Dictionary<string, object> obj = new Dictionary<string, object>();
             obj["app"] = App.Name; obj["formato"] = 1L; obj["tramite"] = t.Id; obj["hoja"] = t.Sheet;
             obj["guardado"] = DateTime.Now.ToString("s", Ps.Inv);
             obj["meta"] = meta; obj["clients"] = list; obj["adoptados"] = adopted;
+            List<object> hd = new List<object>();
+            foreach (HandDelRec e in store.HandDel)
+            {
+                if (e == null) continue;
+                Dictionary<string, object> x = new Dictionary<string, object>();
+                x["uid"] = e.Uid; x["key"] = e.Key; x["name"] = e.Name; x["on"] = e.On; x["by"] = e.By; x["at"] = e.At; hd.Add(x);
+            }
+            obj["borradosMano"] = hd;
             string json = Json.Write(obj);
             string tmp = p + ".tmp";
             File.WriteAllText(tmp, json, new UTF8Encoding(true));
@@ -232,7 +294,23 @@ namespace Gestem
                 catch { File.Copy(tmp, p, true); try { File.Delete(tmp); } catch { } }
             }
             else File.Move(tmp, p);
+            if (st != null) st.Save();
         }
+
+        // Get-FbFields / Get-FbKey / Get-FbHash: lo que se sube a Firebase (sin contraseñas) y su huella
+        public static List<Field> FbFields(Tramite t) { List<Field> r = new List<Field>(); foreach (Field f in t.Fields) if (!f.Local) r.Add(f); return r; }
+        public static string FbKey(string id, bool del) { return del ? (id ?? "") + (char)30 + "BORRADO" : (id ?? ""); }
+        public static string FbHash(string id, List<object> vals)
+        {
+            // -join de PowerShell: números con la cultura del PC (es-ES: «12,5»)
+            List<string> p = new List<string>();
+            foreach (object v in vals) p.Add(v == null ? "" : v is string ? (string)v : v is bool ? ((bool)v ? "True" : "False") : Convert.ToString(v, System.Globalization.CultureInfo.CurrentCulture));
+            string s = id + (char)31 + string.Join(((char)31).ToString(), p.ToArray());
+            using (System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create())
+                return Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(s)));
+        }
+
+        static System.Collections.Hashtable AsPsH<V>(Dictionary<string, V> d) { System.Collections.Hashtable h = PsH.New(); foreach (KeyValuePair<string, V> kv in d) h[kv.Key] = kv.Value; return h; }
 
         public static void StableSortByRow(List<ClientRec> l)
         {
@@ -251,6 +329,7 @@ namespace Gestem
         // --- valores que en el Excel calculan sus fórmulas ---
         public static Dictionary<string, object> Resolve(Tramite t, Dictionary<string, object> FV, Meta meta)
         {
+            UpdateReqDeadline(t, FV);
             Field natF = t.FieldByRole("nationality");
             if (natF != null && Ps.Trim(Get(FV, natF.Key)).Length == 0 && Ps.Trim(Get(FV, "name")).Length > 0) FV[natF.Key] = t.DefaultNationality;
             string tipo = Ps.Str(Get(FV, "tipo"));
@@ -267,6 +346,50 @@ namespace Gestem
         }
 
         public static object Get(Dictionary<string, object> d, string k) { object v; return d != null && d.TryGetValue(k, out v) ? v : null; }
+
+        // --- requerimientos: Get-ReqDeadline / Get-WorkDaysUntil / Update-ReqDeadline / Get-ReqAlerts ---
+        // 10 días hábiles (lunes a viernes) desde el día siguiente a la apertura, o a la notificación si no hay apertura
+        // shortcut: no cuenta festivos (igual que PowerShell); añadir una lista de festivos si hace falta
+        public static DateTime? ReqDeadline(object apertura, object notif)
+        {
+            object o = apertura is DateTime ? apertura : notif is DateTime ? notif : null;
+            if (o == null) return null;
+            DateTime d = ((DateTime)o).Date; int n = 0;
+            while (n < 10) { d = d.AddDays(1); if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday) n++; }
+            return d;
+        }
+        public static int WorkDaysUntil(DateTime from, DateTime to)
+        {
+            int n = 0; DateTime d = from.Date;
+            while (d < to.Date) { d = d.AddDays(1); if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday) n++; }
+            return n;
+        }
+        public static void UpdateReqDeadline(Tramite t, Dictionary<string, object> FV)
+        {
+            if (t.HasField("flim")) { DateTime? d = ReqDeadline(Get(FV, "xG"), Get(FV, "xF")); FV["flim"] = d.HasValue ? (object)d.Value : null; }
+        }
+        // requerimientos abiertos (sin respuesta ni cerrados) que vencen en 3 días hábiles o menos, y cuántos ya vencieron
+        public static void ReqAlerts(IEnumerable<ClientRow> rows, DateTime today, out int due, out int late)
+        {
+            due = 0; late = 0;
+            foreach (ClientRow r in rows)
+            {
+                if (r == null) continue;
+                Dictionary<string, object> F = r.Data;
+                string st = Ps.Str(Get(F, "xI"));
+                if (st == "Respondido" || st == "Cerrado" || Get(F, "xH") is DateTime) continue;
+                DateTime? dl = ReqDeadline(Get(F, "xG"), Get(F, "xF"));
+                if (!dl.HasValue) continue;
+                if (dl.Value < today.Date) late++; else if (WorkDaysUntil(today, dl.Value) <= 3) due++;
+            }
+        }
+        // columna «Tipo» de la lista: el tipo, o la fecha de notificación (requerimientos)
+        public static string TipoText(Dictionary<string, object> FV)
+        {
+            if (FV.ContainsKey("tipo")) return Ps.Str(Get(FV, "tipo"));
+            object x = Get(FV, "xF");
+            return x is DateTime ? ((DateTime)x).ToString("dd/MM/yyyy", Ps.Inv) : Ps.Str(x);
+        }
 
         public static ClientRow RowObject(Tramite t, ClientRec c, Meta meta)
         {
@@ -292,7 +415,7 @@ namespace Gestem
             if (t.StatusColors.ContainsKey(status)) color = t.StatusColors[status];
             ClientRow r = new ClientRow();
             r.Row = c.Row; r.Id = c.Id; r.Name = Ps.Str(Get(FV, "name")); r.Doc = Ps.Str(Get(FV, "doc"));
-            r.Tipo = FV.ContainsKey("tipo") ? Ps.Str(Get(FV, "tipo")) : Ps.Str(Get(FV, "xF"));
+            r.Tipo = TipoText(FV);
             r.Status = status; r.Color = color; r.Pay = ps;
             r.Pending = pend; r.PendingText = pend > 0 ? Ps.Money(pend) : "";
             r.Days = days; r.Loc = Ps.Str(Get(FV, "loc")); r.Resp = Ps.Str(Get(FV, "resp")); r.Data = rec;
@@ -321,7 +444,9 @@ namespace Gestem
             StableSortByRow(sorted);
             foreach (ClientRec c in sorted)
             {
-                rows.Add(RowObject(t, c, meta)); used.Add(c.Row);
+                used.Add(c.Row);
+                if (c.Del != null) continue;    // eliminado: no se ve, pero su nº no se vuelve a usar
+                rows.Add(RowObject(t, c, meta));
                 string fo = Ps.Trim(Get(c.F, "forma"));
                 if (fo.Length > 0 && !payExtra.Contains(fo)) payExtra.Add(fo);
             }

@@ -8,7 +8,7 @@ namespace Gestem
     {
         public string Key, Col, Type, Section, Role, List, Default;
         public int Span = 1;
-        public bool Required, Colored, DefaultToday, KeepCase;
+        public bool Required, Colored, DefaultToday, KeepCase, Local, ReadOnly;   // Local: contraseñas, nunca salen del PC; ReadOnly: calculado (fecha límite)
         public Dictionary<string, string> Label = new Dictionary<string, string>();
 
         public string LabelText()
@@ -24,7 +24,7 @@ namespace Gestem
     {
         public string Id, Sheet, LastCol, NetCol, IdCol, NameCol, DocCol, StatusCol, PayCol, PendCol, DaysCol, TipoCol, DefaultNationality, PriceKey;
         public int FirstRow, LastRow;
-        public bool NoStats;
+        public bool NoStats, HandMDY;    // HandMDY: la pestaña a mano tiene fechas mm/dd (REQUERIMIENTOS)
         public Dictionary<string, string> Title = new Dictionary<string, string>();
         public Dictionary<string, string> StatusColors = new Dictionary<string, string>();
         public Dictionary<int, string> HandCols;          // solo «tasas»: columnas fijas de la pestaña hecha a mano
@@ -77,7 +77,7 @@ namespace Gestem
             t.NameCol = Json.Str(o, "NameCol"); t.DocCol = Json.Str(o, "DocCol"); t.StatusCol = Json.Str(o, "StatusCol");
             t.PayCol = Json.Str(o, "PayCol"); t.PendCol = Json.Str(o, "PendCol"); t.DaysCol = Json.Str(o, "DaysCol");
             t.TipoCol = Json.Str(o, "TipoCol"); t.DefaultNationality = Json.Str(o, "DefaultNationality");
-            t.PriceKey = Json.Str(o, "PriceKey"); t.NoStats = Bool(Json.Get(o, "NoStats"));
+            t.PriceKey = Json.Str(o, "PriceKey"); t.NoStats = Bool(Json.Get(o, "NoStats")); t.HandMDY = Bool(Json.Get(o, "HandMDY"));
             t.Title = StrMap(Json.Get(o, "Title"));
             t.StatusColors = StrMap(Json.Get(o, "StatusColors"));
             Dictionary<string, object> hc = Json.Obj(Json.Get(o, "HandCols"));
@@ -90,6 +90,7 @@ namespace Gestem
                 f.Span = Int(Json.Get(fo, "Span"), 1);
                 f.Required = Bool(Json.Get(fo, "Required")); f.Colored = Bool(Json.Get(fo, "Colored"));
                 f.DefaultToday = Bool(Json.Get(fo, "DefaultToday")); f.KeepCase = Bool(Json.Get(fo, "KeepCase"));
+                f.Local = Bool(Json.Get(fo, "Local")); f.ReadOnly = Bool(Json.Get(fo, "ReadOnly"));
                 f.Label = StrMap(Json.Get(fo, "Label"));
                 t.Fields.Add(f);
             }

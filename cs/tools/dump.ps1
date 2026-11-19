@@ -2,12 +2,9 @@
 # Se ejecuta con dump.bat; lee tools\GESTEM.ps1 (misma versión que el repo).
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$lines = [IO.File]::ReadAllLines((Join-Path $here 'GESTEM.ps1'), [Text.Encoding]::UTF8)
+$lines = [IO.File]::ReadAllLines((Join-Path (Split-Path -Parent (Split-Path -Parent $here)) 'GESTEM.ps1'), [Text.Encoding]::UTF8)
 function Run-Range([int]$a, [int]$b) { $code = ($lines[($a - 1)..($b - 1)] -join "`n"); . ([ScriptBlock]::Create($code)) }
-. ([ScriptBlock]::Create(($lines[60..786] -join "`n")))
-. ([ScriptBlock]::Create(($lines[887..890] -join "`n")))
-. ([ScriptBlock]::Create(($lines[936] )))
-. ([ScriptBlock]::Create(($lines[6371..6507] -join "`n")))
+foreach ($code in (& (Join-Path $here 'psblocks.ps1') $lines)) { . ([ScriptBlock]::Create($code)) }
 $out = Join-Path (Split-Path -Parent $here) 'data'
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 function Save([string]$name, $obj) {

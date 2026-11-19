@@ -2,7 +2,7 @@
 param([string]$TestDir)
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$src = Join-Path $here 'GESTEM.ps1'
+$src = Join-Path (Split-Path -Parent (Split-Path -Parent $here)) 'GESTEM.ps1'    # el del repo (1.9.2+)
 $lines = [IO.File]::ReadAllLines($src, [Text.Encoding]::UTF8)
 $tokens = $null; $errs = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($src, [ref]$tokens, [ref]$errs)
@@ -10,12 +10,12 @@ foreach ($fd in $ast.FindAll({ param($n) $n -is [System.Management.Automation.La
     if ($fd.Parent -ne $null -and $fd.Parent.Parent -ne $null -and $fd.Parent.Parent -ne $ast) { continue }
     . ([ScriptBlock]::Create($fd.Extent.Text))
 }
-. ([ScriptBlock]::Create(($lines[60..786] -join "`n")))
-. ([ScriptBlock]::Create(($lines[887..890] -join "`n")))
-. ([ScriptBlock]::Create(($lines[936])))
+foreach ($code in (& (Join-Path $here 'psblocks.ps1') $lines)) { . ([ScriptBlock]::Create($code)) }
 $script:ES = [Globalization.CultureInfo]::GetCultureInfo('es-ES')
 $script:BackupDir = Join-Path $TestDir 'copias_ps'
 $script:LogPath = Join-Path $TestDir 'ps_log.txt'
+$script:FbStatePath = Join-Path $TestDir 'ps_firebase.json'; $script:FbApplying = $false
+$script:HandRowBase = 100000    # en GESTEM.ps1 está antes de todo: Read-Store / Write-Store lo usan
 $script:CfgPath = Join-Path $TestDir 'config_ps.json'
 $script:User = ''
 New-Item -ItemType Directory -Force -Path $script:BackupDir | Out-Null
@@ -131,4 +131,19 @@ try {
     [IO.File]::WriteAllText((Join-Path $TestDir 'ps_com_error.txt'), "$($_.Exception.Message)`r`nlínea $($_.InvocationInfo.ScriptLineNumber): $($_.InvocationInfo.Line)`r`n$($_.ScriptStackTrace)")
     try { if ($h) { $h.Wb.Close($false); if ($h.Mine) { $h.Xl.Quit() } } } catch { }
 }
+# etapa 2d: huella para Firebase (pendientes), cliente eliminado, avisos de requerimientos
+$t = $script:Tramites | Where-Object { $_.Id -eq 'sis' }
+$s = Read-Store $t
+$s.Clients[0].F['obs'] = 'cambio 2d'
+$s.Clients[1].Del = @{ By = 'PRUEBA'; At = '2026-11-19T10:00:00' }
+Write-Store $t $s
+$s = Read-Store $t; $d = Build-TramiteData $t $s
+[void]$o.Append("FB rows=$($d.Rows.Count) firstEmpty=$($d.FirstEmpty) nextId=$($d.NextId) del=$(@($s.Clients | Where-Object { $_.Del }).Count)`r`n")
+$st = Get-FbState; [string[]]$pk = @($st.Pend.Keys); [Array]::Sort($pk, [StringComparer]::Ordinal)
+foreach ($k in $pk) { [void]$o.Append("FP $k t=$($st.Pend[$k].T) h=$($st.Pend[$k].H) n=$($st.Pend[$k].N)`r`n") }
+$t = $script:Tramites | Where-Object { $_.Id -eq 'requerimiento' }
+$s = Read-Store $t; $i = 0
+foreach ($c in $s.Clients) { $c.F['xF'] = (New-Object DateTime 2026, 11, 1).AddDays(3 * $i); $c.F['xH'] = $null; $c.F['xI'] = $(if ($i -eq 2) { 'Cerrado' } else { $null }); $i++ }
+$d = Build-TramiteData $t $s
+foreach ($day in 1..30) { $al = Get-ReqAlerts $d.Rows (New-Object DateTime 2026, 11, $day); [void]$o.Append("RQ $day due=$($al.Due) late=$($al.Late)`r`n") }
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

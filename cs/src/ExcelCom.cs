@@ -243,7 +243,7 @@ namespace Gestem
             int hr = t.FirstRow - 1;
             Hashtable heads = PsH.New();
             heads["A"] = "ID Expediente"; heads["L"] = "Pendiente (€)"; heads["T"] = "Días"; heads["W"] = "Neto (€)";
-            foreach (Field f in t.Fields) { string es; f.Label.TryGetValue("es", out es); heads[f.Col] = es ?? ""; }
+            foreach (Field f in t.Fields) { if (string.IsNullOrEmpty(f.Col)) continue; string es; f.Label.TryGetValue("es", out es); heads[f.Col] = es ?? ""; }
             foreach (DictionaryEntry k in heads) Com.SetV2(ws, (string)k.Key + hr, (string)k.Value);
             object hdr = Com.Range(ws, "A" + hr + ":" + t.LastCol + hr);
             Com.Set(Com.Get(hdr, "Font"), "Bold", true); Com.Set(Com.Get(hdr, "Interior"), "Color", 14277081);
@@ -366,6 +366,7 @@ namespace Gestem
                 rec["Row"] = T.FirstRow + i - 1;
                 foreach (Field f in T.Fields)
                 {
+                    if (string.IsNullOrEmpty(f.Col)) { rec[f.Key] = null; continue; }      // campo solo de GESTEM (colaborador…)
                     object v = vals[i, Xlsx.ColNum(f.Col)];
                     if (f.Type == "Date" && v is double) v = DateTime.FromOADate((double)v);
                     rec[f.Key] = v;
@@ -377,7 +378,7 @@ namespace Gestem
                 string color = "#FFFFFF"; if (T.StatusColors.ContainsKey(status)) color = T.StatusColors[status];
                 ClientRow r = new ClientRow();
                 r.Row = T.FirstRow + i - 1; r.Id = Ps.Str(vals[i, idC]); r.Name = name; r.Doc = Ps.Str(Store.Get(rec, "doc"));
-                r.Tipo = rec.ContainsKey("tipo") ? Ps.Str(rec["tipo"]) : Ps.Str(Store.Get(rec, "xF"));
+                r.Tipo = Store.TipoText(rec);
                 r.Status = status; r.Color = color; r.Pay = Ps.Str(Store.Get(rec, "paystate"));
                 r.Pending = pend is double ? (double)pend : 0;
                 r.PendingText = (pend is double && (double)pend > 0) ? Ps.Money(pend) : "";

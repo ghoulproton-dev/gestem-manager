@@ -29,6 +29,7 @@ namespace Gestem
             foreach (Field f in T.Fields)
             {
                 object v = Store.Get(vals, f.Key);
+                if (string.IsNullOrEmpty(f.Col)) continue;      // campo solo de GESTEM (colaborador, comisión…): no va al Excel
                 ClientOp op = new ClientOp(); op.Col = f.Col;
                 string role = f.Role ?? "";
                 if (Ps.EqI(role, "nationality"))

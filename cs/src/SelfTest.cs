@@ -17,7 +17,7 @@ namespace Gestem
         public static int Run(string testDir)
         {
             StringBuilder o = new StringBuilder();
-            App.DataDir = testDir; App.BackupDir = Path.Combine(testDir, "copias"); App.LogPath = Path.Combine(testDir, "cs_log.txt"); App.CfgPath = Path.Combine(testDir, "config_cs.json");
+            App.DataDir = testDir; App.BackupDir = Path.Combine(testDir, "copias"); App.LogPath = Path.Combine(testDir, "cs_log.txt"); App.CfgPath = Path.Combine(testDir, "config_cs.json"); FbState.Path = Path.Combine(testDir, "cs_firebase.json");
             Directory.CreateDirectory(App.BackupDir);
             Config.Cur = new Config();
             Config.Cur.ExcelPath = Path.Combine(testDir, "cs", "x.xlsx");
@@ -140,6 +140,25 @@ namespace Gestem
                 o.Append("C2 " + WR(fr) + " " + WR(fn) + " " + WR(fa) + "\r\n");
             }
             catch (Exception e) { o.Append("C! " + e.Message + "\r\n"); File.WriteAllText(Path.Combine(testDir, "cs_com_error.txt"), e.ToString()); if (h != null) { try { ExcelCom.Close(h, false); } catch { } } }
+            // etapa 2d: huella para Firebase (pendientes), cliente eliminado, avisos de requerimientos
+            {
+                Tramite t = Tramite.ById("sis");
+                StoreData s = Store.Read(t);
+                s.Clients[0].F["obs"] = "cambio 2d";
+                s.Clients[1].Del = new DelMark(); s.Clients[1].Del.By = "PRUEBA"; s.Clients[1].Del.At = "2026-11-19T10:00:00";
+                Store.Write(t, s);
+                s = Store.Read(t); TramiteData d = Store.BuildData(t, s);
+                int del = 0; foreach (ClientRec c in s.Clients) if (c.Del != null) del++;
+                o.Append("FB rows=" + d.Rows.Count + " firstEmpty=" + d.FirstEmpty + " nextId=" + d.NextId + " del=" + del + "\r\n");
+                FbState st = FbState.Load();
+                List<string> pk = new List<string>(); foreach (object k in st.Pend.Keys) pk.Add((string)k); pk.Sort(StringComparer.Ordinal);
+                foreach (string k in pk) { PendItem pi = (PendItem)st.Pend[k]; o.Append("FP " + k + " t=" + pi.T + " h=" + pi.H + " n=" + (pi.N ? "True" : "False") + "\r\n"); }
+                t = Tramite.ById("requerimiento");
+                s = Store.Read(t);
+                for (int i = 0; i < s.Clients.Count; i++) { ClientRec c = s.Clients[i]; c.F["xF"] = new DateTime(2026, 11, 1).AddDays(3 * i); c.F["xH"] = null; c.F["xI"] = i == 2 ? "Cerrado" : null; }
+                d = Store.BuildData(t, s);
+                for (int day = 1; day <= 30; day++) { int due, late; Store.ReqAlerts(d.Rows, new DateTime(2026, 11, day), out due, out late); o.Append("RQ " + day + " due=" + due + " late=" + late + "\r\n"); }
+            }
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             return 0;
         }

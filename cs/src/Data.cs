@@ -57,7 +57,7 @@ namespace Gestem
             {
                 // el Excel no tiene esta pestaña: se empieza vacío y la pestaña se crea al guardar el primer cliente
                 StoreData st = Hand.NewEmptyStore(t, PriceFromBook(h, t));
-                try { StoreData old = Store.Read(t); if (old != null) st.Adopted = new List<string>(old.Adopted); } catch { }
+                try { StoreData old = Store.Read(t); if (old != null) { st.Adopted = new List<string>(old.Adopted); st.HandDel = new List<HandDelRec>(old.HandDel); } } catch { }
                 Store.Write(t, st);
                 App.Log(string.Format("sin pestaña en el Excel, trámite empezado vacío: {0}", t.Sheet));
                 return Store.Read(t);
@@ -72,10 +72,26 @@ namespace Gestem
                 c.Row = r.Row; c.Id = r.Id; c.Sync = true; c.Updated = DateTime.Now.ToString("s", Ps.Inv); c.By = "Excel";
                 store.Clients.Add(c);
             }
-            try { StoreData old = Store.Read(t); if (old != null) store.Adopted = new List<string>(old.Adopted); } catch { }
+            StoreData old2 = null;
+            try { old2 = Store.Read(t); if (old2 != null) { store.Adopted = new List<string>(old2.Adopted); store.HandDel = new List<HandDelRec>(old2.HandDel); } } catch { }
+            if (old2 != null) MergeStoreDeleted(store.Clients, old2);
             Store.Write(t, store);
             App.Log(string.Format("importó del Excel: {0} ({1} clientes)", t.Sheet, store.Clients.Count));
             return Store.Read(t);     // mismos valores que se guardaron (fechas e importes ya convertidos)
+        }
+
+        // Merge-StoreDeleted: lo eliminado en GESTEM no vuelve con el Excel: mismo cliente (fila y nombre) sigue eliminado;
+        // si ya no está en el Excel, se queda la marca
+        public static void MergeStoreDeleted(List<ClientRec> clients, StoreData old)
+        {
+            Dictionary<int, ClientRec> byRow = new Dictionary<int, ClientRec>(); foreach (ClientRec c in clients) byRow[c.Row] = c;
+            foreach (ClientRec x in old.Clients)
+            {
+                if (x.Del == null || x.Row >= Hand.RowBase) continue;
+                ClientRec c; byRow.TryGetValue(x.Row, out c);
+                if (c != null && Xlsx.SheetKey(Ps.Str(Store.Get(c.F, "name"))) == Xlsx.SheetKey(Ps.Str(Store.Get(x.F, "name")))) { c.Del = x.Del; c.Updated = x.Updated; c.By = x.By; }
+                else if (c == null) clients.Add(x);
+            }
         }
 
         public static void UpdateStoreMeta(Book h, Tramite t)
@@ -148,6 +164,7 @@ namespace Gestem
 
         public static bool SyncRecordToExcel(Tramite t, ClientRec rec, Book h, bool fileOnly)
         {
+            if (!ExcelWrites) return true;    // 1.9: el Excel solo se lee (importar); GESTEM ya no escribe en él
             Tramite prevT = G.T; Dictionary<string, double> prevTar = G.Tariff;
             try
             {
@@ -223,6 +240,7 @@ namespace Gestem
         // una vez por PC: quitar las SUM(...) que versiones anteriores copiaron en filas de clientes
         public static void RepairTotalsFormulas()
         {
+            if (!ExcelWrites) return;    // el Excel solo se lee: ya no se repara escribiendo en él
             if (Config.Cur.SumsRepaired) return;
             bool ok = true; Tramite prevT = G.T; Dictionary<string, double> prevTar = G.Tariff;
             try
@@ -251,8 +269,12 @@ namespace Gestem
         }
 
         // clientes guardados en GESTEM que todavía no están en el Excel
+        // false desde 1.9.0 (Excel solo se importa); el código de escritura se queda como en PowerShell
+        public static bool ExcelWrites = false;
+
         public static int SyncPendingToExcel()
         {
+            if (!ExcelWrites) return 0;    // el Excel solo se lee: no hay nada pendiente de escribir en él
             List<KeyValuePair<Tramite, ClientRec>> todo = new List<KeyValuePair<Tramite, ClientRec>>();
             foreach (Tramite t in Tramite.All)
             {
@@ -288,6 +310,7 @@ namespace Gestem
 
         public static int PendingSyncCount()
         {
+            if (!ExcelWrites) return 0;    // el Excel solo se lee
             int n = 0;
             if (G.Cache == null) return 0;
             foreach (Tramite t in Tramite.All) if (G.Cache.ContainsKey(t.Id)) foreach (ClientRow r in G.Cache[t.Id].Rows) if (!r.Sync) n++;

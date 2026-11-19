@@ -83,6 +83,11 @@ namespace Gestem
 
         public static string Role(string k, Tramite t)
         {
+            if (t.Id == "requerimiento")
+            {
+                if (PsH.Is(k, "NOTIFICA")) return "xF"; if (PsH.Is(k, "APERTURA|ABIERT")) return "xG"; if (PsH.Is(k, "RESPUEST")) return "xH";
+                if (PsH.Is(k, "LIMITE|PLAZO")) return "obs";    // la fecha límite la calcula GESTEM
+            }
             if (PsH.Is(k, "^(NOMBRE|CLIENTE)")) return "name";
             if (PsH.Is(k, @"\b(NIE|DNI|PASAPORTE|DOCUMENTO)\b")) return "doc";
             if (PsH.Is(k, @"TELEFONO|MOVIL|\bTLF\b")) return "tel";
@@ -155,11 +160,18 @@ namespace Gestem
             return PsH.Rep(Ps.Str(v), @"\s+", " ").Trim();
         }
 
-        public static object Date(object v)
+        public static object Date(object v) { return Date(v, false); }
+        // ConvertFrom-HandDate: número de Excel o «dd/mm/aaaa» dentro de un texto (mdy: «mm/dd/aaaa»)
+        public static object Date(object v, bool mdy)
         {
             if (v is double) { double d = (double)v; if (d >= 20000 && d <= 80000) return DateTime.FromOADate(d).Date; return null; }
             Match m = PsH.M(Ps.Str(v), @"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})");
-            if (m.Success) { try { return new DateTime(int.Parse(m.Groups[3].Value), int.Parse(m.Groups[2].Value), int.Parse(m.Groups[1].Value)); } catch { } }
+            if (m.Success)
+            {
+                int dd = int.Parse(m.Groups[1].Value), mm = int.Parse(m.Groups[2].Value);
+                if (mdy) { dd = int.Parse(m.Groups[2].Value); mm = int.Parse(m.Groups[1].Value); }
+                try { return new DateTime(int.Parse(m.Groups[3].Value), mm, dd); } catch { }
+            }
             return null;
         }
 
@@ -215,7 +227,13 @@ namespace Gestem
                 if (Ps.EqI(rs, "doc")) { matched = true; FV["doc"] = txt.ToUpper(); }
                 if (Ps.EqI(rs, "tel")) { matched = true; FV["tel"] = txt; }
                 if (Ps.EqI(rs, "nat")) { matched = true; FV["nat"] = txt.ToUpper(); }
-                if (rs.StartsWith("x", StringComparison.CurrentCultureIgnoreCase)) { matched = true; FV[rs] = txt; }
+                if (rs.StartsWith("x", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    matched = true;
+                    Field xf = t.FieldByKey(rs);
+                    if (xf != null && xf.Type == "Date") { object d = Date(v, t.HandMDY); if (d != null) FV[rs] = d; else notes.Add(txt); }
+                    else FV[rs] = txt;
+                }
                 if (Ps.EqI(rs, "price")) { matched = true; double? n = Number(v); if (n.HasValue) price = n; else notes.Add(txt); }
                 if (Ps.EqI(rs, "paid")) { matched = true; double? n = Number(v); if (n.HasValue) paid = n; else { payTexts.Add(txt); notes.Add(txt); } }
                 if (Ps.EqI(rs, "pend")) { matched = true; double? n = Number(v); if (n.HasValue) pend = n; else notes.Add(txt); }
@@ -283,6 +301,7 @@ namespace Gestem
                 foreach (string n in notes) if (!uniq.Contains(n)) uniq.Add(n);     // Select-Object -Unique
                 FV["obs"] = string.Join(" · ", uniq.ToArray());
             }
+            Store.UpdateReqDeadline(t, FV);
             return FV;
         }
 
@@ -366,6 +385,7 @@ namespace Gestem
                     if (s == null) s = NewEmptyStore(t, null);
                     // clientes que ya se editaron en GESTEM: ahora son de GESTEM, no se vuelven a leer
                     List<string> adoptedKeys = new List<string>(); foreach (string a in s.Adopted) adoptedKeys.Add(HandKey(a));
+                    foreach (HandDelRec e in s.HandDel) if (e != null && e.On) adoptedKeys.Add(e.Key);
                     if (adoptedKeys.Count > 0)
                     {
                         List<ClientRec> f2 = new List<ClientRec>();

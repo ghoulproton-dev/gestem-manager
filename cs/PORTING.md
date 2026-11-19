@@ -28,6 +28,13 @@ La versión PowerShell (GESTEM.ps1) sigue siendo la que usa la gestoría hasta e
       Data (Load-Data, Refresh-FromExcel, Sync-PendingToExcel, Save-ClientStore…). Prueba 14/11/2026: leer pestaña, guardar con Excel,
       cliente nuevo, crear pestaña AUTÓNOMO -> mismas celdas (valores y fórmulas) en las 16 pestañas, y Excel abre los dos archivos.
 
+- [x] Etapa 2d — al día con PowerShell 1.9.2 en los datos: pstest.ps1 y dump.ps1 leen el GESTEM.ps1 del repo (bloques por marcas,
+      toolspsblocks.ps1), data*.json exportados de 1.9.2, store con uid/borrado/borradosMano, huella y pendientes de Firebase (Fb.cs),
+      campos Local/ReadOnly, requerimiento (fecha límite, avisos, fechas mm/dd) y regularización, Merge-StoreDeleted, Excel solo se lee
+      (Data.ExcelWrites = false). test.bat compara con toolsmpare.ps1 -> testesult.txt (store por contenido, sin «guardado»).
+      Prueba 19/11/2026: resumen (1278 líneas), los 15 archivos de datos y firebase.json idénticos.
+      Arreglado en pstest.ps1: $script:HandRowBase se ponía a mitad de la prueba (la 1.ª pasada no daba uid).
+
 ## Encontrado al trasladar (arreglado en PowerShell 1.7.4)
 - La escritura directa dejaba calcChain.xml apuntando a celdas sin fórmula -> Excel no abría el archivo. Ahora se quita calcChain.xml.
 - Textos con espacios al principio/final: SetAttribute('space', ns, …) escribía «d1p1:space» -> Excel no abría el archivo. Ahora xml:space.
@@ -105,8 +112,7 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
 - Arreglo 1.9.0: lista vacía de clientes (Refresh-ClientGrid / Update-StatusLine usaban `-not $script:Rows`) — no repetirlo.
 
 ## Pendiente
-- [ ] Etapa 2d — ponerse al día con 1.9.2 en los datos: pstest/dump leen GESTEM.ps1 del repo (por marcas, no por nº de línea),
-      volver a exportar data\*.json, formato nuevo del store, campos Local, requerimiento/regularización, Merge-StoreDeleted.
+- [x] Etapa 2d — ver «Hecho»
 - [ ] Etapa 3 — ventana (main.xaml de 1.9.2): lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos,
       eliminar cliente, aviso de requerimientos
 - [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto, Colaboradores, margen
