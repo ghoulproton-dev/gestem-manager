@@ -40,6 +40,12 @@ La versión PowerShell (GESTEM.ps1) sigue siendo la que usa la gestoría hasta e
       Prueba: GESTEM.exe --uitest (en test.bat) -> testII_summary.txt: la lista de los 14 trámites = sus datos, búsqueda y deuda bien.
       Falta en 3a (shortcut en el código): textos de los demás paneles, nº de documentos en la lista, sesión, clave, Find-ExcelAuto.
 
+- [x] Etapa 3b — ficha (WinForm.cs): construir según el trámite, rellenar/leer, tarjeta con IVA (tasas DGT aparte), margen y comisión,
+      traducción (precio = traductora + 3 € × nº docs), fecha límite de requerimientos, aviso de NIE repetido, conflicto con otro PC,
+      guardar, editar (doble clic / Enter / botón), Ctrl+S, Ctrl+N, Esc, aviso al cerrar con cambios.
+      Prueba: pstest.ps1 abre la MISMA XAML con las funciones de PowerShell; los dos abren cada cliente en la ficha:
+      valores leídos y textos de la tarjeta idénticos (658 líneas). Config guarda ya los ajustes 1.8–1.9 (clave, FbSync…).
+
 ## Encontrado al trasladar (arreglado en PowerShell 1.7.4)
 - La escritura directa dejaba calcChain.xml apuntando a celdas sin fórmula -> Excel no abría el archivo. Ahora se quita calcChain.xml.
 - Textos con espacios al principio/final: SetAttribute('space', ns, …) escribía «d1p1:space» -> Excel no abría el archivo. Ahora xml:space.
@@ -118,7 +124,7 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
 
 ## Pendiente
 - [x] Etapa 2d — ver «Hecho»
-- [ ] Etapa 3b–3d — ventana (3a hecha): lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos,
+- [ ] Etapa 3c–3d — ventana (3a y 3b hechas): lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos,
       eliminar cliente, aviso de requerimientos
 - [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto, Colaboradores, margen
 - [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM

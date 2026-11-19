@@ -177,8 +177,39 @@ namespace Gestem
                     o.Append(line.ToString() + "\r\n");
                 }
             }
+            // etapa 3b: la ficha (misma XAML): cada cliente se abre para editar; valores leídos de la ficha y textos de la tarjeta
+            G.T = Tramite.ById("canje"); G.Cache = null;
+            MainWin w = new MainWin();
+            foreach (Tramite t in Tramite.All)
+            {
+                StoreData s = Store.Read(t); if (s == null) continue;
+                G.T = t; TramiteData d = Store.BuildData(t, s);
+                G.Lists = d.Lists; G.Tariff = d.Tariff; G.DefaultPrice = d.DefaultPrice; G.Rows = d.Rows; G.NextId = d.NextId;
+                w.BuildForm(); w.ResetForm();
+                o.Append(FormLine("FN " + t.Id, t, w.GetFormValues()) + "\r\nFC " + t.Id + " new " + Card(w) + "\r\n");
+                foreach (ClientRow r in d.Rows)
+                {
+                    w.FillFormForEdit(r);
+                    o.Append(FormLine("FE " + t.Id + " " + r.Row, t, w.GetFormValues()) + "\r\nFC " + t.Id + " " + r.Row + " " + Card(w) + "\r\n");
+                }
+            }
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             return 0;
+        }
+
+        static string FormLine(string head, Tramite t, Dictionary<string, object> v)
+        {
+            StringBuilder line = new StringBuilder(head);
+            foreach (Field f in t.Fields) line.Append("|" + f.Key + "=" + Ps.Str(Store.ToStoreValue(f, Store.Get(v, f.Key))));
+            return line.ToString();
+        }
+        static string Card(MainWin w)
+        {
+            Func<string, string> T = delegate(string n) { return w.U<System.Windows.Controls.TextBlock>(n).Text; };
+            Func<string, bool> Vis = delegate(string n) { return w.U<System.Windows.FrameworkElement>(n).Visibility == System.Windows.Visibility.Visible; };
+            return "id=" + T("CardId") + "|tag=" + T("CardTag") + "|name=" + T("CardName") + "|sub=" + T("CardSub") + "|tipo=" + T("CardTipo")
+                + "|st=" + (Vis("CardStatusB") ? T("CardStatus") : "") + "|price=" + T("SumPrice") + "|iva=" + (Vis("SumIva") ? T("SumIva") : "")
+                + "|mg=" + (Vis("SumMargin") ? T("SumMargin") : "") + "|paid=" + T("SumPaid") + "|pend=" + T("SumPend") + "|title=" + T("FormTitle");
         }
     }
 }

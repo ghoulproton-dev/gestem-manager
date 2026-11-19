@@ -15,7 +15,7 @@ using System.Windows.Threading;
 
 namespace Gestem
 {
-    public class MainWin
+    public partial class MainWin
     {
         public Window Win;
         readonly Dictionary<string, FrameworkElement> ui = new Dictionary<string, FrameworkElement>();
@@ -77,6 +77,7 @@ namespace Gestem
             U<Button>("ToastBtn").Click += delegate { Action a = toastAction; HideToast(); if (a != null) a(); };
             U<Button>("ToastClose").Click += delegate { HideToast(); };
             Win.KeyDown += OnKeyDown;
+            WireForm();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.Log("UI ERROR: " + e.Exception);
@@ -158,6 +159,9 @@ namespace Gestem
             }
             finally { switching = false; }
             U<TextBlock>("FileText").Text = string.IsNullOrEmpty(Config.Cur.ExcelPath) ? "" : Path.GetFileName(Config.Cur.ExcelPath);
+            U<TextBlock>("SumPriceL").Text = L("sumPrice"); U<TextBlock>("SumPaidL").Text = L("sumPaid"); U<TextBlock>("SumPendL").Text = L("sumPend");
+            BuildForm();
+            ResetForm();
         }
         void FillFilterBox()
         {
@@ -181,7 +185,7 @@ namespace Gestem
             {
                 G.T = Tramite.All[i]; Config.Cur.Tramite = G.T.Id; Config.Save();
                 G.Rows = null; U<DataGrid>("ClientsGrid").ItemsSource = null;
-                if (Data.CachedData()) FillFilterBox();
+                if (Data.CachedData()) ApplyLanguage(); else { BuildForm(); ResetForm(); }
             }
             finally { switching = false; Win.Cursor = null; }
         }
@@ -247,7 +251,18 @@ namespace Gestem
                 U<ToggleButton>("NavClients").IsChecked = true; U("SearchBox").Focus(); U<TextBox>("SearchBox").SelectAll();
                 e.Handled = true; return;
             }
-            if (e.Key == Key.Escape && U("Toast").Visibility == Visibility.Visible) HideToast();
+            if (ctrl && e.Key == Key.S && U("PanelForm").Visibility == Visibility.Visible) { SaveFromForm(); e.Handled = true; return; }
+            if (ctrl && e.Key == Key.N)
+            {
+                U<ToggleButton>("NavNew").IsChecked = true;
+                if (EditRow == null) ctl["name"].Focus();
+                e.Handled = true; return;
+            }
+            if (e.Key == Key.Escape)
+            {
+                if (U("Toast").Visibility == Visibility.Visible) HideToast();
+                if (U("PanelForm").Visibility == Visibility.Visible && EditRow != null) { ResetForm(); U<ToggleButton>("NavClients").IsChecked = true; e.Handled = true; return; }
+            }
         }
 
         // al abrir (Add_ContentRendered): buscar el Excel, pestañas hechas a mano, cargar todo
@@ -267,7 +282,7 @@ namespace Gestem
                 try { Hand.SyncTabs(true); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); }
                 if (Data.LoadData(true, false))
                 {
-                    FillFilterBox();
+                    ApplyLanguage();
                     try { UpdateReqBadge(); } catch (Exception e) { App.Log("aviso de requerimientos: " + e.Message); }
                 }
             }

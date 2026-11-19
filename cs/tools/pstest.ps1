@@ -161,4 +161,26 @@ foreach ($tid in 'canje', 'traduccion', 'homologacion') {
         [void]$o.Append("$line`r`n")
     }
 }
+# etapa 3b: la ficha (misma XAML): cada cliente se abre para editar; valores leídos de la ficha y textos de la tarjeta
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
+$xs = [Array]::IndexOf($lines, "`$xaml = @'"); $xe = $xs + 1; while ($lines[$xe] -ne "'@") { $xe++ }
+$script:Win = [Windows.Markup.XamlReader]::Parse(($lines[($xs + 1)..($xe - 1)] -join "`n"))
+$script:UI = @{}
+foreach ($n in 'FormGrid', 'FormTitle', 'SaveBtn', 'ClearBtn', 'DupWarn', 'CardTag', 'CardId', 'CardName', 'CardSub', 'CardTipo', 'CardStatusB', 'CardStatus', 'SumPrice', 'SumIva', 'SumMargin', 'SumPaid', 'SumPend', 'SumPendL') { $script:UI[$n] = $script:Win.FindName($n) }
+$script:Cfg.DefaultNationality = 'MARROQUI'; $script:Cfg.TradProfit = [double]3; $script:Cfg.Collaborators = @(); $script:Cache = $null
+$script:PayColors = @{ 'Pagado' = '#A9D08E'; 'Parcial' = '#FFE699'; 'Pendiente' = '#FF9B9B' }
+function Get-Card { $u = $script:UI; return "id=$($u.CardId.Text)|tag=$($u.CardTag.Text)|name=$($u.CardName.Text)|sub=$($u.CardSub.Text)|tipo=$($u.CardTipo.Text)|st=$(if ($u.CardStatusB.Visibility -eq 'Visible') { $u.CardStatus.Text })|price=$($u.SumPrice.Text)|iva=$(if ($u.SumIva.Visibility -eq 'Visible') { $u.SumIva.Text })|mg=$(if ($u.SumMargin.Visibility -eq 'Visible') { $u.SumMargin.Text })|paid=$($u.SumPaid.Text)|pend=$($u.SumPend.Text)|title=$($u.FormTitle.Text)" }
+foreach ($t in $script:Tramites) {
+    $s = Read-Store $t; if (-not $s) { continue }
+    $script:T = $t; $d = Build-TramiteData $t $s
+    $script:Lists = $d.Lists; $script:Tariff = $d.Tariff; $script:DefaultPrice = $d.DefaultPrice; $script:Rows = $d.Rows; $script:NextId = $d.NextId
+    Build-Form; Reset-Form
+    $nv = Get-FormValues; $line = "FN $($t.Id)"; foreach ($f in $t.Fields) { $line += "|$($f.Key)=$(ConvertTo-StoreValue $f $nv[$f.Key])" }
+    [void]$o.Append("$line`r`nFC $($t.Id) new $(Get-Card)`r`n")
+    foreach ($r in $d.Rows) {
+        Fill-FormForEdit $r
+        $fv = Get-FormValues; $line = "FE $($t.Id) $($r.Row)"; foreach ($f in $t.Fields) { $line += "|$($f.Key)=$(ConvertTo-StoreValue $f $fv[$f.Key])" }
+        [void]$o.Append("$line`r`nFC $($t.Id) $($r.Row) $(Get-Card)`r`n")
+    }
+}
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))
