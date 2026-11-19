@@ -193,6 +193,7 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
       en los dos. dump lee por UI Automation las 14 listas de trámites, la ficha del 1.er cliente de cada uno, resumen, colaboradores
       y ajustes. Prueba 19/11/2026: 1035 líneas idénticas. Diferencias encontradas:
       1) línea de estado sin deudas: PowerShell «(-)», C# «(0,00 €)» -> arreglado en C#.
-      2) C# quitaba al abrir los «repetidos» de pestañas a mano (Homologación 14/7, Autónomo 34/17…): esa purga ya no existe
+      2) C# quitaba al abrir los «repetidos» de pestañas a mano (Homologación 14/7, Autónomo 34/17…): esa purga ya no existe.
+         Repetido 19/11/2026 con cs\data\prueba nuevo (copia real completa) y sin igualar los datos: 1073 líneas idénticas.
       Ojo: abrir el GESTEM.ps1 copiado cambia los accesos directos -> fix_shortcuts.bat después.
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe
