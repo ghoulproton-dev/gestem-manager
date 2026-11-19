@@ -521,7 +521,14 @@ namespace Gestem
                 bool ok = a == "{\"a\":[1,\"x\"],\"b\":null}" && fl == "True" && Config.Cur.LastUser == "LUIS" && Config.Cur.Language == "fr" && Config.Cur.ExcelPath == "C:\\x.xlsx";
                 only.Append(ok ? "OK config.json conserva las claves desconocidas\r\n" : "MAL config.json conserva las claves desconocidas: ZzNueva=" + a + " zzFlag=" + fl + " user=" + Config.Cur.LastUser + "\r\n");
                 App.CfgPath = keepCfgPath; Config.Cur = keepCfg; Tx.Lang = keepCfg.Language;
-            }            // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
+            }
+            {
+                // factura impresa de verdad con Â«Microsoft Print to PDFÂ» (los datos de la Ãºltima factura de SelfTest7): el archivo es un PDF
+                string pf = Path.Combine(testDir, "factura_real.pdf"); string why = "";
+                try { if (File.Exists(pf)) File.Delete(pf); if (!Pdf.HasPrinter()) why = "falta la impresora"; else Pdf.Print(pf, false, MainWin.DrawInvoice); }
+                catch (Exception e) { why = e.Message; }
+                if (why.Length == 0) { byte[] pdfHd = new byte[4]; using (FileStream fs = File.OpenRead(pf)) fs.Read(pdfHd, 0, 4); if (Encoding.ASCII.GetString(pdfHd) != "%PDF") why = "no empieza por %PDF"; }
+                only.Append(why.Length == 0 ? "OK factura PDF impresa de verdad (Microsoft Print to PDF)\r\n" : "MAL factura PDF impresa de verdad: " + why + "\r\n");            }            // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
             StringBuilder gd = new StringBuilder(); bool gok = true;
             string appd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GESTEM");
             foreach (string rp in new string[] { Path.Combine(appd, "config.json"), Path.Combine(appd, "gestem.log"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM datos"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM documentos") })

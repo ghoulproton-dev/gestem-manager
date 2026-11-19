@@ -204,3 +204,6 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
   - [x] Abrir el Excel (WinExcel.cs, Open-ExcelWindow): botón, clic derecho y «abrir después de guardar». Prueba XL0–XL2 (sin archivo, y
         abrir el archivo cuando Excel no lo tiene abierto). Sin probar: con el libro ya abierto en Excel (ir a la pestaña y la fila):
         desde las pruebas Excel no se ve por COM (GetActiveObject: MK_E_UNAVAILABLE).
+  - [x] Factura PDF con tasas DGT (WinInvoice.cs, Pdf.cs: New-ClientInvoice, Draw-Invoice, Invoke-PdfPrint, Get-InvoiceNumber). Prueba IN0–IN5:
+        sin emisor, canje con tasas, la misma otra vez (mismo nº), pagada, sin precio, traducción; cada página se dibuja en una imagen
+        y la huella de los píxeles es la misma que en PowerShell. Solo C#: una factura impresa de verdad (empieza por %PDF).
