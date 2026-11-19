@@ -51,7 +51,7 @@ namespace Gestem
             U<ToggleButton>("NavClients").Checked += delegate { ShowPanel("PanelClients"); RefreshClientGrid(); U("SearchBox").Focus(); };
             U<ToggleButton>("NavNew").Checked += delegate { ShowPanel("PanelForm"); };
             U<ToggleButton>("NavStats").Checked += delegate { ShowPanel("PanelStats"); FillStatsFilters(); UpdateStats(); };
-            U<ToggleButton>("NavColab").Checked += delegate { ShowPanel("PanelColab"); };
+
             U<ToggleButton>("NavSettings").Checked += delegate { LoadSettingsPanel(); ShowPanel("PanelSettings"); };
             U<ToggleButton>("NavAbout").Checked += delegate { ShowPanel("PanelAbout"); };
             U("ReqBadge").MouseLeftButtonUp += delegate
@@ -79,7 +79,7 @@ namespace Gestem
             Win.KeyDown += OnKeyDown;
             WireForm();
             WireMenu();
-            WireDocs(); WireStats(); WireSettings(); WireSession(); WireAdmin();
+            WireDocs(); WireStats(); WireSettings(); WireSession(); WireAdmin(); WireColab();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -168,6 +168,7 @@ namespace Gestem
             SetDocsTexts();
             SetStatsTexts();
             SetSettingsTexts();
+            SetColabTexts();            // Apply-Language (navColab va con los otros botones)
             ApplyAdminLanguage();
             BuildForm();
             ResetForm();

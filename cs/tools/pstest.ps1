@@ -390,4 +390,30 @@ $script:Remote = '{"mensaje":"hola","pausa":true,"motivo":"mantenimiento"}' | Co
 $script:Remote = '{"pausa":1}' | ConvertFrom-Json; Apply-Pause; [void]$o.Append("AR4 paused=$($u.PanelPaused.Visibility)|$($u.PausedText.Text)`r`n")
 $script:Admin.Locks = @{}; Apply-Locks
 $script:Remote = $null; Apply-Pause; $script:IsAdmin = $false; $script:Cfg.Language = 'es'
+# etapa 4e: Colaboradores (unos clientes de canje y autónomo con colaborador y comisión)
+foreach ($n in 'NavColab', 'PanelColab', 'ColabList', 'ColabName', 'ColabGrid', 'ColabEmpty', 'ColabOnlyPend', 'ColabPaidBtn', 'ColabTitle', 'ColabHint', 'ColK1', 'ColK2', 'ColK3', 'ColK4', 'ColK5', 'ColK6', 'ColK1L', 'ColK2L', 'ColK3L', 'ColK4L', 'ColK5L', 'ColK6L') { $script:UI[$n] = $script:Win.FindName($n) }
+$fx = @(@('canje', 0, 'abogado x', '%', '10', ''), @('canje', 1, 'ABOGADO X', '', '25', 'Pagada'), @('canje', 2, 'Luis ', '%', '12,5', ''), @('canje', 6, 'luis', '', '', ''), @('autonomo', 0, 'abogado x', '', '30', ''), @('autonomo', 1, 'MARTA', '%', 'x', ''))
+foreach ($tid in 'canje', 'autonomo') { $t = $script:Tramites | Where-Object { $_.Id -eq $tid }; $s = Read-Store $t
+    foreach ($f in @($fx | Where-Object { $_[0] -eq $tid })) { $cl = $s.Clients[$f[1]]; $cl.F['colab'] = $f[2]; $cl.F['comtipo'] = $(if ($f[3]) { $f[3] } else { $null }); $cl.F['comval'] = $(if ($f[4]) { $f[4] } else { $null }); $cl.F['compag'] = $(if ($f[5]) { $f[5] } else { $null }) }
+    Write-Store $t $s }
+function Get-Date { if ($args.Count) { Microsoft.PowerShell.Utility\Get-Date @args } else { $script:FixedNow } }
+$keepCol = $script:Cfg.Collaborators; $script:Cfg.Collaborators = @('ZETA', 'abogado x')
+# Load-Data de la prueba solo carga un trámite: -All también rehace la caché (como Load-Data -All); textos: las líneas reales de Apply-Language
+$keepLoad = ${function:Load-Data}
+function Load-Data([switch]$All, [switch]$Quiet) { if ($All) { $script:Cache = @{}; foreach ($t in $script:Tramites) { $s = Read-Store $t; if ($s) { $script:Cache[$t.Id] = Build-TramiteData $t $s } } }; $s = Read-Store $script:T; $d = Build-TramiteData $script:T $s; $script:Rows = $d.Rows; $script:Lists = $d.Lists; $script:NextId = $d.NextId; return $true }
+$i = 0; while ($lines[$i] -notmatch '^\s+\$ui\.NavColab\.Content = ') { $i++ }; $j = $i; while ($lines[$j] -notmatch 'ColabGrid\.Columns\[\$i\]\.Header') { $j++ }
+$colTexts = [ScriptBlock]::Create('$ui = $script:UI' + "`n" + ($lines[$i..$j] -join "`n"))
+$script:T = $script:Tramites | Where-Object { $_.Id -eq 'canje' }; [void](Load-Data -All -Quiet)
+function Get-ColState { $u = $script:UI
+    "name=$($u.ColabName.Text)|k=$($u.ColK1.Text);$($u.ColK2.Text);$($u.ColK3.Text);$($u.ColK4.Text);$($u.ColK5.Text);$($u.ColK6.Text)|empty=$($u.ColabEmpty.Visibility);$($u.ColabEmpty.Text)|grid=$($u.ColabGrid.Visibility)|list=$(@($u.ColabList.ItemsSource | ForEach-Object { "$($_.Key)~$($_.Name)~$([int][char]$_.Glyph)~$($_.Info)" }) -join ',')|sel=$($u.ColabList.SelectedIndex)`r`n  " + (@($u.ColabGrid.ItemsSource | ForEach-Object { "$($_.TramId)|$($_.Tram)|$($_.Row)|$($_.Id)|$($_.Name)|$($_.Colab)|$($_.FechaTxt)|$($_.Status)|$($_.Color)|$($_.PriceTxt)|$($_.PaidTxt)|$($_.PendTxt)|$($_.ComTxt)|$($_.ComStTxt)|$($_.ComColor)" }) -join "`r`n  ") }
+$u = $script:UI; . $colTexts
+[void]$o.Append("CO texts $($u.ColabTitle.Text)|$($u.ColabHint.Text)|$($u.ColabPaidBtn.Content)|$($u.ColabOnlyPend.Content)|$($u.ColK1L.Text)|$($u.ColK6L.Text)|$(@($u.ColabGrid.Columns | ForEach-Object { $_.Header }) -join ',')`r`n")
+Load-ColabPanel; [void]$o.Append("CO0 $(Get-ColState)`r`n")
+$u.ColabList.SelectedIndex = 1; Update-ColabView; [void]$o.Append("CO1 $(Get-ColState)`r`n")
+$u.ColabOnlyPend.IsChecked = $true; Update-ColabView; [void]$o.Append("CO2 $(Get-ColState)`r`n")
+Load-ColabPanel; [void]$o.Append("CO3 $(Get-ColState)`r`n")
+$u.ColabOnlyPend.IsChecked = $false; $u.ColabList.SelectedIndex = 0; Update-ColabView; $u.ColabGrid.SelectAll(); Mark-ColabPaid; [void]$o.Append("CO4 $(Get-ColState)`r`n")
+Invoke-QuickUndo; Load-ColabPanel; [void]$o.Append("CO5 $(Get-ColState)`r`n")
+$script:Cfg.Collaborators = @(); $script:Cache = @{}; Load-ColabPanel; [void]$o.Append("CO6 $(Get-ColState)`r`n")
+$script:Cfg.Collaborators = $keepCol; $script:T = $script:Tramites | Where-Object { $_.Id -eq 'canje' }; [void](Load-Data -All -Quiet); ${function:Load-Data} = $keepLoad; Remove-Item function:Get-Date
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

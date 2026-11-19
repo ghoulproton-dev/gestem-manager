@@ -117,6 +117,17 @@ namespace Gestem
                     o.Append("UI admin panel=" + w.U<FrameworkElement>("PanelAdmin").Visibility + " registro=" + ((System.Collections.ICollection)w.U<ItemsControl>("AdmLog").ItemsSource).Count + "\r\n");
                     w.CloseAdmin(); Pump(w);
                 });
+                Try("colaboradores", delegate
+                {
+                    // un cliente de autónomo con colaborador; doble clic en la lista abre su ficha (cambia de trámite)
+                    Tramite ta = Tramite.ById("autonomo"); StoreData s = Store.Read(ta); s.Clients[0].F["colab"] = "ABOGADO X"; s.Clients[0].F["comval"] = "20"; Store.Write(ta, s);
+                    Data.LoadData(true, true);
+                    w.U<ToggleButton>("NavColab").IsChecked = true; Pump(w);
+                    List<ColabItem> items = new List<ColabItem>(); foreach (object x in w.U<DataGrid>("ColabGrid").ItemsSource) items.Add((ColabItem)x);
+                    w.OpenColabItem(items[0]); Pump(w);
+                    o.Append("UI colaboradores filas=" + items.Count + " ficha=" + (w.U<ToggleButton>("NavNew").IsChecked == true && G.T.Id == "autonomo" && w.EditRow != null && w.EditRow.Row == items[0].Row ? "OK" : "MAL") + "\r\n");
+                    w.ResetForm(); w.U<ComboBox>("TramiteBox").SelectedIndex = Tramite.All.IndexOf(Tramite.ById("canje")); w.U<ToggleButton>("NavClients").IsChecked = true;
+                });
                 Try("aviso req", delegate { w.UpdateReqBadge(); o.Append("UI aviso req=" + w.U<Border>("ReqBadge").Visibility + "\r\n"); });
                 Try("config", delegate
                 {

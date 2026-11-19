@@ -13,10 +13,11 @@ namespace Gestem
     // $script:UndoInfo: lo necesario para deshacer la última acción rápida
     public class UndoInfo
     {
-        public string Kind = "";                 // '' (un dato) | resp | delete
+        public string Kind = "";                 // '' (un dato) | resp | colab | delete
         public string TramiteId = ""; public int Row; public string Key = ""; public object Old, OldPaid;   // un dato
         public Tramite T; public List<RespUndo> Items = new List<RespUndo>(); public string Who = "";       // resp
         public bool Hand; public string Name = "", Id = "", Uid;                                           // delete
+        public List<ColabPair> Colab;                                                                      // colab
     }
     public class RespUndo { public int Row; public string Id = "", Old = ""; }
 
@@ -312,7 +313,7 @@ namespace Gestem
             UndoInfo u = Undo; Undo = null;
             if (u == null) { Toast(L("undoNone"), false, 7); return; }
             if (u.Kind == "resp") { UndoRespBulk(u); return; }
-            // shortcut: deshacer «comisión pagada» (colab) llega con Colaboradores (etapa 4)
+            if (u.Kind == "colab") { UndoColabPaid(u); return; }
             if (u.Kind == "delete") { UndoRemoveClient(u); return; }
             if (G.T.Id != u.TramiteId) { Undo = u; Toast(L("undoOther"), false, 7); return; }
             ClientRow r = RowByNumber(u.Row);

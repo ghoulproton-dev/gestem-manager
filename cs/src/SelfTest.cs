@@ -330,7 +330,28 @@ namespace Gestem
             w.Remote = Json.Parse("{\"mensaje\":\"hola\",\"pausa\":true,\"motivo\":\"mantenimiento\"}"); w.ApplyPause(); o.Append("AR3 paused=" + w.U<FrameworkElement>("PanelPaused").Visibility + "|" + w.U<TextBlock>("PausedText").Text + "\r\n");
             w.Remote = Json.Parse("{\"pausa\":1}"); w.ApplyPause(); o.Append("AR4 paused=" + w.U<FrameworkElement>("PanelPaused").Visibility + "|" + w.U<TextBlock>("PausedText").Text + "\r\n");
             MainWin.Admin.Locks = PsH.New(); w.ApplyLocks();
-            w.Remote = null; w.ApplyPause(); App.IsAdmin = false; Config.Cur.Language = "es"; Tx.Lang = "es"; Config.Cur.FbSync = keepFb;            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
+            w.Remote = null; w.ApplyPause(); App.IsAdmin = false; Config.Cur.Language = "es"; Tx.Lang = "es"; Config.Cur.FbSync = keepFb;            // etapa 4e: Colaboradores (unos clientes de canje y autónomo con colaborador y comisión)
+            string[][] fx = { new string[] { "canje", "0", "abogado x", "%", "10", "" }, new string[] { "canje", "1", "ABOGADO X", "", "25", "Pagada" }, new string[] { "canje", "2", "Luis ", "%", "12,5", "" }, new string[] { "canje", "6", "luis", "", "", "" }, new string[] { "autonomo", "0", "abogado x", "", "30", "" }, new string[] { "autonomo", "1", "MARTA", "%", "x", "" } };
+            foreach (string tid in new string[] { "canje", "autonomo" })
+            {
+                Tramite t = Tramite.ById(tid); StoreData s = Store.Read(t);
+                foreach (string[] f in fx) if (f[0] == tid) { ClientRec cl = s.Clients[int.Parse(f[1])]; cl.F["colab"] = f[2]; cl.F["comtipo"] = f[3].Length > 0 ? f[3] : null; cl.F["comval"] = f[4].Length > 0 ? f[4] : null; cl.F["compag"] = f[5].Length > 0 ? f[5] : null; }
+                Store.Write(t, s);
+            }
+            App.Now = delegate { return new DateTime(2026, 11, 19, 12, 0, 0); };
+            List<string> keepCol = Config.Cur.Collaborators; Config.Cur.Collaborators = new List<string> { "ZETA", "abogado x" };
+            G.T = Tramite.ById("canje"); Data.LoadData(true, true);
+            w.ApplyLanguage();
+            List<string> hd = new List<string>(); foreach (DataGridColumn col in w.U<DataGrid>("ColabGrid").Columns) hd.Add(Ps.Str(col.Header));
+            o.Append("CO texts " + w.U<TextBlock>("ColabTitle").Text + "|" + w.U<TextBlock>("ColabHint").Text + "|" + w.U<ContentControl>("ColabPaidBtn").Content + "|" + w.U<ContentControl>("ColabOnlyPend").Content + "|" + w.U<TextBlock>("ColK1L").Text + "|" + w.U<TextBlock>("ColK6L").Text + "|" + string.Join(",", hd) + "\r\n");
+            w.LoadColabPanel(); o.Append("CO0 " + ColState(w) + "\r\n");
+            w.U<ListBox>("ColabList").SelectedIndex = 1; w.UpdateColabView(); o.Append("CO1 " + ColState(w) + "\r\n");
+            w.U<CheckBox>("ColabOnlyPend").IsChecked = true; w.UpdateColabView(); o.Append("CO2 " + ColState(w) + "\r\n");
+            w.LoadColabPanel(); o.Append("CO3 " + ColState(w) + "\r\n");
+            w.U<CheckBox>("ColabOnlyPend").IsChecked = false; w.U<ListBox>("ColabList").SelectedIndex = 0; w.UpdateColabView(); w.U<DataGrid>("ColabGrid").SelectAll(); w.MarkColabPaid(); o.Append("CO4 " + ColState(w) + "\r\n");
+            w.InvokeQuickUndo(); w.LoadColabPanel(); o.Append("CO5 " + ColState(w) + "\r\n");
+            Config.Cur.Collaborators = new List<string>(); G.Cache = new Dictionary<string, TramiteData>(StringComparer.CurrentCultureIgnoreCase); w.LoadColabPanel(); o.Append("CO6 " + ColState(w) + "\r\n");
+            Config.Cur.Collaborators = keepCol; G.T = Tramite.ById("canje"); Data.LoadData(true, true); App.Now = delegate { return DateTime.Now; };            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
             int bad = 0;
@@ -451,6 +472,14 @@ namespace Gestem
             string[] lc; G.Lists.TryGetValue("colleagues", out lc);
             return "names=" + string.Join(",", nm) + "|vis=" + w.U<FrameworkElement>("PanelSession").Visibility + "|hint=" + w.U<FrameworkElement>("SessNewHint").Visibility + "|user=" + App.User + "|last=" + Config.Cur.LastUser
                 + "|col=" + string.Join(",", Config.Cur.Colleagues) + "|lists=" + (lc == null ? "" : string.Join(",", lc)) + "|btn=" + Ps.Str(w.U<ContentControl>("UserBtn").Content) + "|title=" + w.U<TextBlock>("SessTitle").Text;
+        }        static string ColState(MainWin w)
+        {
+            Func<string, string> T = delegate(string n) { return w.U<TextBlock>(n).Text; };
+            List<string> li = new List<string>(); foreach (ColabListItem x in (System.Collections.IEnumerable)w.U<ListBox>("ColabList").ItemsSource ?? new ColabListItem[0]) li.Add(x.Key + "~" + x.Name + "~" + (int)x.Glyph[0] + "~" + x.Info);
+            List<string> gi = new List<string>(); foreach (ColabItem x in (System.Collections.IEnumerable)w.U<DataGrid>("ColabGrid").ItemsSource ?? new ColabItem[0])
+                gi.Add(x.TramId + "|" + x.Tram + "|" + x.Row + "|" + x.Id + "|" + x.Name + "|" + x.Colab + "|" + x.FechaTxt + "|" + x.Status + "|" + x.Color + "|" + x.PriceTxt + "|" + x.PaidTxt + "|" + x.PendTxt + "|" + x.ComTxt + "|" + x.ComStTxt + "|" + x.ComColor);
+            return "name=" + T("ColabName") + "|k=" + T("ColK1") + ";" + T("ColK2") + ";" + T("ColK3") + ";" + T("ColK4") + ";" + T("ColK5") + ";" + T("ColK6") + "|empty=" + w.U<FrameworkElement>("ColabEmpty").Visibility + ";" + T("ColabEmpty")
+                + "|grid=" + w.U<FrameworkElement>("ColabGrid").Visibility + "|list=" + string.Join(",", li) + "|sel=" + w.U<ListBox>("ColabList").SelectedIndex + "\r\n  " + string.Join("\r\n  ", gi);
         }        static void AdmTree(object node, List<string> l)
         {
             DependencyObject d = node as DependencyObject; if (d == null) return;
