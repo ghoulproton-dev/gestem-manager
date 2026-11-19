@@ -206,4 +206,8 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         desde las pruebas Excel no se ve por COM (GetActiveObject: MK_E_UNAVAILABLE).
   - [x] Factura PDF con tasas DGT (WinInvoice.cs, Pdf.cs: New-ClientInvoice, Draw-Invoice, Invoke-PdfPrint, Get-InvoiceNumber). Prueba IN0–IN5:
         sin emisor, canje con tasas, la misma otra vez (mismo nº), pagada, sin precio, traducción; cada página se dibuja en una imagen
-        y la huella de los píxeles es la misma que en PowerShell. Solo C#: una factura impresa de verdad (empieza por %PDF).
+        y la huella de los píxeles es la misma que en PowerShell.
+  - [x] Exportar la lista a CSV y PDF (WinExport.cs: Export-ClientsCsv, Export-ClientsPdf, Draw-ClientList). Prueba EX0–EX3: lista
+        vacía, CSV (mismos bytes), PDF apaisado de 4 páginas (misma huella), diálogo cancelado. Solo C#: esa lista impresa de verdad
+        con «Microsoft Print to PDF» (empieza por %PDF). Sin probar en paralelo: el texto de los filtros en el PDF (búsqueda, estado,
+        «solo con deuda», «solo míos»): en pstest esos controles no existen.

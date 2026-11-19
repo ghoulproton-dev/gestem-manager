@@ -147,6 +147,7 @@ namespace Gestem
             U<ContentControl>("RefreshBtn").Content = L("btnRefresh"); U<ContentControl>("OpenExcelBtn").Content = L("btnOpenExcel"); U<ContentControl>("EditBtn").Content = L("btnEdit");
             U<ContentControl>("DocsBtn").Content = L("btnDocs"); U<ContentControl>("ReceiptBtn").Content = L("btnReceipt");
             U<ContentControl>("ExportBtn").Content = L("btnExport") + "  " + (char)0x25BE;
+            ExpItem(0).Header = L("expPdf"); ExpItem(1).Header = L("expCsv");
             U<ContentControl>("UserBtn").Content = App.User.Length > 0 ? string.Format(L("userTip"), App.User) : L("sessGo");
             DataGrid grid = U<DataGrid>("ClientsGrid");
             string[] heads = { "colId", "colName", "colDoc", "colTipo", "colStatus", "colPay", "colPend", "colDays", "colResp" };

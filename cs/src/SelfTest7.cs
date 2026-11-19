@@ -50,6 +50,22 @@ namespace Gestem
                 ClientRow aut = null; foreach (ClientRow r in G.Rows) if (aut == null && r.PriceV > 0) aut = r;
                 c.InvIban = ""; c.CompanyName = "EMPRESA X";
                 o.Append("IN5 " + (aut == null ? "(ninguno)" : aut.Id) + "\r\n"); if (aut != null) w.NewClientInvoice(aut);
+                // exportar la lista: vacía -> aviso; CSV (huella del archivo); PDF apaisado (huella de cada página); diálogo cancelado -> nada
+                G.T = Tramite.ById("canje"); Data.LoadData(false, false); c.CompanyName = ""; string keepU = App.User; App.User = "PRUEBA";
+                System.Windows.Controls.DataGrid eg = w.U<System.Windows.Controls.DataGrid>("ClientsGrid");
+                string expPath = null; MainWin.ExportFileHook = delegate(string ext, string filter) { o.Append("EXF " + ext + " " + filter + "\r\n"); return expPath; };
+                try
+                {
+                    eg.ItemsSource = new System.Collections.Generic.List<ClientRow>(); o.Append("EX0 vacía\r\n"); w.ExportClientsCsv(); w.ExportClientsPdf();
+                    eg.ItemsSource = G.Rows;
+                    expPath = System.IO.Path.Combine(testDir, @"cs\lista.csv"); o.Append("EX1 csv\r\n"); w.ExportClientsCsv();
+                    byte[] cb = System.IO.File.ReadAllBytes(expPath);
+                    using (System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create()) o.Append("CSV bytes=" + cb.Length + " md5=" + BitConverter.ToString(md5.ComputeHash(cb)).Replace("-", "").Substring(0, 12) + "\r\n");
+                    o.Append("ST " + w.U<System.Windows.Controls.TextBlock>("StatusText").Text + "\r\n");
+                    expPath = System.IO.Path.Combine(testDir, @"cs\lista.pdf"); o.Append("EX2 pdf\r\n"); w.ExportClientsPdf();
+                    expPath = null; o.Append("EX3 cancelado\r\n"); w.ExportClientsCsv(); w.ExportClientsPdf();
+                }
+                finally { MainWin.ExportFileHook = null; App.User = keepU; }
             }
             finally { MainWin.OpenHook = null; w.InfoHook = null; Pdf.PrintHook = null; App.Now = delegate { return DateTime.Now; }; G.T = Tramite.ById("canje"); Data.LoadData(false, false); }
         }

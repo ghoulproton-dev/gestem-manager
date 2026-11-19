@@ -290,7 +290,7 @@ namespace Gestem
             w.U<TextBox>("InvNextBox").Text = "abc"; w.U<TextBox>("CompanyBox").Text = ""; w.PendingLogo = ""; w.SaveSettings();
             o.Append("SC2 " + CfgText(w) + "\r\n"); o.Append("SP2 " + SetText(w) + "\r\n");            // etapa 4c: sesión
             Config.Cur.Colleagues = new List<string>(new string[] { "SAFAE", "chaymae", " ", "LUIS" }); Config.Cur.LastUser = "luis"; G.Lists["colleagues"] = new string[] { "SAFAE", "", "X" };
-            // al iniciar sesiÃ³n se escribe Â«actividad GESTEM - PC.txtÂ» en la carpeta externa (registro propio de la prueba; fecha y hora fuera)
+            // al iniciar sesión se escribe «actividad GESTEM - PC.txt» en la carpeta externa (registro propio de la prueba; fecha y hora fuera)
             string ssExt = Path.Combine(testDir, "cs_sess_ext"), ssKeepExt = Config.Cur.ExtBackupDir, ssKeepLog = App.LogPath; Directory.CreateDirectory(ssExt);
             App.LogPath = Path.Combine(testDir, "sess_log_cs.txt"); if (File.Exists(App.LogPath)) File.Delete(App.LogPath); Config.Cur.ExtBackupDir = ssExt; bool ssOwner = App.IsOwnerPC, ssAdm = App.IsAdmin; App.IsOwnerPC = false; App.IsAdmin = false;    // como pstest: aún no es el PC del creador
             Func<string> ssAct = delegate
@@ -298,7 +298,7 @@ namespace Gestem
                 string f = Path.Combine(ssExt, "actividad GESTEM - " + Environment.MachineName + ".txt"); if (!File.Exists(f)) return "no";
                 string[] a = File.ReadAllLines(f, Encoding.UTF8); List<string> l = new List<string>();
                 for (int i = 0; i < a.Length; i++) l.Add(i == 1 ? "Updated" : (i >= 3 && a[i].Length > 16 ? a[i].Substring(16) : a[i]));
-                File.Delete(f); return string.Join(" Â¶ ", l.ToArray());
+                File.Delete(f); return string.Join(" ¶ ", l.ToArray());
             };
             w.U<ContentControl>("UserBtn").Content = ""; w.ShowSession(); o.Append("SS0 " + SessText(w) + "\r\n");
             foreach (string who in new string[] { " pepa ", "", "Safae", "luis" }) { w.StartSession(who); o.Append("SS1 [" + who + "] " + SessText(w) + "\r\n"); o.Append("SSA [" + who + "] " + ssAct() + "\r\n"); }
@@ -443,7 +443,7 @@ namespace Gestem
                 round(new List<FbDoc>(), "", false); FbDump(o, "S3"); FbPushDump(o, "S3", push);
                 w.ToastHook = keepToast5; Fb.Notify = null;
             }
-            SelfTest7.Run(w, o, testDir);    // etapa 7 (secciÃ³n 0)
+            SelfTest7.Run(w, o, testDir);    // etapa 7 (sección 0)
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen: al abrir GESTEM no se quita ni cambia ningún cliente con uid, tampoco los adoptados de la pestaña
             // hecha a mano (mano-…, by=Excel, su nombre sigue en la pestaña). Antes una «purga de repetidos» los borraba.
@@ -523,12 +523,12 @@ namespace Gestem
                 App.CfgPath = keepCfgPath; Config.Cur = keepCfg; Tx.Lang = keepCfg.Language;
             }
             {
-                // factura impresa de verdad con Â«Microsoft Print to PDFÂ» (los datos de la Ãºltima factura de SelfTest7): el archivo es un PDF
-                string pf = Path.Combine(testDir, "factura_real.pdf"); string why = "";
-                try { if (File.Exists(pf)) File.Delete(pf); if (!Pdf.HasPrinter()) why = "falta la impresora"; else Pdf.Print(pf, false, MainWin.DrawInvoice); }
+                // PDF impreso de verdad con «Microsoft Print to PDF»: la lista de clientes de SelfTest7 (apaisada, 4 páginas); el archivo es un PDF
+                string pf = Path.Combine(testDir, "lista_real.pdf"); string why = "";
+                try { if (File.Exists(pf)) File.Delete(pf); if (!Pdf.HasPrinter()) why = "falta la impresora"; else Pdf.Print(pf, true, MainWin.DrawClientList); }
                 catch (Exception e) { why = e.Message; }
                 if (why.Length == 0) { byte[] pdfHd = new byte[4]; using (FileStream fs = File.OpenRead(pf)) fs.Read(pdfHd, 0, 4); if (Encoding.ASCII.GetString(pdfHd) != "%PDF") why = "no empieza por %PDF"; }
-                only.Append(why.Length == 0 ? "OK factura PDF impresa de verdad (Microsoft Print to PDF)\r\n" : "MAL factura PDF impresa de verdad: " + why + "\r\n");            }            // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
+                only.Append(why.Length == 0 ? "OK PDF impreso de verdad (Microsoft Print to PDF)\r\n" : "MAL PDF impreso de verdad: " + why + "\r\n");            }            // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
             StringBuilder gd = new StringBuilder(); bool gok = true;
             string appd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GESTEM");
             foreach (string rp in new string[] { Path.Combine(appd, "config.json"), Path.Combine(appd, "gestem.log"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM datos"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM documentos") })

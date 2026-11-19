@@ -64,4 +64,17 @@ $aut = @($script:Rows | Where-Object { [double]$_.PriceV -gt 0 })[0]
 $c.InvIban = ''; $c.CompanyName = 'EMPRESA X'
 [void]$o.Append("IN5 $(if ($aut) { $aut.Id } else { '(ninguno)' })`r`n"); if ($aut) { New-ClientInvoice $aut }
 
+# exportar la lista: vacía -> aviso; CSV (huella del archivo); PDF apaisado (huella de cada página); diálogo cancelado -> nada
+$script:T = $script:Tramites | Where-Object { $_.Id -eq 'canje' }; [void](Load-Data); $c.CompanyName = ''; $keepU = $script:User; $script:User = 'PRUEBA'
+$script:ExpPath = $null
+function Get-ExportFile([string]$ext, [string]$filter) { [void]$o.Append("EXF $ext $filter`r`n"); return $script:ExpPath }
+$script:UI.ClientsGrid.ItemsSource = @(); [void]$o.Append("EX0 vacía`r`n"); Export-ClientsCsv; Export-ClientsPdf
+$script:UI.ClientsGrid.ItemsSource = $script:Rows
+$script:ExpPath = Join-Path $TestDir 'ps\lista.csv'; [void]$o.Append("EX1 csv`r`n"); Export-ClientsCsv
+$cb = [IO.File]::ReadAllBytes($script:ExpPath); $md5 = [Security.Cryptography.MD5]::Create()
+[void]$o.Append("CSV bytes=$($cb.Length) md5=$([BitConverter]::ToString($md5.ComputeHash($cb)).Replace('-', '').Substring(0, 12))`r`n"); $md5.Dispose()
+[void]$o.Append("ST $($script:UI.StatusText.Text)`r`n")
+$script:ExpPath = Join-Path $TestDir 'ps\lista.pdf'; [void]$o.Append("EX2 pdf`r`n"); Export-ClientsPdf
+$script:ExpPath = $null; [void]$o.Append("EX3 cancelado`r`n"); Export-ClientsCsv; Export-ClientsPdf
+$script:User = $keepU; ${function:Get-ExportFile} = $null
 ${function:Start-Process} = $null; ${function:Get-Date} = $null
