@@ -156,6 +156,8 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         ventana, cambiar la carpeta de documentos (Set-DocsRoot), nº de la próxima factura (facturas.json), icono como recurso.
         Prueba: SP/SC/SD en el resumen + facturas.json + «UI ajustes». Pendiente: copia externa (Backup-External, «copiar ahora»),
         «buscar OneDrive» y «buscar actualizaciones» (etapas 5/5b; botones ocultos). Repair-Shortcuts no se traslada (etapa 7).
+  - [x] 4c Sesión (WinSession.cs): quién usa GESTEM (lista de nombres, la última persona entra sola con «¿No eres tú?»), sin atajos
+        mientras se elige. Prueba: SS en el resumen. Pendiente: «actividad GESTEM - PC.txt» en la carpeta externa (etapa 5).
 - [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
 - [ ] Etapa 5b — Firebase (sincronización, primera unión) y carpeta de documentos compartida
 - [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos

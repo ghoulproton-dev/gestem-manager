@@ -79,7 +79,7 @@ namespace Gestem
             Win.KeyDown += OnKeyDown;
             WireForm();
             WireMenu();
-            WireDocs(); WireStats(); WireSettings();
+            WireDocs(); WireStats(); WireSettings(); WireSession();
             Win.Dispatcher.UnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
             {
                 App.LogError("ventana", e.Exception);
@@ -255,6 +255,7 @@ namespace Gestem
 
         void OnKeyDown(object sender, KeyEventArgs e)
         {
+            if (U("PanelSession").Visibility == Visibility.Visible) return;    // eligiendo quién eres: sin atajos
             bool ctrl = Keyboard.Modifiers == ModifierKeys.Control;
             if (ctrl && e.Key == Key.F)
             {
@@ -282,7 +283,7 @@ namespace Gestem
         }
 
         // al abrir (Add_ContentRendered): buscar el Excel, pestañas hechas a mano, cargar todo
-        // shortcut: sin clave de GESTEM, actualizaciones, control remoto, documentos ni sesión (etapas 4, 5 y 5b)
+        // shortcut: sin clave de GESTEM, actualizaciones, control remoto ni carpeta de documentos en la nube (etapas 4d, 5 y 5b)
         void Startup()
         {
             string x = Config.Cur.ExcelPath;
@@ -305,6 +306,14 @@ namespace Gestem
             }
             finally { Win.Cursor = null; }
             U<ToggleButton>("NavClients").IsChecked = true;
+            // la última persona que usó este PC entra directamente; «¿No eres tú?» abre la lista de nombres
+            string last = Ps.Str(Config.Cur.LastUser).Trim();
+            if (last.Length > 0)
+            {
+                StartSession(last);
+                ShowToast(string.Format(L("userHello"), last), L("userSwitch"), ShowSession, 8);
+            }
+            else ShowSession();
         }
 
     }

@@ -334,4 +334,16 @@ Save-Settings
 $droot = Join-Path $TestDir 'ps_docs2'; Add-Tree 'SD'
 $u.InvNextBox.Text = 'abc'; $u.CompanyBox.Text = ''; $script:PendingLogo = ''; Save-Settings
 [void]$o.Append("SC2 $(Get-CfgText)`r`n"); [void]$o.Append("SP2 $(Get-SetText)`r`n")
+# etapa 4c: sesión
+foreach ($n in 'SessTitle', 'SessHint', 'SessGo', 'SessNewHint', 'SessNames', 'SessNew', 'PanelSession', 'UserBtn') { $script:UI[$n] = $script:Win.FindName($n) }
+function Get-SessText {
+    $u = $script:UI; $nm = @($u.SessNames.Children | ForEach-Object { "$($_.Content)$(if ($_.FontWeight -eq [Windows.FontWeights]::SemiBold) { '*' })" }) -join ','
+    return "names=$nm|vis=$($u.PanelSession.Visibility)|hint=$($u.SessNewHint.Visibility)|user=$($script:User)|last=$($script:Cfg.LastUser)|col=$(@($script:Cfg.Colleagues) -join ',')|lists=$(@($script:Lists['colleagues']) -join ',')|btn=$($u.UserBtn.Content)|title=$($u.SessTitle.Text)"
+}
+$script:Cfg.Colleagues = @('SAFAE', 'chaymae', ' ', 'LUIS'); $script:Cfg.LastUser = 'luis'; $script:Lists['colleagues'] = @('SAFAE', '', 'X')
+$script:UI.UserBtn.Content = ''; Show-Session; [void]$o.Append("SS0 $(Get-SessText)`r`n")
+foreach ($who in ' pepa ', '', 'Safae', 'luis') { Start-Session $who; [void]$o.Append("SS1 [$who] $(Get-SessText)`r`n") }
+Show-Session; [void]$o.Append("SS2 $(Get-SessText)`r`n")
+$script:Cfg.LastUser = ''; $script:User = ''; Start-Session '  '; [void]$o.Append("SS3 $(Get-SessText)`r`n")
+Show-Session; [void]$o.Append("SS4 $(Get-SessText)`r`n")
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

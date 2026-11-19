@@ -288,7 +288,13 @@ namespace Gestem
             o.Append("SC1 " + CfgText(w) + "\r\n"); o.Append("SP1 " + SetText(w) + "\r\n");
             DocsTree(o, "SD", Path.Combine(testDir, "cs_docs2"));
             w.U<TextBox>("InvNextBox").Text = "abc"; w.U<TextBox>("CompanyBox").Text = ""; w.PendingLogo = ""; w.SaveSettings();
-            o.Append("SC2 " + CfgText(w) + "\r\n"); o.Append("SP2 " + SetText(w) + "\r\n");            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
+            o.Append("SC2 " + CfgText(w) + "\r\n"); o.Append("SP2 " + SetText(w) + "\r\n");            // etapa 4c: sesión
+            Config.Cur.Colleagues = new List<string>(new string[] { "SAFAE", "chaymae", " ", "LUIS" }); Config.Cur.LastUser = "luis"; G.Lists["colleagues"] = new string[] { "SAFAE", "", "X" };
+            w.U<ContentControl>("UserBtn").Content = ""; w.ShowSession(); o.Append("SS0 " + SessText(w) + "\r\n");
+            foreach (string who in new string[] { " pepa ", "", "Safae", "luis" }) { w.StartSession(who); o.Append("SS1 [" + who + "] " + SessText(w) + "\r\n"); }
+            w.ShowSession(); o.Append("SS2 " + SessText(w) + "\r\n");
+            Config.Cur.LastUser = ""; App.User = ""; w.StartSession("  "); o.Append("SS3 " + SessText(w) + "\r\n");
+            w.ShowSession(); o.Append("SS4 " + SessText(w) + "\r\n");            File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();
             int bad = 0;
@@ -402,6 +408,13 @@ namespace Gestem
                 + "|col=" + string.Join(",", f.Colleagues) + "|lists=" + (lc == null ? "" : string.Join(",", lc))
                 + "|bk=" + f.Backup + "|open=" + f.OpenAfterSave + "|ext=" + f.ExtBackupDir + "|extLast=" + f.LastExtBackup + "|docs=" + System.Text.RegularExpressions.Regex.Replace(Path.GetFileName(f.DocsDir), "^cs_", "X_") + "|logo=" + Path.GetFileName(f.CompanyLogo) + "|logoFile=" + File.Exists(f.CompanyLogo)
                 + "|title=" + w.Win.Title.Replace("  —  " + TestMode.Banner, "") + "|side=" + T("SideCompany") + "/" + w.U<FrameworkElement>("SideCompany").Visibility + "|sess=" + T("SessCompany") + "|about=" + T("AboutCompany") + "|status=" + T("StatusText");
+        }        static string SessText(MainWin w)
+        {
+            List<string> nm = new List<string>();
+            foreach (UIElement ch in w.U<Panel>("SessNames").Children) { Button b = (Button)ch; nm.Add(Ps.Str(b.Content) + (b.FontWeight == FontWeights.SemiBold ? "*" : "")); }
+            string[] lc; G.Lists.TryGetValue("colleagues", out lc);
+            return "names=" + string.Join(",", nm) + "|vis=" + w.U<FrameworkElement>("PanelSession").Visibility + "|hint=" + w.U<FrameworkElement>("SessNewHint").Visibility + "|user=" + App.User + "|last=" + Config.Cur.LastUser
+                + "|col=" + string.Join(",", Config.Cur.Colleagues) + "|lists=" + (lc == null ? "" : string.Join(",", lc)) + "|btn=" + Ps.Str(w.U<ContentControl>("UserBtn").Content) + "|title=" + w.U<TextBlock>("SessTitle").Text;
         }        static string DocsPanelText(MainWin w)
         {
             List<string> it = new List<string>();
