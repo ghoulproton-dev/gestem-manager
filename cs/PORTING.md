@@ -37,17 +37,80 @@ La versión PowerShell (GESTEM.ps1) sigue siendo la que usa la gestoría hasta e
 - Ojo: device_commit_files puede copiar una versión vieja si se reutiliza la misma ruta de origen: usar una carpeta nueva cada vez.
 - Ojo: ejecutar GESTEM.ps1 desde otra carpeta cambia los accesos directos (Repair-Shortcuts) -> fix_shortcuts.bat.
 
+## Añadido en PowerShell después de 1.7.4 (1.8.0 – 1.9.2) — hay que trasladarlo
+Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con ESTA versión, no con la 1.7.4.
+
+### Datos (afecta a la prueba de igualdad: va antes que las pantallas)
+- Formato de «GESTEM datos\<trámite>.json» (Read-Store / Write-Store): cada cliente lleva `uid` (id para Firebase;
+  los de antes salen de `<trámite>-<nº>`, repetido -> GUID), `updated`, `by`, `borrado {by, at}` (eliminado = marca, no se quita);
+  el archivo lleva `adoptados` y `borradosMano` (clientes de pestañas a mano eliminados: uid, key, name, on, by, at).
+  Huella H = Get-FbHash(nº + «BORRADO» si eliminado, campos sin `Local`); si cambia al guardar -> firebase.json `Pend`.
+- Campos `Local` (los «Contraseña…»): se guardan solo en el PC, nunca se suben (Get-FbFields).
+- Campos solo de GESTEM (Col vacío): colab, comtipo, comval, compag, ndocs.
+- Trámites nuevos: `requerimiento` (pestaña REQUERIMIENTOS, fechas mm/dd, `flim` = Fecha límite de solo lectura =
+  10 días hábiles desde apertura o notificación: Get-ReqDeadline / Update-ReqDeadline dentro de Resolve-Record,
+  Get-ReqAlerts para el aviso de la barra lateral) y `regularizacion` (REGULARIZACION EXTRAORDINARIA).
+- Merge-StoreDeleted: lo eliminado en GESTEM no vuelve al reimportar el Excel.
+- Text18 (textos nuevos, se mezclan en Text) -> volver a exportar data\*.json (tools\dump.ps1).
+
+### Excel solo se importa (1.9.0)
+- GESTEM ya no escribe en el Excel: Sync-RecordToExcel devuelve $true y Sync-PendingToExcel 0 sin hacer nada; botón «volver a importar» oculto.
+  El Excel solo se lee al empezar un trámite vacío. Lo escrito en las etapas 2b/2c (escribir en el xlsx / por COM) queda
+  solo para Repair-ExcelFile y New-TramiteSheet; las pantallas NO deben llamar a la escritura.
+- Find-ExcelAuto (1.8.1): si el Excel cambió de sitio o el PC es nuevo, se busca «GESTEM datos» y el Excel de al lado.
+
+### 1.8 — pedido de la gestoría (18/11)
+- Tasas DGT del canje (Cfg.TasasCanje «B=33; C=100», Get-CanjeTasa / Get-TasasFor, Split-Iva con tasas,
+  línea «Tasas DGT (suplido)» sin IVA en factura y recibo).
+- Margen y % en la ficha (Get-Margin = precio − tasas − gastos − comisión; Get-Commission: % o fijo).
+- Traducción: precio = traductora + 3 € × nº docs (Cfg.TradProfit) con aviso.
+- Página Colaboradores (Get-ColabItems, Get-CollaboratorNames, KPIs, Load-ColabPanel, Update-ColabView, Open-ColabItem,
+  Mark-ColabPaid / Undo-ColabPaid, Set-ColabComState).
+
+### Clave de GESTEM (1.8.2)
+- Get/Set-GestemKey (DPAPI CurrentUser en Cfg.UpdateKey), Test-GestemKey, Ask-GestemKey (una vez por PC al abrir;
+  si se cancela, se vuelve a pedir), Get-RepoFile (API de GitHub con la clave, repositorio privado) para las actualizaciones.
+- La misma clave es la contraseña de Firebase.
+
+### Firebase (1.9.0)
+- Firestore REST (Connect-Firebase: email/contraseña, token 1 h; Invoke-Fs / Invoke-FbJson), proyecto en HANDOVER.md
+  (no copiar los datos de la cuenta a este archivo: el repo es público).
+- Documento `gestorias/<g>/clientes/<uid>`: t, id, datos (JSON sin campos Local), deleted, by, pc, updated, mod (hora del servidor).
+- Estado por PC: %APPDATA%\GESTEM\firebase.json (lastMod, joined ''/'push'/'yes', Pend) — Get-FbState / Save-FbState / Add-FbPend.
+- Sincronización cada 20 s en segundo plano (Step-FbSync desde Invoke-LiveRefresh, $script:FbSyncScript en un runspace);
+  Receive-FbDocs aplica lo que llega (FbApplying: no se reenvía), Get-FbRow / Get-FbWantRow (nº repetido creado sin internet
+  -> el de este PC pasa al siguiente libre + aviso).
+- Primera unión (Join-FbDocs): bajar todo primero; mismo uid/nº + mismo NIE (o nombre, Test-FbSamePerson / Test-SameNameKey)
+  = mismo cliente, gana el último cambio; mismo nº otra persona -> siguiente nº libre + aviso; clientes de pestañas a mano
+  adoptados una vez (`mano-<trámite>-<md5>`, Get-HandDelUid); solo locales se suben con exists=false (409 -> volver a unir).
+- Interruptor Set-FbSyncSwitch (Ajustes) + %APPDATA%\GESTEM\firebase_apagado.txt. Panel admin: Update-AdmFbState.
+- Pruebas de PowerShell: tests\fbtest.ps1 (sin red), con red solo en `_tests/pruebas` (ver HANDOVER.md).
+
+### Eliminar cliente (1.9.0)
+- Remove-Client / Set-ClientDeleted (marca `borrado`; los de pestañas a mano por nombre en `borradosMano`, uid `hand-…`),
+  Undo-RemoveClient (aviso con «Deshacer» y Ctrl+Z); se sincroniza como deleted=true.
+
+### Carpeta de documentos compartida (1.9.1 – 1.9.2)
+- Cfg.DocsDir en Ajustes (Choose-DocsFolder, Set-DocsRoot: desde la carpeta local mueve, desde otra solo copia).
+- Al abrir (Initialize-DocsFolder): sin carpeta y con Firebase -> busca «GESTEM documentos» en Get-CloudRoots
+  (Find-CloudDocsDir, profundidad 3) y mueve una vez los de este PC (Merge-DocsFolder: nunca pisa; mismo nombre -> «nombre (2)»;
+  idénticos -> uno). Get-LocalDocsRoot = junto al Excel.
+- La carpeta sigue al cliente renumerado (Repair-DocsFolders / Repair-AllDocsFolders: tras Join-FbDocs, Receive-FbDocs y al abrir;
+  por nombre único, nunca si es ambiguo); Get-ClientDocsDir prefiere «nº - nombre» exacto.
+- Pruebas: tests\docsfolder.ps1, tests\docsrenum.ps1.
+
+### Ventana (1.8 – 1.9)
+- La XAML cambió (página Colaboradores, DocsDirBox, aviso de requerimientos, Eliminar cliente…): main.xaml se vuelve a sacar
+  del bloque `$xaml = @'…'@` de GESTEM.ps1 1.9.2 en la etapa 3.
+- Arreglo 1.9.0: lista vacía de clientes (Refresh-ClientGrid / Update-StatusLine usaban `-not $script:Rows`) — no repetirlo.
+
 ## Pendiente
-- [ ] (hecho arriba) Etapa 2c — Excel por COM (respaldo cuando el archivo está abierto): Open-Book/Close-Book/Invoke-Excel, Get-Sheet,
-      New-TramiteSheet, Restore-Formula, Set-CellValue, Save-Client, Read-TramiteData, Import-TramiteFromExcel,
-      Sync-RecordToExcel, Save-PendingBatchToFile, Sync-PendingToExcel, Repair-TotalsFormulas, Refresh-FromExcel, Load-Data
-- [ ] Etapa 3 — ventana: lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos
-- [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto
-- [ ] Etapa 5 — facturas PDF, exportar CSV/PDF, copia externa, actualizaciones
-- [ ] 1.8 (pedido de la gestoría, 18/11) — también hay que trasladarlo:
-      campos solo de GESTEM (Col vacío: colab, comtipo, comval, compag, ndocs), tasas DGT del canje (Cfg.TasasCanje, Split-Iva con tasas,
-      línea «Tasas DGT (suplido)» en factura y recibo), margen y % en la ficha (Get-Margin), traducción: precio = traductora + 3 € × nº docs
-      (Cfg.TradProfit) con aviso, página Colaboradores (Get-ColabItems, KPIs, marcar comisión pagada + deshacer), Text18
-- [ ] Clave de GESTEM (Get/Set-GestemKey con DPAPI, Get-RepoFile por la API de GitHub con la clave, Ask-GestemKey al abrir) — trasladar
+- [ ] Etapa 2d — ponerse al día con 1.9.2 en los datos: pstest/dump leen GESTEM.ps1 del repo (por marcas, no por nº de línea),
+      volver a exportar data\*.json, formato nuevo del store, campos Local, requerimiento/regularización, Merge-StoreDeleted.
+- [ ] Etapa 3 — ventana (main.xaml de 1.9.2): lista, ficha, menú de clic derecho, deshacer, avisos, atajos, documentos,
+      eliminar cliente, aviso de requerimientos
+- [ ] Etapa 4 — Resumen (estadísticas y gráfico), Ajustes, sesión/usuarios, admin, control remoto, Colaboradores, margen
+- [ ] Etapa 5 — facturas PDF (con tasas DGT), exportar CSV/PDF, copia externa, actualizaciones con la clave de GESTEM
+- [ ] Etapa 5b — Firebase (sincronización, primera unión) y carpeta de documentos compartida
 - [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe
