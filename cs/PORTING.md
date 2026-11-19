@@ -214,3 +214,22 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
   - [x] Un solo GESTEM abierto (Program.cs): mutex por usuario y modo (prueba / --real); el segundo trae el primero al frente
         y se cierra sin tocar nada. GESTEM.ps1 no lo tiene (no hay nada que comparar). Probado abriendo GESTEM.exe dos veces: el
         segundo termina (código 0), queda uno; al cerrarlo se vuelve a abrir. No detecta un GESTEM.ps1 abierto a la vez.
+  El paso (solo en local; version.txt sigue en 1.9.3 hasta publicar):
+  - [x] GESTEM.ps1 2.0.0, Install-GestemExe (antes de la ventana): solo PC de control.json «exePcs» (nombres o "*"), nunca con
+        «exe»: "no" ni con exe_desactivado.txt. .NET 4.8, app/GESTEM.exe con la clave, SHA-256 (app/GESTEM.exe.sha256), --smoke;
+        3 intentos por versión de app/exe_version.txt (exe_intentos.txt); con otra ventana de GESTEM.ps1 abierta, la próxima vez.
+        Accesos directos (escritorio, Inicio, barra de tareas) que abren este GESTEM.ps1 -> GESTEM.exe --real (los de antes en
+        exe_instalado.txt). GESTEM.exe se abre con --tras <pid>: espera a que PowerShell se cierre.
+  - [x] Volver: icono «Volver a GESTEM anterior» (GESTEM.ps1 -Volver: accesos como antes, exe_desactivado.txt) y control.json
+        «exe»: "no" (GESTEM.exe abre GESTEM.ps1 -VolverRemoto y se cierra; vuelve a GESTEM.exe cuando control.json lo permita).
+  - [x] GESTEM.exe se actualiza solo (ExeSwitch.cs): app/exe_version.txt, SHA-256, --smoke, GESTEM.old.exe; solo la copia instalada.
+        Con GESTEM.ps1 al lado usa los datos de verdad sin --real (--prueba fuerza el modo prueba); en cs\ sigue el modo prueba.
+  - [x] Pruebas sin internet: tools\exeinstall.ps1 (GitHub de mentira, instalación, APPDATA y accesos directos en cs\test\exeinst;
+        resultado cs\test\exeinst.txt): otro PC, «exe»: "no", sin conexión, otra ventana, sin .NET, SHA-256 malo, --smoke que falla,
+        espera tras 3 fallos, normal, volver con el icono (y con GESTEM.exe abierto), volver por control.json y otra vez a GESTEM.exe;
+        en cada caso config.json, firebase.json, admin.dat y los almacenes byte a byte iguales. «Solo C#» en result.txt: actualización
+        normal, SHA-256 malo, --smoke que falla, abrir el nuevo con --tras, «exe»: "no" solo en la copia instalada. A mano: --tras
+        espera de verdad a que se cierre un PowerShell.
+        Publicar: tools\publish_exe.ps1 (app\GESTEM.exe, .sha256, exe_version.txt), commit y push solo cuando lo diga Yano.
+        Sin probar: barra de tareas de verdad (Windows puede necesitar reiniciar el Explorador para el icono anclado), descarga de verdad
+        desde GitHub, el aviso «actualizado a…» después de la actualización de GESTEM.exe (GESTEM.exe no lee actualizado.txt).

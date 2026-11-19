@@ -528,7 +528,49 @@ namespace Gestem
                 try { if (File.Exists(pf)) File.Delete(pf); if (!Pdf.HasPrinter()) why = "falta la impresora"; else Pdf.Print(pf, true, MainWin.DrawClientList); }
                 catch (Exception e) { why = e.Message; }
                 if (why.Length == 0) { byte[] pdfHd = new byte[4]; using (FileStream fs = File.OpenRead(pf)) fs.Read(pdfHd, 0, 4); if (Encoding.ASCII.GetString(pdfHd) != "%PDF") why = "no empieza por %PDF"; }
-                only.Append(why.Length == 0 ? "OK PDF impreso de verdad (Microsoft Print to PDF)\r\n" : "MAL PDF impreso de verdad: " + why + "\r\n");            }            // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
+                only.Append(why.Length == 0 ? "OK PDF impreso de verdad (Microsoft Print to PDF)\r\n" : "MAL PDF impreso de verdad: " + why + "\r\n");
+            }
+            {
+                // etapa 7: GESTEM.exe se actualiza solo (GitHub de mentira, carpeta de instalación de prueba) y vuelve a PowerShell con «exe»: "no"
+                string ed = Path.Combine(testDir, "cs_exeupd"); if (Directory.Exists(ed)) Directory.Delete(ed, true); Directory.CreateDirectory(ed);
+                string exe = Path.Combine(ed, "GESTEM.exe"), oldExe = Path.Combine(ed, "GESTEM.old.exe");
+                byte[] good = File.ReadAllBytes(Path.Combine(App.AppDir, "GESTEM.exe")), where = File.ReadAllBytes(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "where.exe"));
+                byte[] viejo = Encoding.ASCII.GetBytes("GESTEM.exe viejo"); File.WriteAllBytes(exe, viejo); File.WriteAllText(Path.Combine(ed, "GESTEM.ps1"), "# instalado");
+                byte[] serve = good; string sha = null;
+                Func<byte[], string> hash = delegate(byte[] b) { using (System.Security.Cryptography.SHA256 sh2 = System.Security.Cryptography.SHA256.Create()) return BitConverter.ToString(sh2.ComputeHash(b)).Replace("-", ""); };
+                Updater.FetchBytesHook = delegate(string n) { if (n != "app/GESTEM.exe") throw new RepoException(404, n); return serve; };
+                Updater.FetchHook = delegate(string n) { if (n != "app/GESTEM.exe.sha256") throw new RepoException(404, n); return (sha ?? hash(serve)) + "  GESTEM.exe\n"; };
+                List<string> started = new List<string>(); ExeSwitch.StartHook = delegate(string f, string a) { started.Add(Path.GetFileName(f) + " " + a); };
+                string keepDir = ExeSwitch.Dir; ExeSwitch.Dir = ed;
+                Func<string, string> same = delegate(string f) { return File.Exists(f) ? hash(File.ReadAllBytes(f)) : "-"; };
+                Func<Action, string> err = delegate(Action a) { try { a(); return ""; } catch (Exception e) { return e.Message; } };
+                try
+                {
+                    string e1 = err(delegate { ExeSwitch.Update("2.0.1"); });
+                    bool ok1 = e1 == "" && same(exe) == hash(good) && same(oldExe) == hash(viejo) && !File.Exists(Path.Combine(ed, "GESTEM.new.exe"));
+                    only.Append(ok1 ? "OK actualización de GESTEM.exe (normal, el nuevo en su sitio, el anterior en GESTEM.old.exe)\r\n" : "MAL actualización de GESTEM.exe (normal): " + e1 + " exe=" + same(exe) + " old=" + same(oldExe) + "\r\n");
+                    File.WriteAllBytes(exe, viejo); File.Delete(oldExe);
+                    sha = new string('0', 64); string e2 = err(delegate { ExeSwitch.Update("2.0.2"); }); sha = null;
+                    serve = where; string e3 = err(delegate { ExeSwitch.Update("2.0.3"); }); serve = good;
+                    bool ok2 = e2.StartsWith("SHA-256 no coincide") && e3.StartsWith("--smoke falla") && same(exe) == hash(viejo) && !File.Exists(oldExe) && !File.Exists(Path.Combine(ed, "GESTEM.new.exe"));
+                    only.Append(ok2 ? "OK actualización de GESTEM.exe (SHA-256 malo y --smoke que falla, GESTEM.exe sin tocar)\r\n" : "MAL actualización de GESTEM.exe (fallos): [" + e2 + "] [" + e3 + "] exe=" + same(exe) + "\r\n");
+                    ExeSwitch.Restart();
+                    string me = System.Diagnostics.Process.GetCurrentProcess().Id.ToString();
+                    bool ok3 = started.Count == 1 && started[0].StartsWith("GESTEM.exe ") && started[0].EndsWith(" --tras " + me) && !ExeSwitch.CanUpdate;
+                    only.Append(ok3 ? "OK actualización de GESTEM.exe (se abre el nuevo con --tras; en modo prueba no se actualiza sola)\r\n" : "MAL actualización de GESTEM.exe (abrir el nuevo): " + string.Join(" / ", started.ToArray()) + " CanUpdate=" + ExeSwitch.CanUpdate + "\r\n");
+                    // «exe»: "no" solo con la copia instalada (GESTEM.ps1 al lado y exe_instalado.txt); abre GESTEM.ps1 -VolverRemoto
+                    started.Clear(); string done = Path.Combine(App.DataDir, "exe_instalado.txt"); if (File.Exists(done)) File.Delete(done);
+                    bool w0 = ExeSwitch.WantsPs(Json.Parse("{\"exe\":\"no\"}"));
+                    File.WriteAllText(done, "{}");
+                    bool w1 = ExeSwitch.WantsPs(Json.Parse("{\"exe\":\"no\"}")), w2 = ExeSwitch.WantsPs(Json.Parse("{\"exePcs\":\"*\"}")), w3 = ExeSwitch.WantsPs(null);
+                    File.Delete(done);
+                    ExeSwitch.BackToPs();
+                    bool ok4 = !w0 && w1 && !w2 && !w3 && started.Count == 1 && started[0] == "powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File \"" + Path.Combine(ed, "GESTEM.ps1") + "\" -Oculto -VolverRemoto";
+                    only.Append(ok4 ? "OK vuelta a PowerShell con control.json «exe» = \"no\" (solo la copia instalada)\r\n" : "MAL vuelta a PowerShell: " + w0 + w1 + w2 + w3 + " " + string.Join(" / ", started.ToArray()) + "\r\n");
+                }
+                finally { Updater.FetchBytesHook = null; Updater.FetchHook = null; ExeSwitch.StartHook = null; ExeSwitch.Dir = keepDir; }
+            }
+            // modo prueba: fuera de las carpetas de prueba no se escribe nada (sin --real)
             StringBuilder gd = new StringBuilder(); bool gok = true;
             string appd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GESTEM");
             foreach (string rp in new string[] { Path.Combine(appd, "config.json"), Path.Combine(appd, "gestem.log"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM datos"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "GESTEM_MANAGER_1", "GESTEM MANAGER", "GESTEM documentos") })
