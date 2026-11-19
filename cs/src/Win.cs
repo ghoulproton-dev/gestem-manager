@@ -106,6 +106,7 @@ namespace Gestem
         // aviso pequeño abajo a la derecha (sin ventana que haya que cerrar)
         public void ShowToast(string text, string btnText, Action action, int seconds)
         {
+            if (ToastHook != null) ToastHook(text, btnText ?? "");    // pruebas: como el Show-Toast de pstest
             U<TextBlock>("ToastText").Text = text;
             toastAction = action;
             Button b = U<Button>("ToastBtn");
@@ -292,7 +293,6 @@ namespace Gestem
         }
 
         // al abrir (Add_ContentRendered): buscar el Excel, pestañas hechas a mano, cargar todo
-        // shortcut: sin carpeta de documentos en la nube (etapa 5c)
         void Startup()
         {
             if (!App.Quiet) StartupOnline();    // clave de GESTEM, versión nueva, control remoto (las pruebas no van a internet)
@@ -306,6 +306,7 @@ namespace Gestem
             Win.Cursor = Cursors.Wait;
             try
             {
+                try { InitializeDocsFolder(); } catch (Exception e) { App.Log("documentos: " + e.Message); }
                 try { Docs.RepairAll(); } catch (Exception e) { App.Log("documentos: " + e.Message); }    // carpetas que quedaron con el nº de otro cliente
                 try { Hand.SyncTabs(true, true); } catch (Exception e) { App.Log("pestañas propias: " + e.Message); }
                 if (Data.LoadData(true, false))

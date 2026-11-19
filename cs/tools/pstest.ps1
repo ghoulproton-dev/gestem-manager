@@ -445,4 +445,24 @@ foreach ($v in '1.9.3', '1.9.2', '1.10', '2.0.0.1', '1.9.3.1', '1.9.3.0', 'hola'
 foreach ($v in '1.9.3', 'hola', 0, 401) { $script:FakeRepo = @{ 'version.txt' = $v }; Check-Update -Manual; [void]$o.Append("RU $v`r`n") }
 $keepKey = $script:Cfg.UpdateKey; Set-GestemKey 'clave-xyz'; [void]$o.Append("RK $(Get-GestemKey)|$([bool]$script:Cfg.UpdateKey)"); Set-GestemKey ''; [void]$o.Append("|$(Get-GestemKey)|$($script:Cfg.UpdateKey)`r`n"); $script:Cfg.UpdateKey = $keepKey
 ${function:Get-RepoFile} = $keepRepo; $script:Remote = $null; Apply-Pause
+# etapa 5c: carpeta de documentos en la nube (dos «nubes» de prueba: la más reciente gana; más hondo de 3 o oculta no cuenta)
+$keepCloud = ${function:Get-CloudRoots}; $nb = @((Join-Path $TestDir 'ps_nube1'), (Join-Path $TestDir 'ps_nube2'))
+function Get-CloudRoots { return $nb }
+foreach ($d in $nb) { if (Test-Path $d) { Remove-Item $d -Recurse -Force } }
+$mk = { param($p, $t) $x = New-Item -ItemType Directory -Force -Path $p; $x.LastWriteTime = $t; $x }
+[void](& $mk (Join-Path $nb[0] 'a\GESTEM documentos') (New-Object DateTime 2026, 5, 1))
+[void](& $mk (Join-Path $nb[1] 'x\y\z\GESTEM documentos') (New-Object DateTime 2026, 6, 1))
+[void](& $mk (Join-Path $nb[1] 'a\b\c\d\GESTEM documentos') (New-Object DateTime 2026, 9, 1))
+$h = & $mk (Join-Path $nb[0] 'oculta') (Get-Date); $h.Attributes = 'Hidden, Directory'; [void](& $mk (Join-Path $h.FullName 'GESTEM documentos') (New-Object DateTime 2026, 10, 1))
+$mask = { param($p) if ($p) { $p.Substring($TestDir.Length + 1) -replace '^ps_', 'X_' } else { '-' } }
+[void]$o.Append("DC find=$(& $mask (Find-CloudDocsDir))`r`n")
+$keepDocs = $script:Cfg.DocsDir; $keepFb = $script:Cfg.FbSync
+$loc = Get-LocalDocsRoot; if (Test-Path $loc) { Remove-Item $loc -Recurse -Force }; New-Item -ItemType Directory -Force -Path (Join-Path $loc 'DGT ACTUALIZADO\CANJ-1') | Out-Null
+[IO.File]::WriteAllText((Join-Path $loc 'DGT ACTUALIZADO\CANJ-1\a.pdf'), 'uno'); [IO.File]::WriteAllText((Join-Path $loc 'b.pdf'), 'dos')
+$keepToast = ${function:Show-Toast}; function Show-Toast([string]$text, [string]$btnText = '', $action = $null, [int]$seconds = 7) { [void]$o.Append("TOAST $($text.Replace($TestDir + '\ps_', 'X_'))|$btnText`r`n") }
+$script:Cfg.DocsDir = ''; $script:Cfg.FbSync = $false; Initialize-DocsFolder; [void]$o.Append("DC off docs=$($script:Cfg.DocsDir)`r`n")
+$script:Cfg.FbSync = $true; Initialize-DocsFolder
+[void]$o.Append("DC on docs=$(& $mask $script:Cfg.DocsDir) local=$(Test-Path $loc) files=$(@(Get-ChildItem $script:Cfg.DocsDir -Recurse -File | ForEach-Object { $_.FullName.Substring($script:Cfg.DocsDir.Length + 1) } | Sort-Object) -join ',')`r`n")
+foreach ($d in $nb) { Remove-Item $d -Recurse -Force }; $script:Cfg.DocsDir = ''; Initialize-DocsFolder; [void]$o.Append("DC none docs=$($script:Cfg.DocsDir)`r`n")
+$script:Cfg.DocsDir = $keepDocs; $script:Cfg.FbSync = $keepFb; ${function:Get-CloudRoots} = $keepCloud; ${function:Show-Toast} = $keepToast; Update-DocsMap
 [IO.File]::WriteAllText((Join-Path $TestDir 'ps_summary.txt'), $o.ToString(), (New-Object Text.UTF8Encoding $false))

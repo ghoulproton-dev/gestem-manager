@@ -1,8 +1,7 @@
 // Etapa 3d: carpeta de documentos de cada cliente («GESTEM documentos\<pestaña>\<nº> - <nombre>»).
 // Copiado de Get-SafeName, Get-DocsRoot, Get-LocalDocsRoot, Get-TramiteDocsDir, Get-ClientDocsDir, Merge-DocsFolder,
 // Test-SameNameKey, Repair-DocsFolders, Repair-AllDocsFolders, Update-DocsMap y Get-DocsCount de GESTEM.ps1.
-// shortcut: elegir la carpeta en Ajustes (Set-DocsRoot / Choose-DocsFolder) es de la etapa 4; buscarla sola en la nube
-// (Initialize-DocsFolder / Find-CloudDocsDir) de la 5b, y la copia a la carpeta externa (Sync-DocsBackup) de la 5.
+// Elegir la carpeta en Ajustes: WinSettings.cs; buscarla sola en la nube y la copia a la carpeta externa: ExtBackup.cs.
 using System;
 using System.Collections;
 using System.Collections.Generic;

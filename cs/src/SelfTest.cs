@@ -380,6 +380,31 @@ namespace Gestem
             foreach (object v in new object[] { "1.9.3", "hola", 0, 401 }) { fake = new object[] { v }; w.CheckUpdate(true); o.Append("RU " + v + "\r\n"); }
             { string keepKey = Config.Cur.UpdateKey; Updater.SetKey("clave-xyz"); o.Append("RK " + Updater.GetKey() + "|" + (Config.Cur.UpdateKey.Length > 0)); Updater.SetKey(""); o.Append("|" + Updater.GetKey() + "|" + Config.Cur.UpdateKey + "\r\n"); Config.Cur.UpdateKey = keepKey; }
             Updater.FetchHook = null; w.InfoHook = null; w.Remote = null; w.ApplyPause();
+            // etapa 5c: carpeta de documentos en la nube (dos «nubes» de prueba: la más reciente gana; más hondo de 3 o oculta no cuenta)
+            {
+                string[] nb = { Path.Combine(testDir, "cs_nube1"), Path.Combine(testDir, "cs_nube2") };
+                App.CloudRootsOverride = new List<string>(nb);
+                foreach (string d in nb) if (Directory.Exists(d)) { foreach (string x in Directory.GetDirectories(d, "*", SearchOption.AllDirectories)) File.SetAttributes(x, FileAttributes.Directory); Directory.Delete(d, true); }
+                Func<string, DateTime, DirectoryInfo> mk = delegate(string p, DateTime t) { DirectoryInfo x = Directory.CreateDirectory(p); x.LastWriteTime = t; return x; };
+                mk(Path.Combine(nb[0], @"a\GESTEM documentos"), new DateTime(2026, 5, 1));
+                mk(Path.Combine(nb[1], @"x\y\z\GESTEM documentos"), new DateTime(2026, 6, 1));
+                mk(Path.Combine(nb[1], @"a\b\c\d\GESTEM documentos"), new DateTime(2026, 9, 1));
+                DirectoryInfo hidDir = mk(Path.Combine(nb[0], "oculta"), DateTime.Now); hidDir.Attributes = FileAttributes.Hidden | FileAttributes.Directory; mk(Path.Combine(hidDir.FullName, "GESTEM documentos"), new DateTime(2026, 10, 1));
+                Func<string, string> mask = delegate(string p) { return p != null ? System.Text.RegularExpressions.Regex.Replace(p.Substring(testDir.Length + 1), "^cs_", "X_") : "-"; };
+                o.Append("DC find=" + mask(ExtBackup.FindCloudDocsDir()) + "\r\n");
+                string keepDocs = Config.Cur.DocsDir; bool keepFb5c = Config.Cur.FbSync;
+                string loc = Docs.LocalRoot(); if (Directory.Exists(loc)) Directory.Delete(loc, true); Directory.CreateDirectory(Path.Combine(loc, @"DGT ACTUALIZADO\CANJ-1"));
+                File.WriteAllText(Path.Combine(loc, @"DGT ACTUALIZADO\CANJ-1\a.pdf"), "uno"); File.WriteAllText(Path.Combine(loc, "b.pdf"), "dos");
+                Action<string, string> keepToast = w.ToastHook; w.ToastHook = delegate(string a, string b) { o.Append("TOAST " + a.Replace(testDir + "\\cs_", "X_") + "|" + b + "\r\n"); };
+                Config.Cur.DocsDir = ""; Config.Cur.FbSync = false; w.InitializeDocsFolder(); o.Append("DC off docs=" + Config.Cur.DocsDir + "\r\n");
+                Config.Cur.FbSync = true; w.InitializeDocsFolder();
+                List<string> dl = new List<string>(); foreach (string f in Directory.GetFiles(Config.Cur.DocsDir, "*", SearchOption.AllDirectories)) dl.Add(f.Substring(Config.Cur.DocsDir.Length + 1)); Ps.Sort(dl, StringComparer.CurrentCultureIgnoreCase.Compare);
+                o.Append("DC on docs=" + mask(Config.Cur.DocsDir) + " local=" + Directory.Exists(loc) + " files=" + string.Join(",", dl) + "\r\n");
+                foreach (string d in nb) { File.SetAttributes(Path.Combine(nb[0], "oculta"), FileAttributes.Directory); }
+                foreach (string d in nb) if (Directory.Exists(d)) Directory.Delete(d, true);
+                Config.Cur.DocsDir = ""; w.InitializeDocsFolder(); o.Append("DC none docs=" + Config.Cur.DocsDir + "\r\n");
+                Config.Cur.DocsDir = keepDocs; Config.Cur.FbSync = keepFb5c; App.CloudRootsOverride = null; w.ToastHook = keepToast; Docs.UpdateMap();
+            }
             File.WriteAllText(Path.Combine(testDir, "cs_summary.txt"), o.ToString(), new UTF8Encoding(false));
             // aparte del resumen (PowerShell 1.9.2 sí deja los repetidos): sin clientes repetidos después de cargar
             System.Text.StringBuilder dupOut = new System.Text.StringBuilder();

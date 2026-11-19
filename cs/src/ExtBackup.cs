@@ -43,6 +43,26 @@ namespace Gestem
             if (recurse) { try { foreach (string d in Directory.GetDirectories(dir)) if (Shown(d)) l.AddRange(Files(d, pattern, true)); } catch { } }
             return l;
         }
+        // Find-CloudDocsDir: una carpeta «GESTEM documentos» en la nube (la de los otros PCs); si hay varias, la usada más recientemente
+        public static string FindCloudDocsDir()
+        {
+            DirectoryInfo best = null;
+            foreach (string r in CloudRoots()) foreach (DirectoryInfo d in FindDirs(r, "GESTEM documentos", 0)) if (best == null || d.LastWriteTime > best.LastWriteTime) best = d;
+            return best != null ? best.FullName : null;
+        }
+        // Get-ChildItem -Directory -Recurse -Depth 3 -Filter (sin ocultas)
+        static List<DirectoryInfo> FindDirs(string dir, string name, int depth)
+        {
+            List<DirectoryInfo> l = new List<DirectoryInfo>();
+            string[] subs; try { subs = Directory.GetDirectories(dir); } catch { return l; }
+            foreach (string s in subs)
+            {
+                if (!Shown(s)) continue;
+                if (string.Equals(Path.GetFileName(s), name, StringComparison.OrdinalIgnoreCase)) l.Add(new DirectoryInfo(s));
+                if (depth < 3) l.AddRange(FindDirs(s, name, depth + 1));
+            }
+            return l;
+        }
         public static string FindCompanyCloud() { List<string> r = CloudRoots(); return r.Count > 0 ? Path.Combine(r[0], "GESTEM copias") : null; }
 
         // registro de actividad legible en la carpeta externa: un archivo por PC, lo más reciente arriba, SIN nombres de clientes
@@ -192,6 +212,18 @@ namespace Gestem
         }
 
         // al abrir, después de cargar: primera vez sin carpeta externa → la nube de la empresa si este PC la tiene; luego la copia
+        // al abrir, si aún no hay carpeta elegida y la sincronización está encendida: la «GESTEM documentos» de los otros PCs en la nube
+        // (los documentos de este PC pasan allí una vez). shortcut: se mueven en el hilo de la ventana, como en PowerShell.
+        public void InitializeDocsFolder()
+        {
+            if (Ps.Str(Config.Cur.DocsDir).Length > 0 || !Config.Cur.FbSync) return;
+            string cloud = ExtBackup.FindCloudDocsDir();
+            if (cloud == null) return;
+            MergeResult r = SetDocsRoot(cloud);
+            App.Log("documentos: carpeta compartida encontrada: " + cloud);
+            if (r.Moved + r.Same > 0) { try { ShowToast(string.Format(L("docsMoved"), r.Moved + r.Same, cloud), "", null, 12); } catch { } }
+        }
+
         void StartupExtBackup()
         {
             if (Ps.Str(Config.Cur.ExtBackupDir).Length == 0)

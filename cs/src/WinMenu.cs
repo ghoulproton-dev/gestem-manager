@@ -135,7 +135,6 @@ namespace Gestem
 
         void Toast(string text, bool undo, int seconds)
         {
-            if (ToastHook != null) ToastHook(text, undo ? L("cmUndo") : "");
             if (undo) ShowToast(text, L("cmUndo"), delegate { InvokeQuickUndo(); }, seconds); else ShowToast(text, "", null, 7);
         }
         static string Who() { return App.User.Length > 0 ? App.User : "ADMIN"; }

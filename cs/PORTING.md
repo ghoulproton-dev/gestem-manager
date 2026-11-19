@@ -181,7 +181,11 @@ Referencia: GESTEM.ps1 1.9.2 (commit 2e86b24). La prueba de igualdad compara con
         Solo LEE de GitHub. Con versión nueva solo avisa: instalar un GESTEM.exe nuevo queda para la etapa 7 (hace falta decidir dónde
         se publica el .exe); nunca toca GESTEM.ps1 ni version.txt. Las pruebas (Quiet) no van a internet.
         Prueba: RC0–RC7/RV/RU/RK con un GitHub de mentira (Updater.FetchHook / Get-RepoFile de la prueba).
-  - [ ] 5c Carpeta de documentos en la nube
+  - [x] 5c Carpeta de documentos en la nube (ExtBackup.cs: FindCloudDocsDir; MainWin.InitializeDocsFolder): al abrir, sin carpeta elegida
+        y con la sincronización encendida, usa la «GESTEM documentos» más reciente de la nube (hasta 3 carpetas de hondo, sin ocultas)
+        y pasa allí los documentos de este PC. En modo prueba nunca (carpeta de prueba fija, sincronización apagada).
+        Prueba: DC find/off/on/none con dos «nubes» de prueba. ToastHook va ahora en ShowToast (todos los avisos, como pstest).
+        build.bat compila a GESTEM.new.exe y solo cambia GESTEM.exe si compila y arranca (--smoke); si falla, queda el anterior.
   - [ ] 5d Firebase (pruebas solo en gestorias/elmahi/_tests/...; en modo prueba siempre apagado; nunca las contraseñas)
 - [ ] Etapa 6 — comparar las dos versiones lado a lado con una copia de los datos
 - [ ] Etapa 7 — última actualización de PowerShell que instala GESTEM.exe
